@@ -6,11 +6,17 @@ start
 
 Expression
   = AllOf
+  / AnyOf
   / CourseRef
 
 AllOf
   = ALL __ OF _ "(" _ items:ItemList _ ")" {
       return { type: 'all-of', items };
+    }
+
+AnyOf
+  = ANY __ OF _ "(" _ items:ItemList _ ")" {
+      return { type: 'any-of', items };
     }
 
 ItemList
@@ -31,6 +37,7 @@ Number "course number"
 
 // Case-insensitive keywords
 ALL = "all"i !IdentChar
+ANY = "any"i !IdentChar
 OF  = "of"i  !IdentChar
 
 IdentChar = [A-Za-z0-9]
