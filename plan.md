@@ -53,7 +53,7 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 
 ### Variables
 - [x] **1.21** Grammar + parser + tests: variable definition (`$core = all of (...)`) and reference (`$core`)
-- [ ] **1.22** Grammar + parser + tests: scope blocks (`scope "cmps-major" { ... }`) and cross-scope references (`$scope.name`)
+- [x] **1.22** Grammar + parser + tests: scope blocks (`scope "cmps-major" { ... }`) and cross-scope references (`$scope.name`)
 
 ### Post-Selection Constraints
 - [ ] **1.23** Grammar + parser + tests: `where at least N match (filter)` on n-of nodes

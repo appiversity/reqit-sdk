@@ -30,7 +30,8 @@ Decimal "decimal number"
   = digits:$([0-9]+ ("." [0-9]+)?) { return parseFloat(digits); }
 
 PrimaryExpression
-  = AllOf
+  = ScopeBlock
+  / AllOf
   / AnyOf
   / NoneOf
   / NOf
@@ -45,18 +46,34 @@ PrimaryExpression
   / VariableRef
   / CourseRef
 
+ScopeBlock
+  = SCOPE __ scopeName:StringLiteral _ "{" _ defs:(VariableDef _)* body:Expression _ "}" {
+      const annotatedDefs = defs.map(d => {
+        const def = d[0];
+        def.scope = scopeName;
+        return def;
+      });
+      return { type: 'scope', name: scopeName, defs: annotatedDefs, body };
+    }
+
 VariableDef
   = "$" name:VarName _ "=" _ value:Expression {
       return { type: 'variable-def', name, value };
     }
 
 VariableRef
-  = "$" name:VarName {
+  = "$" scope:ScopeName "." name:VarName {
+      return { type: 'variable-ref', name, scope };
+    }
+  / "$" name:VarName {
       return { type: 'variable-ref', name };
     }
 
 VarName "variable name"
   = $([a-zA-Z_] [a-zA-Z0-9_]*)
+
+ScopeName "scope name"
+  = $([a-zA-Z] [a-zA-Z0-9_-]*)
 
 Score
   = SCORE __ name:StringLiteral _ op:ComparisonOp _ value:Decimal {
@@ -222,6 +239,7 @@ ATTAINMENT   = "attainment"i   !IdentChar
 QUANTITY     = "quantity"i     !IdentChar
 ONE          = "one"i          !IdentChar
 EACH         = "each"i         !IdentChar
+SCOPE        = "scope"i        !IdentChar
 PREREQUISITE = "prerequisite"i !IdentChar
 COREQUISITE  = "corequisite"i  !IdentChar
 INCLUDES     = "includes"i     !IdentChar

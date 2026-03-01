@@ -157,6 +157,147 @@ describe('variable definitions ($name = expression)', () => {
   });
 });
 
+describe('cross-scope references ($scope.name)', () => {
+  test('cross-scope reference', () => {
+    expect(parse('$cmps-major.core')).toEqual({
+      type: 'variable-ref',
+      name: 'core',
+      scope: 'cmps-major',
+    });
+  });
+
+  test('cross-scope with underscored var name', () => {
+    expect(parse('$rcnj.asb_core')).toEqual({
+      type: 'variable-ref',
+      name: 'asb_core',
+      scope: 'rcnj',
+    });
+  });
+
+  test('cross-scope in all-of', () => {
+    expect(parse('all of ($core, $rcnj.asb_core)')).toEqual({
+      type: 'all-of',
+      items: [
+        { type: 'variable-ref', name: 'core' },
+        { type: 'variable-ref', name: 'asb_core', scope: 'rcnj' },
+      ],
+    });
+  });
+
+  test('cross-scope reference in expression', () => {
+    expect(parse('$biology.core with grade >= "C"')).toEqual({
+      type: 'with-constraint',
+      requirement: { type: 'variable-ref', name: 'core', scope: 'biology' },
+      constraint: { kind: 'min-grade', value: 'C' },
+    });
+  });
+});
+
+describe('scope blocks', () => {
+  test('basic scope block', () => {
+    const input = `scope "cmps-major" {
+      $core = all of (CMPS 130, CMPS 230)
+      all of ($core)
+    }`;
+    expect(parse(input)).toEqual({
+      type: 'scope',
+      name: 'cmps-major',
+      defs: [
+        {
+          type: 'variable-def',
+          name: 'core',
+          scope: 'cmps-major',
+          value: {
+            type: 'all-of',
+            items: [
+              { type: 'course', subject: 'CMPS', number: '130' },
+              { type: 'course', subject: 'CMPS', number: '230' },
+            ],
+          },
+        },
+      ],
+      body: {
+        type: 'all-of',
+        items: [{ type: 'variable-ref', name: 'core' }],
+      },
+    });
+  });
+
+  test('scope with multiple variable defs', () => {
+    const input = `scope "cmps-major" {
+      $core = all of (CMPS 130, CMPS 230)
+      $math = all of (MATH 151, MATH 152)
+      $electives = at least 3 of (courses where subject = "CMPS" and number >= 300)
+      all of ($core, $math, $electives)
+    }`;
+    const ast = parse(input);
+    expect(ast.type).toBe('scope');
+    expect(ast.name).toBe('cmps-major');
+    expect(ast.defs).toHaveLength(3);
+    expect(ast.defs[0].name).toBe('core');
+    expect(ast.defs[0].scope).toBe('cmps-major');
+    expect(ast.defs[1].name).toBe('math');
+    expect(ast.defs[1].scope).toBe('cmps-major');
+    expect(ast.defs[2].name).toBe('electives');
+    expect(ast.defs[2].scope).toBe('cmps-major');
+    expect(ast.body.type).toBe('all-of');
+    expect(ast.body.items).toHaveLength(3);
+  });
+
+  test('scope with no variable defs', () => {
+    const input = 'scope "simple" { all of (MATH 151, MATH 152) }';
+    expect(parse(input)).toEqual({
+      type: 'scope',
+      name: 'simple',
+      defs: [],
+      body: {
+        type: 'all-of',
+        items: [
+          { type: 'course', subject: 'MATH', number: '151' },
+          { type: 'course', subject: 'MATH', number: '152' },
+        ],
+      },
+    });
+  });
+
+  test('scope with cross-scope reference in body', () => {
+    const input = `scope "acct-major" {
+      $core = all of (ACCT 201, ACCT 202)
+      all of ($core, $rcnj.asb_core)
+    }`;
+    const ast = parse(input);
+    expect(ast.body.items[1]).toEqual({
+      type: 'variable-ref',
+      name: 'asb_core',
+      scope: 'rcnj',
+    });
+  });
+
+  test('scope with comments', () => {
+    const input = `scope "cmps-major" {
+      # Core courses
+      $core = all of (CMPS 130, CMPS 230)
+
+      # Final requirement
+      all of ($core)
+    }`;
+    const ast = parse(input);
+    expect(ast.type).toBe('scope');
+    expect(ast.defs).toHaveLength(1);
+    expect(ast.defs[0].name).toBe('core');
+  });
+
+  test('case-insensitive SCOPE keyword', () => {
+    const input = 'SCOPE "test" { MATH 151 }';
+    expect(parse(input)).toEqual({
+      type: 'scope',
+      name: 'test',
+      defs: [],
+      body: { type: 'course', subject: 'MATH', number: '151' },
+    });
+  });
+});
+
 describe('variables — edge cases', () => {
   test('variable name starting with underscore', () => {
     expect(parse('$_private')).toEqual({
