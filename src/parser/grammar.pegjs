@@ -18,9 +18,12 @@ Subject "subject code"
 Number "course number"
   = $([0-9] [0-9A-Za-z.]*)
 
-// Whitespace
+// Whitespace and comments
 _ "optional whitespace"
-  = [ \t\n\r]*
+  = ([ \t\n\r] / Comment)*
 
 __ "required whitespace"
   = [ \t]+
+
+Comment "comment"
+  = "#" [^\n\r]*
