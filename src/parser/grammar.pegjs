@@ -8,6 +8,7 @@ Expression
   = AllOf
   / AnyOf
   / NOf
+  / CreditsFrom
   / CourseFilter
   / CourseRef
 
@@ -30,6 +31,20 @@ NOf
     }
   / EXACTLY __ n:Integer __ OF _ "(" _ items:ItemList _ ")" {
       return { type: 'n-of', comparison: 'exactly', count: n, items };
+    }
+
+CreditsFrom
+  = AT __ LEAST __ n:Integer __ CREDITS __ FROM _ "(" _ items:ItemList _ ")" {
+      const source = items.length === 1 ? items[0] : { type: 'all-of', items };
+      return { type: 'credits-from', comparison: 'at-least', credits: n, source };
+    }
+  / AT __ MOST __ n:Integer __ CREDITS __ FROM _ "(" _ items:ItemList _ ")" {
+      const source = items.length === 1 ? items[0] : { type: 'all-of', items };
+      return { type: 'credits-from', comparison: 'at-most', credits: n, source };
+    }
+  / EXACTLY __ n:Integer __ CREDITS __ FROM _ "(" _ items:ItemList _ ")" {
+      const source = items.length === 1 ? items[0] : { type: 'all-of', items };
+      return { type: 'credits-from', comparison: 'exactly', credits: n, source };
     }
 
 CourseFilter
@@ -109,7 +124,9 @@ LEAST   = "least"i   !IdentChar
 MOST    = "most"i    !IdentChar
 EXACTLY = "exactly"i !IdentChar
 OF      = "of"i      !IdentChar
-COURSES = "courses"i !IdentChar
+CREDITS  = "credits"i  !IdentChar
+FROM     = "from"i     !IdentChar
+COURSES  = "courses"i  !IdentChar
 WHERE   = "where"i   !IdentChar
 AND     = "and"i     !IdentChar
 IN           = "in"i           !IdentChar

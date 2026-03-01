@@ -33,7 +33,7 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 - [x] **1.11** Grammar + parser + tests: `prerequisite includes (...)`, `corequisite includes (...)`
 
 ### Credit Requirements
-- [ ] **1.12** Grammar + parser + tests: `at least N credits from (...)`, `at most N credits from (...)`, `exactly N credits from (...)`
+- [x] **1.12** Grammar + parser + tests: `at least N credits from (...)`, `at most N credits from (...)`, `exactly N credits from (...)`
 
 ### Exclusions
 - [ ] **1.13** Grammar + parser + tests: `except (...)` modifier on course sets and filters
@@ -70,6 +70,8 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 
 ### Full-Language Integration Tests
 - [ ] **1.30** Parser integration tests using complete requirement trees from all 4 case studies (Lehigh BS CS prereqs, Moravian CS/DS programs, W&M COLL gen-ed + tracks, RCNJ CS prereqs with test scores)
+
+**Do not proceed to Phase 2 without asking for verification.  This is a checkpoint**.
 
 ## Phase 2: AST Validation
 
