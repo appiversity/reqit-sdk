@@ -84,7 +84,58 @@ function collectDefs(node, scopeName, defs) {
 function walkNode(node, ctx, path, isTopLevel) {
   if (!node || typeof node !== 'object') return;
 
-  // Rules will be added in subsequent commits
+  // Rule 1: Node must have a type string property
+  if (typeof node.type !== 'string' || node.type === '') {
+    ctx.errors.push({
+      rule: 1,
+      message: 'Node is missing a valid "type" string property',
+      path
+    });
+    return; // Can't validate further without a type
+  }
+
+  // Rule 2: items array must be non-empty for list-based nodes
+  const listTypes = ['all-of', 'any-of', 'none-of', 'n-of', 'one-from-each', 'from-n-groups'];
+  if (listTypes.includes(node.type)) {
+    if (!Array.isArray(node.items) || node.items.length === 0) {
+      ctx.errors.push({
+        rule: 2,
+        message: `"${node.type}" node must have a non-empty items array`,
+        path
+      });
+    }
+  }
+
+  // Rule 3: count must be positive integer; for at-most/exactly, count <= items.length
+  if (node.type === 'n-of' || node.type === 'from-n-groups') {
+    if (!Number.isInteger(node.count) || node.count < 1) {
+      ctx.errors.push({
+        rule: 3,
+        message: `"${node.type}" node must have a positive integer count, got ${node.count}`,
+        path
+      });
+    } else if (Array.isArray(node.items) && node.items.length > 0) {
+      const comparison = node.comparison;
+      if ((comparison === 'at-most' || comparison === 'exactly') && node.count > node.items.length) {
+        ctx.errors.push({
+          rule: 3,
+          message: `"${node.type}" with "${comparison}" has count ${node.count} but only ${node.items.length} items`,
+          path
+        });
+      }
+    }
+  }
+
+  // Rule 4: credits must be positive number
+  if (node.type === 'credits-from') {
+    if (typeof node.credits !== 'number' || node.credits <= 0) {
+      ctx.errors.push({
+        rule: 4,
+        message: `"credits-from" node must have a positive credits value, got ${node.credits}`,
+        path
+      });
+    }
+  }
 
   // Recurse into children
   if (Array.isArray(node.items)) {
