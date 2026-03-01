@@ -6,21 +6,21 @@ Each checkbox is a single git commit. Steps are ordered so every commit builds o
 
 ## Phase 0: Project Scaffolding
 
-- [ ] **0.1** Initialize npm package (`package.json`, jest config, eslint, project structure under `src/` and `test/`)
-- [ ] **0.2** Create shared test fixture catalogs (`test/fixtures/catalogs/`) — minimal catalog, Lehigh subset, Moravian subset, William & Mary subset, RCNJ subset — derived from case studies
+- [x] **0.1** Initialize npm package (`package.json`, jest config, eslint, project structure under `src/` and `test/`)
+- [x] **0.2** Create shared test fixture catalogs (`test/fixtures/catalogs/`) — minimal catalog, Lehigh subset, Moravian subset, William & Mary subset, RCNJ subset — derived from case studies
 
 ## Phase 1: Grammar & Parser (Incremental)
 
 Build the Peggy.js grammar one construct at a time. Each step adds grammar rules, parser output, and tests.
 
 ### Course References
-- [ ] **1.1** Grammar + parser + tests: single course references (`MATH 151`, `CSE 003`, `CMPS 147`, alphanumeric numbers like `101A`, `220.2`)
-- [ ] **1.2** Grammar + parser + tests: comments (`# line comment`, `MATH 151 # inline comment`)
+- [x] **1.1** Grammar + parser + tests: single course references (`MATH 151`, `CSE 003`, `CMPS 147`, alphanumeric numbers like `101A`, `220.2`). Case-insensitive subjects and numbers, normalized to uppercase.
+- [x] **1.2** Grammar + parser + tests: comments (`# line comment`, `MATH 151 # inline comment`)
 
 ### Boolean Operators
-- [ ] **1.3** Grammar + parser + tests: `all of (...)` with course items
-- [ ] **1.4** Grammar + parser + tests: `any of (...)` with course items
-- [ ] **1.5** Grammar + parser + tests: nested `all of` / `any of` (arbitrary depth)
+- [x] **1.3** Grammar + parser + tests: `all of (...)` with course items. Case-insensitive keywords with word boundary checks.
+- [x] **1.4** Grammar + parser + tests: `any of (...)` with course items
+- [x] **1.5** Grammar + parser + tests: nested `all of` / `any of` (arbitrary depth). Nesting already works via recursive Expression rule; dedicated tests for 3-4 level depth and case study patterns.
 
 ### Counted Selection
 - [ ] **1.6** Grammar + parser + tests: `at least N of (...)`, `at most N of (...)`, `exactly N of (...)`
