@@ -56,7 +56,7 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 - [x] **1.22** Grammar + parser + tests: scope blocks (`scope "cmps-major" { ... }`) and cross-scope references (`$scope.name`)
 
 ### Post-Selection Constraints
-- [ ] **1.23** Grammar + parser + tests: `where at least N match (filter)` on n-of nodes
+- [x] **1.23** Grammar + parser + tests: `where at least N match (filter)` on n-of nodes
 
 ### Overlap & Program References
 - [ ] **1.24** Grammar + parser + tests: `program "X" major undergraduate`, `any program major`, program filter

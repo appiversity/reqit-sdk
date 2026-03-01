@@ -7,15 +7,35 @@ start
 Expression
   = expr:PrimaryExpression
     except:(_ EXCEPT _ "(" _ ItemList _ ")")?
+    wheres:(_ WhereClause)*
     constraint:(_ WITH __ Constraint)? {
       let node = expr;
       if (except) {
         node = { type: 'except', source: node, exclude: except[5] };
       }
+      if (wheres.length > 0) {
+        node.post_constraints = wheres.map(w => w[1]);
+      }
       if (constraint) {
         node = { type: 'with-constraint', requirement: node, constraint: constraint[3] };
       }
       return node;
+    }
+
+WhereClause
+  = WHERE __ AT __ LEAST __ n:Integer __ MATCH _ "(" _ filter:SimpleFilter _ ")" {
+      return { comparison: 'at-least', count: n, filter };
+    }
+  / WHERE __ AT __ MOST __ n:Integer __ MATCH _ "(" _ filter:SimpleFilter _ ")" {
+      return { comparison: 'at-most', count: n, filter };
+    }
+  / WHERE __ EXACTLY __ n:Integer __ MATCH _ "(" _ filter:SimpleFilter _ ")" {
+      return { comparison: 'exactly', count: n, filter };
+    }
+
+SimpleFilter
+  = field:FilterField _ op:ComparisonOp _ value:FilterValue {
+      return { field, op, value };
     }
 
 Constraint
@@ -240,6 +260,7 @@ QUANTITY     = "quantity"i     !IdentChar
 ONE          = "one"i          !IdentChar
 EACH         = "each"i         !IdentChar
 SCOPE        = "scope"i        !IdentChar
+MATCH        = "match"i        !IdentChar
 PREREQUISITE = "prerequisite"i !IdentChar
 COREQUISITE  = "corequisite"i  !IdentChar
 INCLUDES     = "includes"i     !IdentChar
