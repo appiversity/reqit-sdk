@@ -1,0 +1,80 @@
+{
+  "institution": "william-mary",
+  "ay": "2025-2026",
+  "courses": [
+    { "id": 1, "subject": "CSCI", "number": "141", "title": "Introduction to Programming", "creditsMin": 4, "creditsMax": 4, "attributes": ["NQR"] },
+    { "id": 2, "subject": "CSCI", "number": "241", "title": "Data Structures", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 3, "subject": "CSCI", "number": "243", "title": "Discrete Structures of Computer Science", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 4, "subject": "CSCI", "number": "301", "title": "Software Development", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 5, "subject": "CSCI", "number": "303", "title": "Algorithms", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 6, "subject": "CSCI", "number": "304", "title": "Computer Organization", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 7, "subject": "CSCI", "number": "312", "title": "Principles of Programming Languages", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 8, "subject": "CSCI", "number": "320", "title": "Computer Systems", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 9, "subject": "CSCI", "number": "415", "title": "Systems Programming", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 10, "subject": "CSCI", "number": "416", "title": "Fundamentals of AI/Machine Learning", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 11, "subject": "CSCI", "number": "420", "title": "Special Topics in CS", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 12, "subject": "CSCI", "number": "421", "title": "Database Systems", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 13, "subject": "CSCI", "number": "423", "title": "Finite Automata and Theory of Computation", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 14, "subject": "CSCI", "number": "430", "title": "Advanced Topics", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 15, "subject": "CSCI", "number": "434", "title": "Network Systems and Design", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 16, "subject": "CSCI", "number": "436", "title": "Data Mining", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 17, "subject": "CSCI", "number": "444", "title": "Principles of Operating Systems", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 18, "subject": "CSCI", "number": "445", "title": "Mobile Application Security", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 19, "subject": "CSCI", "number": "446", "title": "Neural Networks for Machine Learning", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 20, "subject": "CSCI", "number": "454", "title": "Computer and Network Security", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 21, "subject": "CSCI", "number": "455", "title": "Generative AI for Software Development", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 22, "subject": "CSCI", "number": "464", "title": "Applied Cybersecurity", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 23, "subject": "CSCI", "number": "498", "title": "Independent Study", "creditsMin": 1, "creditsMax": 4 },
+    { "id": 24, "subject": "MATH", "number": "111", "title": "Calculus I", "creditsMin": 4, "creditsMax": 4, "attributes": ["NQR"] },
+    { "id": 25, "subject": "MATH", "number": "112", "title": "Calculus II", "creditsMin": 4, "creditsMax": 4, "attributes": ["NQR"] },
+    { "id": 26, "subject": "MATH", "number": "131", "title": "Calculus I for Life Sciences", "creditsMin": 4, "creditsMax": 4, "attributes": ["NQR"] },
+    { "id": 27, "subject": "MATH", "number": "132", "title": "Calculus II for Life Sciences", "creditsMin": 4, "creditsMax": 4, "attributes": ["NQR"] },
+    { "id": 28, "subject": "MATH", "number": "211", "title": "Linear Algebra", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 29, "subject": "MATH", "number": "214", "title": "Foundations of Mathematics", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 30, "subject": "MATH", "number": "351", "title": "Probability and Statistics for Scientists", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 31, "subject": "MATH", "number": "451", "title": "Probability", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 32, "subject": "DATA", "number": "441", "title": "Advanced Applications of AI", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 33, "subject": "ENGL", "number": "150", "title": "Freshman Writing Seminar", "creditsMin": 3, "creditsMax": 3, "attributes": ["COLL150"] },
+    { "id": 34, "subject": "HIST", "number": "101", "title": "World History I", "creditsMin": 3, "creditsMax": 3, "attributes": ["COLL100","CSI"] },
+    { "id": 35, "subject": "MUSC", "number": "101", "title": "Introduction to Music", "creditsMin": 3, "creditsMax": 3, "attributes": ["ALV"] },
+    { "id": 36, "subject": "PHYS", "number": "101", "title": "General Physics I", "creditsMin": 4, "creditsMax": 4, "attributes": ["NQR"] },
+    { "id": 37, "subject": "SOCL", "number": "201", "title": "Social Inequality", "creditsMin": 3, "creditsMax": 3, "attributes": ["CSI","COLL350"] },
+    { "id": 38, "subject": "GBST", "number": "301", "title": "Global Perspectives Seminar", "creditsMin": 3, "creditsMax": 3, "attributes": ["C300"] },
+    { "id": 39, "subject": "ANTH", "number": "305", "title": "Cultural Anthropology", "creditsMin": 3, "creditsMax": 3, "attributes": ["C30C"] },
+    { "id": 40, "subject": "ECON", "number": "350", "title": "Development Economics", "creditsMin": 3, "creditsMax": 3, "attributes": ["C30D","CSI"] },
+    { "id": 41, "subject": "GOVT", "number": "310", "title": "Global Governance", "creditsMin": 3, "creditsMax": 3, "attributes": ["C30G"] },
+    { "id": 42, "subject": "CSCI", "number": "400", "title": "Senior Capstone", "creditsMin": 3, "creditsMax": 3, "attributes": ["COLL400"] }
+  ],
+  "programs": [
+    { "id": 1, "code": "BS-CSCI", "name": "B.S. in Computer Science", "type": "major", "level": "undergraduate" },
+    { "id": 2, "code": "COLL", "name": "COLL General Education Curriculum", "type": "certificate", "level": "undergraduate" }
+  ],
+  "attainments": [
+    { "id": 1, "code": "FOREIGN-LANG", "name": "Foreign Language Proficiency", "kind": "boolean" },
+    { "id": 2, "code": "WRITING-REQ", "name": "Writing Requirement", "kind": "boolean" },
+    { "id": 3, "code": "ARTS-PROFICIENCY", "name": "Creative/Performing Arts Proficiency", "kind": "boolean" }
+  ],
+  "gradeConfig": {
+    "scale": [
+      { "grade": "A+", "points": 4.0 },
+      { "grade": "A",  "points": 4.0 },
+      { "grade": "A-", "points": 3.7 },
+      { "grade": "B+", "points": 3.3 },
+      { "grade": "B",  "points": 3.0 },
+      { "grade": "B-", "points": 2.7 },
+      { "grade": "C+", "points": 2.3 },
+      { "grade": "C",  "points": 2.0 },
+      { "grade": "C-", "points": 1.7 },
+      { "grade": "D+", "points": 1.3 },
+      { "grade": "D",  "points": 1.0 },
+      { "grade": "D-", "points": 0.7 },
+      { "grade": "F",  "points": 0.0 }
+    ],
+    "passFail": [
+      { "grade": "P", "passing": true },
+      { "grade": "NP", "passing": false }
+    ],
+    "withdrawal": ["W", "WP", "WF"],
+    "incomplete": ["I", "IP"]
+  }
+}

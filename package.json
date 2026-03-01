@@ -1,0 +1,28 @@
+{
+  "name": "reqit",
+  "version": "0.1.0",
+  "description": "Parser, AST, resolver, auditor, and exporters for academic requirements",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "build": "peggy --output src/parser/grammar.js src/parser/grammar.pegjs"
+  },
+  "keywords": [
+    "academic",
+    "requirements",
+    "parser",
+    "catalog",
+    "degree-audit",
+    "prerequisites",
+    "higher-education"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "peggy": "^4.2.0"
+  }
+}

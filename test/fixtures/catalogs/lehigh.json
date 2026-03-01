@@ -1,0 +1,71 @@
+{
+  "institution": "lehigh",
+  "ay": "2025-2026",
+  "courses": [
+    { "id": 1, "subject": "CSE", "number": "003", "title": "Introduction to Programming, Part A", "creditsMin": 2, "creditsMax": 2 },
+    { "id": 2, "subject": "CSE", "number": "004", "title": "Introduction to Programming, Part B", "creditsMin": 2, "creditsMax": 2 },
+    { "id": 3, "subject": "CSE", "number": "007", "title": "Introduction to Programming", "creditsMin": 4, "creditsMax": 4 },
+    { "id": 4, "subject": "CSE", "number": "017", "title": "Programming and Data Structures", "creditsMin": 4, "creditsMax": 4 },
+    { "id": 5, "subject": "CSE", "number": "109", "title": "Systems Software", "creditsMin": 4, "creditsMax": 4 },
+    { "id": 6, "subject": "CSE", "number": "140", "title": "Foundations of Discrete Structures and Algorithms", "creditsMin": 4, "creditsMax": 4 },
+    { "id": 7, "subject": "CSE", "number": "201", "title": "Computer Organization (Alternative)", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 8, "subject": "CSE", "number": "202", "title": "Computer Organization and Architecture", "creditsMin": 4, "creditsMax": 4 },
+    { "id": 9, "subject": "CSE", "number": "216", "title": "Software Engineering", "creditsMin": 4, "creditsMax": 4 },
+    { "id": 10, "subject": "CSE", "number": "252", "title": "Computing Ethics", "creditsMin": 4, "creditsMax": 4, "attributes": ["HSS"] },
+    { "id": 11, "subject": "CSE", "number": "262", "title": "Programming Languages", "creditsMin": 4, "creditsMax": 4 },
+    { "id": 12, "subject": "CSE", "number": "280", "title": "Capstone Project I", "creditsMin": 4, "creditsMax": 4 },
+    { "id": 13, "subject": "CSE", "number": "281", "title": "Capstone Project II", "creditsMin": 4, "creditsMax": 4 },
+    { "id": 14, "subject": "CSE", "number": "303", "title": "Operating System Design", "creditsMin": 4, "creditsMax": 4 },
+    { "id": 15, "subject": "CSE", "number": "340", "title": "Design and Analysis of Algorithms", "creditsMin": 4, "creditsMax": 4, "crossListGroup": "cl-cse340" },
+    { "id": 16, "subject": "MATH", "number": "340", "title": "Design and Analysis of Algorithms", "creditsMin": 4, "creditsMax": 4, "crossListGroup": "cl-cse340" },
+    { "id": 17, "subject": "ECE", "number": "201", "title": "Computer Engineering", "creditsMin": 4, "creditsMax": 4 },
+    { "id": 18, "subject": "MATH", "number": "021", "title": "Calculus I", "creditsMin": 4, "creditsMax": 4 },
+    { "id": 19, "subject": "MATH", "number": "022", "title": "Calculus II", "creditsMin": 4, "creditsMax": 4 },
+    { "id": 20, "subject": "MATH", "number": "031", "title": "Calculus I (Alternative)", "creditsMin": 4, "creditsMax": 4 },
+    { "id": 21, "subject": "MATH", "number": "051", "title": "Mathematics Sequence", "creditsMin": 4, "creditsMax": 4 },
+    { "id": 22, "subject": "MATH", "number": "076", "title": "Calculus I (Alternative)", "creditsMin": 4, "creditsMax": 4 },
+    { "id": 23, "subject": "MATH", "number": "082", "title": "Linear Methods (Alternative)", "creditsMin": 4, "creditsMax": 4 },
+    { "id": 24, "subject": "MATH", "number": "205", "title": "Linear Methods", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 25, "subject": "MATH", "number": "231", "title": "Probability and Statistics", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 26, "subject": "MATH", "number": "241", "title": "Applied Linear Algebra", "creditsMin": 3, "creditsMax": 4 },
+    { "id": 27, "subject": "MATH", "number": "242", "title": "Linear Algebra", "creditsMin": 4, "creditsMax": 4 },
+    { "id": 28, "subject": "PHY", "number": "011", "title": "Introductory Physics I", "creditsMin": 4, "creditsMax": 4, "attributes": ["NS"] },
+    { "id": 29, "subject": "PHY", "number": "012", "title": "Introductory Physics Laboratory I", "creditsMin": 1, "creditsMax": 1, "attributes": ["NS"] },
+    { "id": 30, "subject": "CHM", "number": "030", "title": "Introduction to Chemical Principles", "creditsMin": 4, "creditsMax": 4, "attributes": ["NS"] },
+    { "id": 31, "subject": "ENGR", "number": "005", "title": "Introduction to Engineering Practice", "creditsMin": 3, "creditsMax": 3 },
+    { "id": 32, "subject": "ENGR", "number": "010", "title": "Applied Engineering Computer Methods", "creditsMin": 2, "creditsMax": 2 },
+    { "id": 33, "subject": "ECO", "number": "001", "title": "Principles of Economics", "creditsMin": 3, "creditsMax": 3, "attributes": ["HSS"] },
+    { "id": 34, "subject": "WRT", "number": "001", "title": "Academic and Analytical Writing", "creditsMin": 3, "creditsMax": 3, "attributes": ["HSS"] },
+    { "id": 35, "subject": "WRT", "number": "002", "title": "Research and Argument", "creditsMin": 3, "creditsMax": 3, "attributes": ["HSS"] },
+    { "id": 36, "subject": "BIOL", "number": "101", "title": "General Biology", "creditsMin": 4, "creditsMax": 4, "attributes": ["NS","APPROVED-SCI-TECH"] },
+    { "id": 37, "subject": "HIST", "number": "101", "title": "Western Civilization I", "creditsMin": 3, "creditsMax": 3, "attributes": ["HSS"] },
+    { "id": 38, "subject": "PHIL", "number": "101", "title": "Introduction to Philosophy", "creditsMin": 3, "creditsMax": 3, "attributes": ["HSS"] }
+  ],
+  "programs": [
+    { "id": 1, "code": "EN-BS-CSE", "name": "B.S. in Computer Science (Engineering)", "type": "major", "level": "undergraduate" }
+  ],
+  "attainments": [],
+  "gradeConfig": {
+    "scale": [
+      { "grade": "A+", "points": 4.0 },
+      { "grade": "A",  "points": 4.0 },
+      { "grade": "A-", "points": 3.7 },
+      { "grade": "B+", "points": 3.3 },
+      { "grade": "B",  "points": 3.0 },
+      { "grade": "B-", "points": 2.7 },
+      { "grade": "C+", "points": 2.3 },
+      { "grade": "C",  "points": 2.0 },
+      { "grade": "C-", "points": 1.7 },
+      { "grade": "D+", "points": 1.3 },
+      { "grade": "D",  "points": 1.0 },
+      { "grade": "D-", "points": 0.7 },
+      { "grade": "F",  "points": 0.0 }
+    ],
+    "passFail": [
+      { "grade": "P", "passing": true },
+      { "grade": "NP", "passing": false }
+    ],
+    "withdrawal": ["W", "WP", "WF"],
+    "incomplete": ["I", "IP"]
+  }
+}

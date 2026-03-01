@@ -101,8 +101,8 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 
 ## Phase 5: Catalog Resolution
 
-- [ ] **5.1** `resolve()` skeleton + course reference resolution (match `MATH 151` to catalog entry) + tests
-- [ ] **5.2** Filter evaluation: subject, number (with numeric coercion for comparisons, exact string for equality), department + tests
+- [ ] **5.1** `resolve()` skeleton + catalog normalization (default missing optional fields: `attributes` → `[]`, `crossListGroup` → `undefined`) + course reference resolution (match `MATH 151` to catalog entry) + tests including catalogs with omitted optional fields
+- [ ] **5.2** Filter evaluation: subject, number (with numeric coercion for comparisons, exact string for equality) + tests
 - [ ] **5.3** Filter evaluation: credits (range matching — gte uses credits_max, lte uses credits_min, eq checks range), attribute + tests
 - [ ] **5.4** Filter evaluation: `in`, `not-in`, `!=` operators + tests
 - [ ] **5.5** Filter evaluation: `prerequisite includes`, `corequisite includes` + tests
@@ -163,11 +163,17 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 - [ ] **11.4** `exportDependencyMatrix()` — course dependency matrix as XLSX and CSV + tests
 - [ ] **11.5** `toHTML()` with audit result overlay (status classes, checkmarks, grade display) + tests
 
-## Phase 12: Public API & Packaging
+## Phase 12: Public API, Documentation & Packaging
 
 - [ ] **12.1** `src/index.js` — public API surface, single entry point re-exporting all functions
-- [ ] **12.2** Final coverage audit — verify 95% line, 90% branch, 100% parser rule coverage; add any missing edge case tests
-- [ ] **12.3** Package metadata (`package.json` fields: main, exports, files, engines, keywords, license), README.md with usage examples
+- [ ] **12.2** Developer documentation for integration data types — Catalog, Transcript, GradeConfig, AuditResult. These are the integration boundary — consuming applications build these structures to feed into reqit. Documentation must cover every field, its type, whether it's required/optional, and semantic meaning. Key points to document:
+  - **Catalog:** `institution` (slug, opaque to reqit), `ay` (academic year string, e.g. "2025-2026"), courses, programs, attainments, gradeConfig
+  - **Course:** `id`, `subject`, `number`, `title`, `creditsMin`, `creditsMax`, `attributes` (array of attribute code strings — these are unique identifiers referencing the institution's attribute definitions; at the SDK level reqit matches them as opaque strings; reqit-pg provides the `attribute` table with names/descriptions), `crossListGroup`
+  - **Transcript:** array of transcript entries — external input, never stored by reqit
+  - **GradeConfig:** scale, passFail, withdrawal, incomplete — configurable per institution per AY
+  - **AuditResult:** status, items, summary, warnings — output of `audit()` and `auditMulti()`
+- [ ] **12.3** Final coverage audit — verify 95% line, 90% branch, 100% parser rule coverage; add any missing edge case tests
+- [ ] **12.4** Package metadata (`package.json` fields: main, exports, files, engines, keywords, license), README.md with usage examples
 
 ---
 
@@ -187,8 +193,8 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 | 9 | 5 | AST utilities |
 | 10 | 3 | Audit utilities |
 | 11 | 5 | Export |
-| 12 | 3 | API + packaging |
-| **Total** | **94** | |
+| 12 | 4 | API + docs + packaging |
+| **Total** | **95** | |
 
 ## Test Fixture Strategy
 
