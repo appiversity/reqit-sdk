@@ -41,7 +41,22 @@ PrimaryExpression
   / Score
   / Attainment
   / Quantity
+  / VariableDef
+  / VariableRef
   / CourseRef
+
+VariableDef
+  = "$" name:VarName _ "=" _ value:Expression {
+      return { type: 'variable-def', name, value };
+    }
+
+VariableRef
+  = "$" name:VarName {
+      return { type: 'variable-ref', name };
+    }
+
+VarName "variable name"
+  = $([a-zA-Z_] [a-zA-Z0-9_]*)
 
 Score
   = SCORE __ name:StringLiteral _ op:ComparisonOp _ value:Decimal {
