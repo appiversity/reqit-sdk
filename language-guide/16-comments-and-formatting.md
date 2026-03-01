@@ -80,7 +80,7 @@ ALL OF (MATH 151, MATH 152)
 All Of (MATH 151, MATH 152)
 ```
 
-Keywords include: `all`, `any`, `of`, `at`, `least`, `most`, `exactly`, `courses`, `where`, `and`, `in`, `not`, `from`, `credits`, `none`, `except`, `with`, `grade`, `gpa`, `score`, `attainment`, `quantity`, `one`, `each`, `scope`, `match`, `program`, `primary`, `major`, `minor`, `overlap`, `between`, `outside`, `prerequisite`, `corequisite`, `includes`, `concurrent`, `allowed`.
+Keywords include: `all`, `any`, `of`, `at`, `least`, `most`, `exactly`, `courses`, `where`, `and`, `in`, `not`, `from`, `credits`, `none`, `except`, `with`, `grade`, `gpa`, `score`, `attainment`, `quantity`, `one`, `each`, `scope`, `match`, `program`, `primary`, `major`, `minor`, `overlap`, `between`, `outside`, `prerequisite`, `corequisite`, `includes`, `concurrent`.
 
 ### Course References
 
@@ -102,6 +102,16 @@ courses where Subject = "MATH"
 
 All equivalent.
 
+### Codes
+
+Score, attainment, quantity, and program codes are case-insensitive and normalized to uppercase:
+
+```
+score sat_math >= 580                 # Normalized to SAT_MATH
+attainment junior_standing            # Normalized to JUNIOR_STANDING
+program cs major undergraduate        # Normalized to CS
+```
+
 ### What IS Case-Sensitive
 
 **String values in quotes** preserve their exact case:
@@ -111,7 +121,7 @@ courses where attribute = "WI"        # "WI" is exact
 courses where attribute = "wi"        # "wi" is different from "WI"
 ```
 
-Attribute codes, test names, and attainment names are case-sensitive because they must match your institution's data exactly.
+Attribute codes in filter values are case-sensitive because they must match your institution's data exactly.
 
 **Variable names** are case-sensitive:
 

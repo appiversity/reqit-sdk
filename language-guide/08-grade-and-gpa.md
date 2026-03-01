@@ -165,10 +165,16 @@ all of (
 Reqit's `with gpa` is always scoped to the courses in the requirement it wraps. If your institution requires an overall transcript GPA (across *all* courses a student has taken, not just major courses), model this as an attainment:
 
 ```
-attainment "Overall GPA >= 2.0"
+attainment OVERALL_GPA_2_0
 ```
 
 This is covered in [Chapter 10: Non-Course Requirements](10-non-course-requirements.md). The distinction matters: Reqit evaluates requirements against course sets, but a transcript-wide GPA involves every course, including those outside any program requirement.
+
+## Quality Points and GPA Computation
+
+GPA computation requires a grade scale that maps letter grades to numeric point values (quality points). For example: A = 4.0, A- = 3.7, B+ = 3.3, and so on.
+
+The grade-to-points mapping is **institution configuration**, not part of the Reqit language. Reqit's `with gpa >= 2.0` syntax specifies the threshold; your institution configures the grade scale that defines what each letter grade is worth in points. This configuration lives in the catalog/database layer and is applied by the auditing engine at evaluation time.
 
 ## Grade Scales
 

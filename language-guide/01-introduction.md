@@ -91,6 +91,14 @@ The `all of (...)` wrapper means every item inside must be satisfied. Items are 
 
 Don't worry about understanding every piece of this yet. The rest of this guide will walk through each construct in detail, with plenty of examples.
 
+## How Auditing Works: No Double-Counting
+
+Reqit is a language for *defining* requirements — it builds a requirement tree. It does not audit student records. At audit time (handled by a separate auditing engine), each course a student has taken is assigned to satisfy at most one node in the requirement tree.
+
+For example, if CMPS 360 appears explicitly in a `$core` variable *and* also matches a filter in `$electives`, the auditor assigns it to one or the other — not both. A single course cannot satisfy two requirements simultaneously. This is handled by the course assignment algorithm, not the parser.
+
+Overlap between named requirement groups can be explicitly controlled with `overlap` rules (see [Chapter 15](15-programs-and-overlap.md)).
+
 ## How This Guide Is Organized
 
 Each chapter introduces one concept, explains it in plain language, and shows multiple real-world examples. The chapters build on each other:

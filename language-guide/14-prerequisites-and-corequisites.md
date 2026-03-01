@@ -4,7 +4,7 @@
 
 ---
 
-Prerequisites, corequisites, and concurrent enrollment are fundamental to how courses relate to each other. In Reqit, a prerequisite is simply a requirement expression attached to a course. This chapter covers the patterns used for prerequisite and corequisite requirements, plus two specialized constructs: **concurrent allowed** and **prerequisite/corequisite includes** queries.
+Prerequisites, corequisites, and concurrent enrollment are fundamental to how courses relate to each other. In Reqit, a prerequisite is simply a requirement expression attached to a course. This chapter covers the patterns used for prerequisite and corequisite requirements, plus two specialized constructs: **concurrent** and **prerequisite/corequisite includes** queries.
 
 ## Prerequisites Are Just Requirements
 
@@ -61,7 +61,7 @@ any of (
 ```
 any of (
   MATH 110 with grade >= "D",
-  score "ACCUPLACER Adv Alg & Functions" >= 280
+  score ACCUPLACER_ADV_ALG >= 280
 )
 ```
 
@@ -88,10 +88,10 @@ all of (
 
 Many courses allow a prerequisite to be taken in the same term. The student doesn't need to have *completed* the prerequisite — they just need to be *enrolled* in it during the same term.
 
-Mark this with `(concurrent allowed)` after the course reference:
+Mark this with `(concurrent)` after the course reference:
 
 ```
-CMPS 230 (concurrent allowed)
+CMPS 230 (concurrent)
 ```
 
 "Complete CMPS 230 before this course begins, or enroll in CMPS 230 in the same term."
@@ -100,7 +100,7 @@ CMPS 230 (concurrent allowed)
 
 ```
 all of (
-  CMPS 230 (concurrent allowed),
+  CMPS 230 (concurrent),
   MATH 250
 )
 ```
@@ -114,12 +114,12 @@ These are different concepts:
 | Term | Meaning |
 |---|---|
 | **Prerequisite** | Must be completed *before* enrolling |
-| **Prerequisite with concurrent allowed** | Must be completed before *or* taken in the same term |
+| **Prerequisite with concurrent** | Must be completed before *or* taken in the same term |
 | **Corequisite** | Must be taken in the *same term* (not before, not after) |
 
-`(concurrent allowed)` is a relaxation of the "before" rule. A corequisite is a different relationship entirely — "you must take these two courses together in the same term."
+`(concurrent)` is a relaxation of the "before" rule. A corequisite is a different relationship entirely — "you must take these two courses together in the same term."
 
-The `(concurrent allowed)` modifier has no effect outside of prerequisite contexts. If it appears on a course reference in a program requirement or degree requirement, it's ignored — those contexts don't have a "before" concept.
+The `(concurrent)` modifier has no effect outside of prerequisite contexts. If it appears on a course reference in a program requirement or degree requirement, it's ignored — those contexts don't have a "before" concept.
 
 ## Prerequisite Includes and Corequisite Includes
 
@@ -210,9 +210,9 @@ all of (
 all of (
   any of (
     MATH 121 with grade >= "C",
-    score "ACCUPLACER Adv Alg & Functions" >= 280
+    score ACCUPLACER_ADV_ALG >= 280
   ),
-  CMPS 148 (concurrent allowed)
+  CMPS 148 (concurrent)
 )
 ```
 
@@ -223,7 +223,7 @@ all of (
 | Construct | Meaning | Example |
 |---|---|---|
 | `MATH 151` | Simple prerequisite | Must complete MATH 151 |
-| `MATH 151 (concurrent allowed)` | May be taken in the same term | Complete or co-enroll in MATH 151 |
+| `MATH 151 (concurrent)` | May be taken in the same term | Complete or co-enroll in MATH 151 |
 | `courses where prerequisite includes (X)` | Courses requiring X | All courses that depend on X |
 | `courses where corequisite includes (X)` | Courses with X as coreq | All courses that must be taken with X |
 

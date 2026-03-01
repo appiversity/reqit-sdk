@@ -258,10 +258,10 @@ any of (
   MATH 121 with grade >= "D",       # Calculus I
 
   # Test score alternatives
-  score "SAT MATH" >= 580,
-  score "ACCUPLACER Quant Reasoning" >= 258,
-  score "ACCUPLACER Adv Alg & Functions" >= 260,
-  score "ACT Composite" >= 26
+  score SAT_MATH >= 580,
+  score ACCUPLACER_QUANT_REASONING >= 258,
+  score ACCUPLACER_ADV_ALG >= 260,
+  score ACT_COMPOSITE >= 26
 )
 ```
 
@@ -298,7 +298,7 @@ scope "bs-cmps" {
     $gen-ed.scientific,
     $gen-ed.distribution,
     $total_credits,
-    attainment "Overall GPA >= 2.0"
+    attainment OVERALL_GPA_2_0
   )
 }
 

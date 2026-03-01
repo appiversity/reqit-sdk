@@ -239,14 +239,37 @@ These are different. The `=` operator with a quoted string does exact matching. 
 |---|---|
 | Filter values: `subject = "MATH"` | Course references: `MATH 151` |
 | Attribute codes: `attribute = "WI"` | Numbers: `number >= 300` |
-| Test names: `score "SAT MATH" >= 580` | Credit values: `credits >= 4` |
-| Attainment names: `attainment "Praxis"` | Counts: `at least 3 of (...)` |
-| Quantity names: `quantity "Hours" >= 40` | GPA values: `gpa >= 2.0` |
-| Grade values: `grade >= "C"` | |
-| Scope names: `scope "cmps-major"` | |
-| Program names: `program "CS" major` | |
+| Grade values: `grade >= "C"` | Credit values: `credits >= 4` |
+| Scope names: `scope "cmps-major"` | Counts: `at least 3 of (...)` |
+| | GPA values: `gpa >= 2.0` |
+| | Score codes: `score SAT_MATH >= 580` |
+| | Attainment codes: `attainment JUNIOR_STANDING` |
+| | Quantity codes: `quantity CLINICAL_HOURS >= 500` |
+| | Program codes: `program CS major` |
 
-The general rule: **descriptive text and codes go in quotes; numbers and counts do not.**
+The general rule: **filter values, grade values, and scope names go in quotes; everything else — course references, codes, numbers, and counts — does not.**
+
+## Code Format Mistakes
+
+Codes (used for score, attainment, quantity, and program names) must start with a letter and contain only letters, digits, and underscores. No spaces or quotes.
+
+**Wrong:**
+```
+score "SAT MATH" >= 580           # Quoted — use a code instead
+attainment "Junior Standing"      # Quoted with spaces
+score SAT MATH >= 580             # Space in code
+score 3RD_YEAR >= 5               # Starts with digit
+```
+
+**Right:**
+```
+score SAT_MATH >= 580
+attainment JUNIOR_STANDING
+program CS major undergraduate
+quantity CLINICAL_HOURS >= 500
+```
+
+If your test or attainment name has spaces, convert to underscore-separated uppercase: "SAT Math" → `SAT_MATH`, "Junior Standing" → `JUNIOR_STANDING`.
 
 ---
 

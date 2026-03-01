@@ -8,26 +8,28 @@ When students pursue multiple programs — a major and a minor, or a major with 
 
 ## Program References
 
-A program reference identifies a specific academic program by its name, type, and level:
+A program reference identifies a specific academic program by its code, type, and level:
 
 ```
-program "Computer Science" major undergraduate
+program CS major undergraduate
 ```
 
 This refers to the undergraduate Computer Science major. The components are:
 
-- **Name** — in quotes: `"Computer Science"`
+- **Code** — an unquoted identifier: `CS` (see [Chapter 10](10-non-course-requirements.md) for code format rules)
 - **Type** — the kind of program: `major`, `minor`, `certificate`, `concentration`, `track`, or `cluster`
 - **Level** — the academic level: `undergraduate`, `graduate`, `doctoral`, `professional`, `post-graduate`, or `post-doctoral`
+
+Program codes are case-insensitive and normalized to uppercase: `program cs major undergraduate` is the same as `program CS major undergraduate`.
 
 ### More Examples
 
 ```
-program "Data Science" certificate graduate
-program "Mathematics" minor undergraduate
-program "Ethics" cluster undergraduate
-program "Systems" track undergraduate
-program "Education" certificate post-graduate
+program DATA_SCIENCE certificate graduate
+program MATH minor undergraduate
+program ETHICS cluster undergraduate
+program SYSTEMS track undergraduate
+program EDUCATION certificate post-graduate
 ```
 
 ### Any Program (Wildcard)
@@ -181,7 +183,7 @@ all of (
   $major_requirements,
   $gen_ed_requirements,
   at least 120 credits from (courses where subject = "*"),
-  attainment "Overall GPA >= 2.0"
+  attainment OVERALL_GPA_2_0
 )
 
 # Overlap policies (stored separately)
@@ -221,7 +223,7 @@ For reference, here are all supported values:
 
 | Construct | Meaning | Example |
 |---|---|---|
-| `program "name" type level` | Named program reference | `program "CS" major undergraduate` |
+| `program CODE type level` | Named program reference | `program CS major undergraduate` |
 | `any program type level` | Wildcard program reference | `any program minor undergraduate` |
 | `primary major` | Student's declared major | Used in overlap rules |
 | `primary minor` | Student's declared minor | Used in overlap rules |

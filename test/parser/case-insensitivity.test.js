@@ -59,15 +59,15 @@ describe('case-insensitive keywords — uppercase', () => {
   });
 
   test('SCORE', () => {
-    expect(parse('SCORE "SAT MATH" >= 580').type).toBe('score');
+    expect(parse('SCORE SAT_MATH >= 580').type).toBe('score');
   });
 
   test('ATTAINMENT', () => {
-    expect(parse('ATTAINMENT "Junior Standing"').type).toBe('attainment');
+    expect(parse('ATTAINMENT JUNIOR_STANDING').type).toBe('attainment');
   });
 
   test('QUANTITY', () => {
-    expect(parse('QUANTITY "Clinical Hours" >= 500').type).toBe('quantity');
+    expect(parse('QUANTITY CLINICAL_HOURS >= 500').type).toBe('quantity');
   });
 
   test('ONE FROM EACH OF', () => {
@@ -90,8 +90,8 @@ describe('case-insensitive keywords — uppercase', () => {
     expect(ast.post_constraints).toHaveLength(1);
   });
 
-  test('CONCURRENT ALLOWED', () => {
-    const ast = parse('CSCI 141 (CONCURRENT ALLOWED)');
+  test('CONCURRENT', () => {
+    const ast = parse('CSCI 141 (CONCURRENT)');
     expect(ast.concurrentAllowed).toBe(true);
   });
 
@@ -142,15 +142,15 @@ describe('case-insensitive keywords — title case', () => {
   });
 
   test('Score', () => {
-    expect(parse('Score "SAT MATH" >= 580').type).toBe('score');
+    expect(parse('Score SAT_MATH >= 580').type).toBe('score');
   });
 
   test('Attainment', () => {
-    expect(parse('Attainment "Junior"').type).toBe('attainment');
+    expect(parse('Attainment JUNIOR').type).toBe('attainment');
   });
 
   test('Quantity', () => {
-    expect(parse('Quantity "Hours" >= 100').type).toBe('quantity');
+    expect(parse('Quantity HOURS >= 100').type).toBe('quantity');
   });
 });
 

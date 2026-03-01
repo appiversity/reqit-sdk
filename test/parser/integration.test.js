@@ -288,10 +288,10 @@ describe('RCNJ BS CS — test scores, pervasive grades, gen-ed distribution', ()
       MATH 108 with grade >= "D",
       MATH 110 with grade >= "D",
       MATH 121 with grade >= "D",
-      score "SAT MATH" >= 580,
-      score "ACCUPLACER Quant Reasoning" >= 258,
-      score "ACCUPLACER Adv Alg & Functions" >= 260,
-      score "ACT Composite" >= 26
+      score SAT_MATH >= 580,
+      score ACCUPLACER_QUANT_REASONING >= 258,
+      score ACCUPLACER_ADV_ALG >= 260,
+      score ACT_COMPOSITE >= 26
     )`;
     const ast = parse(input);
     expect(ast.type).toBe('any-of');
@@ -303,10 +303,10 @@ describe('RCNJ BS CS — test scores, pervasive grades, gen-ed distribution', ()
       expect(ast.items[i].constraint).toEqual({ kind: 'min-grade', value: 'D' });
     }
     // Last 4 are test scores
-    expect(ast.items[7]).toEqual({ type: 'score', name: 'SAT MATH', op: 'gte', value: 580 });
-    expect(ast.items[8]).toEqual({ type: 'score', name: 'ACCUPLACER Quant Reasoning', op: 'gte', value: 258 });
-    expect(ast.items[9]).toEqual({ type: 'score', name: 'ACCUPLACER Adv Alg & Functions', op: 'gte', value: 260 });
-    expect(ast.items[10]).toEqual({ type: 'score', name: 'ACT Composite', op: 'gte', value: 26 });
+    expect(ast.items[7]).toEqual({ type: 'score', name: 'SAT_MATH', op: 'gte', value: 580 });
+    expect(ast.items[8]).toEqual({ type: 'score', name: 'ACCUPLACER_QUANT_REASONING', op: 'gte', value: 258 });
+    expect(ast.items[9]).toEqual({ type: 'score', name: 'ACCUPLACER_ADV_ALG', op: 'gte', value: 260 });
+    expect(ast.items[10]).toEqual({ type: 'score', name: 'ACT_COMPOSITE', op: 'gte', value: 26 });
   });
 
   test('first year seminar keystone with honors alternative', () => {
@@ -511,7 +511,7 @@ describe('complex combined constructs', () => {
         courses where attribute = "APPROVED-ELECTIVE"
       ),
       any of (
-        attainment "Junior Standing",
+        attainment JUNIOR_STANDING,
         at least 60 credits from (
           courses where subject != "PHYS"
         )
@@ -551,13 +551,13 @@ describe('complex combined constructs', () => {
     expect(ast.items[2].type).toBe('credits-from');
   });
 
-  test('concurrent allowed in prerequisite tree', () => {
+  test('concurrent in prerequisite tree', () => {
     const input = `all of (
       any of (
         MATH 121 with grade >= "C",
-        score "ACCUPLACER Adv Alg & Functions" >= 280
+        score ACCUPLACER_ADV_ALG >= 280
       ),
-      CMPS 148 (concurrent allowed)
+      CMPS 148 (concurrent)
     )`;
     const ast = parse(input);
     expect(ast.type).toBe('all-of');

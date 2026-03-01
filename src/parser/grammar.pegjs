@@ -100,8 +100,8 @@ ScopeName "scope name"
   = $([a-zA-Z] [a-zA-Z0-9_-]*)
 
 ProgramRef
-  = PROGRAM __ code:StringLiteral __ progType:ProgramType __ level:ProgramLevel {
-      return { type: 'program', code, 'program-type': progType, level };
+  = PROGRAM __ code:Code __ progType:ProgramType __ level:ProgramLevel {
+      return { type: 'program', code: code.toUpperCase(), 'program-type': progType, level };
     }
   / ANY __ PROGRAM __ progType:ProgramType __ level:ProgramLevel {
       return { type: 'program', 'program-type': progType, level };
@@ -147,18 +147,18 @@ OverlapUnit
   / "%"                    { return 'percent'; }
 
 Score
-  = SCORE __ name:StringLiteral _ op:ComparisonOp _ value:Decimal {
-      return { type: 'score', name, op, value };
+  = SCORE __ name:Code _ op:ComparisonOp _ value:Decimal {
+      return { type: 'score', name: name.toUpperCase(), op, value };
     }
 
 Attainment
-  = ATTAINMENT __ name:StringLiteral {
-      return { type: 'attainment', name };
+  = ATTAINMENT __ name:Code {
+      return { type: 'attainment', name: name.toUpperCase() };
     }
 
 Quantity
-  = QUANTITY __ name:StringLiteral _ op:ComparisonOp _ value:Decimal {
-      return { type: 'quantity', name, op, value };
+  = QUANTITY __ name:Code _ op:ComparisonOp _ value:Decimal {
+      return { type: 'quantity', name: name.toUpperCase(), op, value };
     }
 
 AllOf
@@ -270,7 +270,7 @@ ItemList
     }
 
 CourseRef
-  = subject:Subject __ number:Number _ "(" _ CONCURRENT __ ALLOWED _ ")" {
+  = subject:Subject __ number:Number _ "(" _ CONCURRENT _ ")" {
       return { type: 'course', subject: subject.toUpperCase(), number: number.toUpperCase(), concurrentAllowed: true };
     }
   / subject:Subject __ number:Number {
@@ -282,6 +282,9 @@ Subject "subject code"
 
 Number "course number"
   = $([0-9] [0-9A-Za-z.]*)
+
+Code "code"
+  = $([A-Za-z] [A-Za-z0-9_]*)
 
 // Case-insensitive keywords
 ALL     = "all"i     !IdentChar
@@ -304,7 +307,6 @@ WITH         = "with"i         !IdentChar
 GRADE        = "grade"i        !IdentChar
 GPA          = "gpa"i          !IdentChar
 CONCURRENT   = "concurrent"i   !IdentChar
-ALLOWED      = "allowed"i      !IdentChar
 SCORE        = "score"i        !IdentChar
 ATTAINMENT   = "attainment"i   !IdentChar
 QUANTITY     = "quantity"i     !IdentChar

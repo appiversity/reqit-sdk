@@ -82,9 +82,9 @@ at least 4 of (...) where exactly 2 match (number >= 400)
 ## Non-Course Requirements
 
 ```
-score "SAT MATH" >= 580               # Test score
-attainment "Junior Standing"          # Yes/no achievement
-quantity "Clinical Hours" >= 500      # Measurable quantity
+score SAT_MATH >= 580                 # Test score
+attainment JUNIOR_STANDING            # Yes/no achievement
+quantity CLINICAL_HOURS >= 500        # Measurable quantity
 ```
 
 ## Group Requirements
@@ -127,7 +127,7 @@ $cmps-major.core                       # Cross-scope reference
 ## Prerequisite Features
 
 ```
-CMPS 230 (concurrent allowed)         # May co-enroll
+CMPS 230 (concurrent)                 # May co-enroll
 courses where prerequisite includes (MATH 151)
 courses where corequisite includes (ENGL 201)
 ```
@@ -135,8 +135,8 @@ courses where corequisite includes (ENGL 201)
 ## Program References
 
 ```
-program "Computer Science" major undergraduate
-program "Data Science" certificate graduate
+program CS major undergraduate
+program DATA_SCIENCE certificate graduate
 any program major undergraduate
 any program minor undergraduate
 ```
@@ -166,7 +166,7 @@ MATH 151  # Inline comment
 
 ## Formatting Rules
 
-- **Case insensitive:** keywords, subject codes, course numbers, filter fields
+- **Case insensitive:** keywords, subject codes, course numbers, filter fields, codes (score/attainment/quantity/program)
 - **Case sensitive:** quoted strings, variable names
 - **Whitespace:** flexible — spaces, tabs, newlines between tokens
 - **Commas:** required between list items; no trailing comma

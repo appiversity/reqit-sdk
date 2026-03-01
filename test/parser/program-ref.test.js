@@ -4,34 +4,34 @@ const { parse } = require('../../src/parser');
 
 describe('program references', () => {
   test('named program with type and level', () => {
-    expect(parse('program "Computer Science" major undergraduate')).toEqual({
+    expect(parse('program CS major undergraduate')).toEqual({
       type: 'program',
-      code: 'Computer Science',
+      code: 'CS',
       'program-type': 'major',
       level: 'undergraduate',
     });
   });
 
   test('program with different type and level', () => {
-    expect(parse('program "Data Science" certificate graduate')).toEqual({
+    expect(parse('program DATA_SCIENCE certificate graduate')).toEqual({
       type: 'program',
-      code: 'Data Science',
+      code: 'DATA_SCIENCE',
       'program-type': 'certificate',
       level: 'graduate',
     });
   });
 
   test('program minor undergraduate', () => {
-    expect(parse('program "Mathematics" minor undergraduate')).toEqual({
+    expect(parse('program MATH minor undergraduate')).toEqual({
       type: 'program',
-      code: 'Mathematics',
+      code: 'MATH',
       'program-type': 'minor',
       level: 'undergraduate',
     });
   });
 
   test('program concentration', () => {
-    expect(parse('program "AI" concentration graduate')).toEqual({
+    expect(parse('program AI concentration graduate')).toEqual({
       type: 'program',
       code: 'AI',
       'program-type': 'concentration',
@@ -40,54 +40,54 @@ describe('program references', () => {
   });
 
   test('program track', () => {
-    expect(parse('program "Systems" track undergraduate')).toEqual({
+    expect(parse('program SYSTEMS track undergraduate')).toEqual({
       type: 'program',
-      code: 'Systems',
+      code: 'SYSTEMS',
       'program-type': 'track',
       level: 'undergraduate',
     });
   });
 
   test('program cluster', () => {
-    expect(parse('program "Ethics" cluster undergraduate')).toEqual({
+    expect(parse('program ETHICS cluster undergraduate')).toEqual({
       type: 'program',
-      code: 'Ethics',
+      code: 'ETHICS',
       'program-type': 'cluster',
       level: 'undergraduate',
     });
   });
 
   test('program doctoral level', () => {
-    expect(parse('program "Physics" major doctoral')).toEqual({
+    expect(parse('program PHYSICS major doctoral')).toEqual({
       type: 'program',
-      code: 'Physics',
+      code: 'PHYSICS',
       'program-type': 'major',
       level: 'doctoral',
     });
   });
 
   test('program professional level', () => {
-    expect(parse('program "Law" major professional')).toEqual({
+    expect(parse('program LAW major professional')).toEqual({
       type: 'program',
-      code: 'Law',
+      code: 'LAW',
       'program-type': 'major',
       level: 'professional',
     });
   });
 
   test('program post-graduate level', () => {
-    expect(parse('program "Education" certificate post-graduate')).toEqual({
+    expect(parse('program EDUCATION certificate post-graduate')).toEqual({
       type: 'program',
-      code: 'Education',
+      code: 'EDUCATION',
       'program-type': 'certificate',
       level: 'post-graduate',
     });
   });
 
   test('program post-doctoral level', () => {
-    expect(parse('program "Research" major post-doctoral')).toEqual({
+    expect(parse('program RESEARCH major post-doctoral')).toEqual({
       type: 'program',
-      code: 'Research',
+      code: 'RESEARCH',
       'program-type': 'major',
       level: 'post-doctoral',
     });
@@ -110,7 +110,7 @@ describe('program references', () => {
   });
 
   test('case-insensitive keywords', () => {
-    expect(parse('PROGRAM "CSCI" MAJOR UNDERGRADUATE')).toEqual({
+    expect(parse('PROGRAM CSCI MAJOR UNDERGRADUATE')).toEqual({
       type: 'program',
       code: 'CSCI',
       'program-type': 'major',
@@ -118,10 +118,10 @@ describe('program references', () => {
     });
   });
 
-  test('mixed case keywords', () => {
-    expect(parse('Program "Math" Minor Graduate')).toEqual({
+  test('mixed case keywords and code normalization', () => {
+    expect(parse('Program math Minor Graduate')).toEqual({
       type: 'program',
-      code: 'Math',
+      code: 'MATH',
       'program-type': 'minor',
       level: 'graduate',
     });
@@ -130,6 +130,28 @@ describe('program references', () => {
   test('any program does not conflict with any of', () => {
     // "any of (...)" should still parse as any-of, not program
     expect(parse('any of (MATH 151, MATH 152)').type).toBe('any-of');
+  });
+
+  test('program code with underscores', () => {
+    expect(parse('program COMP_SCI major undergraduate')).toEqual({
+      type: 'program',
+      code: 'COMP_SCI',
+      'program-type': 'major',
+      level: 'undergraduate',
+    });
+  });
+
+  test('program code normalized to uppercase', () => {
+    expect(parse('program comp_sci major undergraduate')).toEqual({
+      type: 'program',
+      code: 'COMP_SCI',
+      'program-type': 'major',
+      level: 'undergraduate',
+    });
+  });
+
+  test('program with quoted name fails', () => {
+    expect(() => parse('program "Computer Science" major undergraduate')).toThrow();
   });
 });
 
@@ -264,7 +286,7 @@ describe('outside program', () => {
 
 describe('program/overlap in composite expressions', () => {
   test('program ref in all-of', () => {
-    const ast = parse('all of (program "CSCI" major undergraduate, CSCI 141)');
+    const ast = parse('all of (program CSCI major undergraduate, CSCI 141)');
     expect(ast.type).toBe('all-of');
     expect(ast.items[0]).toEqual({
       type: 'program',

@@ -21,7 +21,7 @@ A counted requirement that requires the student to satisfy N or more items from 
 A counted requirement that limits how many items from a list can count. "At most 2 of these courses" means no more than 2 may be used.
 
 **Attainment**
-A yes-or-no achievement that isn't a course or a test score. Examples: Junior Standing, Department Approval, Background Check, Praxis Exam. Written as `attainment "name"`.
+A yes-or-no achievement that isn't a course or a test score. Examples: Junior Standing, Department Approval, Background Check, Praxis Exam. Written as `attainment CODE` (e.g., `attainment JUNIOR_STANDING`).
 
 **Attribute**
 A label assigned to a course by your institution. Attributes categorize courses — for example, Writing Intensive (WI), Lab Science (LAB-SCI), or a general education area code (GE-HUM). Used in filters: `courses where attribute = "WI"`.
@@ -29,11 +29,14 @@ A label assigned to a course by your institution. Attributes categorize courses 
 **Comment**
 Text after a `#` symbol that is ignored by Reqit. Used to annotate requirements with course titles, explanations, or notes. Example: `MATH 151  # Calculus I`.
 
-**Concurrent allowed**
-A modifier on a course reference indicating that the course may be taken in the same term rather than strictly before. Written as `CMPS 230 (concurrent allowed)`. Only meaningful in prerequisite contexts.
+**Code**
+An unquoted identifier used to name scores, attainments, quantities, and programs. Starts with a letter, contains letters, digits, and underscores. Case-insensitive, normalized to uppercase. Example: `SAT_MATH`, `JUNIOR_STANDING`, `CS`.
+
+**Concurrent**
+A modifier on a course reference indicating that the course may be taken in the same term rather than strictly before. Written as `CMPS 230 (concurrent)`. Only meaningful in prerequisite contexts.
 
 **Corequisite**
-A course that must be taken in the same term as another course (not before, not after). Distinct from a prerequisite and from "concurrent allowed."
+A course that must be taken in the same term as another course (not before, not after). Distinct from a prerequisite and from "concurrent."
 
 **Corequisite includes**
 A filter that finds courses whose corequisite tree contains a specific course. Written as `courses where corequisite includes (MATH 151)`.
@@ -108,7 +111,7 @@ A program context reference that resolves to the student's declared primary majo
 A program context reference that resolves to the student's declared minor at evaluation time. Written as `primary minor`. Used in overlap rules.
 
 **Program**
-An academic program — a major, minor, certificate, concentration, track, or cluster. In Reqit, referenced as `program "name" type level`.
+An academic program — a major, minor, certificate, concentration, track, or cluster. In Reqit, referenced as `program CODE type level` (e.g., `program CS major undergraduate`).
 
 **Program context reference**
 A reference to a student's declared program that resolves at evaluation time. The two program context references are `primary major` and `primary minor`.
@@ -120,13 +123,13 @@ The academic level of a program: `undergraduate`, `graduate`, `doctoral`, `profe
 The kind of academic program: `major`, `minor`, `certificate`, `concentration`, `track`, or `cluster`.
 
 **Quantity**
-A measurable numeric value that isn't a test score. Examples: Clinical Hours, Community Service Hours, Research Credits. Written as `quantity "name" >= N`.
+A measurable numeric value that isn't a test score. Examples: Clinical Hours, Community Service Hours, Research Credits. Written as `quantity CODE >= N` (e.g., `quantity CLINICAL_HOURS >= 500`).
 
 **Scope**
 A named container for variables, typically corresponding to a program. Written as `scope "name" { ... }`. Prevents variable name collisions between programs.
 
 **Score**
-A test score requirement. Written as `score "test name" >= N`. Examples: `score "SAT MATH" >= 580`, `score "AP Calculus AB" >= 3`.
+A test score requirement. Written as `score CODE >= N`. Examples: `score SAT_MATH >= 580`, `score AP_CALCULUS_AB >= 3`.
 
 **Subject code**
 The department prefix on a course — the letters before the course number. Examples: MATH, CSCI, BIOL, CMPS. In filters, referenced as `subject`.

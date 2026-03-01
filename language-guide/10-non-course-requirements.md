@@ -6,24 +6,41 @@
 
 Not every academic requirement is a course. Test scores, certifications, clinical hours, and standing requirements are all part of the academic landscape. Reqit handles these with three constructs: **score**, **attainment**, and **quantity**.
 
+All three use **codes** — unquoted identifiers that map to entries in your institution's catalog. Codes are case-insensitive and normalized to uppercase.
+
+## Codes
+
+A code is an unquoted identifier used to name scores, attainments, quantities, and programs. Codes follow these rules:
+
+- Start with a letter
+- Contain letters, digits, and underscores
+- No spaces (use underscores instead)
+- Case-insensitive — `sat_math` and `SAT_MATH` are the same code (normalized to uppercase)
+
+**Legal codes:** `SAT_MATH`, `JUNIOR_STANDING`, `CLINICAL_HOURS`, `ACT`, `WI`, `AP_CALC_AB`, `GPA_CHECK`
+
+**Illegal:** `3RD_YEAR` (starts with digit), `SAT MATH` (contains space), `"SAT_MATH"` (quoted)
+
+Codes are short, machine-friendly identifiers. Your institution's catalog maps each code to a full display name and description — for example, the code `SAT_MATH` maps to "SAT Math" in the catalog UI. This separation keeps the requirement language simple while allowing rich display names.
+
 ## Score — Test Score Requirements
 
-Many institutions use test scores as prerequisites or placement criteria. The `score` construct specifies a test name and a minimum threshold:
+Many institutions use test scores as prerequisites or placement criteria. The `score` construct specifies a test code and a minimum threshold:
 
 ```
-score "SAT MATH" >= 580
+score SAT_MATH >= 580
 ```
 
 "The student must have an SAT Math score of 580 or higher."
 
-The test name is enclosed in quotes and can be any descriptive string your institution uses:
+The test name is an unquoted code:
 
 ```
-score "ACT Composite" >= 26
-score "ACCUPLACER Quant Reasoning" >= 258
-score "ACCUPLACER Adv Alg & Functions" >= 260
-score "AP Calculus AB" >= 3
-score "IB Mathematics" >= 5
+score ACT_COMPOSITE >= 26
+score ACCUPLACER_QUANT_REASONING >= 258
+score ACCUPLACER_ADV_ALG >= 260
+score AP_CALCULUS_AB >= 3
+score IB_MATHEMATICS >= 5
 ```
 
 ### Score Operators
@@ -31,10 +48,10 @@ score "IB Mathematics" >= 5
 Score supports all comparison operators:
 
 ```
-score "SAT MATH" >= 580        # 580 or higher
-score "SAT MATH" > 500         # Above 500
-score "SAT MATH" <= 700        # 700 or lower
-score "GRE Verbal" >= 155      # Graduate exam threshold
+score SAT_MATH >= 580        # 580 or higher
+score SAT_MATH > 500         # Above 500
+score SAT_MATH <= 700        # 700 or lower
+score GRE_VERBAL >= 155      # Graduate exam threshold
 ```
 
 ### Test Scores as Prerequisite Alternatives
@@ -44,7 +61,7 @@ The most common pattern is offering test scores as alternatives to course prereq
 ```
 any of (
   MATH 110 with grade >= "D",
-  score "ACCUPLACER Adv Alg & Functions" >= 280
+  score ACCUPLACER_ADV_ALG >= 280
 )
 ```
 
@@ -61,10 +78,10 @@ any of (
   MATH 108 with grade >= "D",
   MATH 110 with grade >= "D",
   MATH 121 with grade >= "D",
-  score "SAT MATH" >= 580,
-  score "ACCUPLACER Quant Reasoning" >= 258,
-  score "ACCUPLACER Adv Alg & Functions" >= 260,
-  score "ACT Composite" >= 26
+  score SAT_MATH >= 580,
+  score ACCUPLACER_QUANT_REASONING >= 258,
+  score ACCUPLACER_ADV_ALG >= 260,
+  score ACT_COMPOSITE >= 26
 )
 ```
 
@@ -75,7 +92,7 @@ any of (
 An `attainment` is a binary requirement — the student either has it or doesn't. There's no score or quantity, just a status:
 
 ```
-attainment "Junior Standing"
+attainment JUNIOR_STANDING
 ```
 
 "The student must have achieved Junior Standing."
@@ -83,11 +100,11 @@ attainment "Junior Standing"
 More examples:
 
 ```
-attainment "Department Approval"
-attainment "Praxis Exam"
-attainment "Background Check"
-attainment "Portfolio Review"
-attainment "Advisor Signature"
+attainment DEPARTMENT_APPROVAL
+attainment PRAXIS_EXAM
+attainment BACKGROUND_CHECK
+attainment PORTFOLIO_REVIEW
+attainment ADVISOR_SIGNATURE
 ```
 
 ### Using Attainments
@@ -96,7 +113,7 @@ Attainments appear naturally within larger requirements:
 
 ```
 all of (
-  attainment "Junior Standing",
+  attainment JUNIOR_STANDING,
   at least 60 credits from (courses where subject = "*"),
   CMPS 490
 )
@@ -111,8 +128,8 @@ all of (
   $major_requirements,
   $gen_ed_requirements,
   at least 120 credits from (courses where subject = "*"),
-  attainment "Overall GPA >= 2.0",
-  attainment "Residency Requirement"
+  attainment OVERALL_GPA_2_0,
+  attainment RESIDENCY_REQUIREMENT
 )
 ```
 
@@ -121,7 +138,7 @@ all of (
 As mentioned in [Chapter 8](08-grade-and-gpa.md), overall transcript GPA — the average across *all* courses, not just those in a requirement — is best modeled as an attainment:
 
 ```
-attainment "Overall GPA >= 2.0"
+attainment OVERALL_GPA_2_0
 ```
 
 This is because Reqit's `with gpa >= 2.0` is scoped to the courses in the requirement it wraps. An overall GPA involves every course on the transcript, which is outside any single requirement's scope.
@@ -131,7 +148,7 @@ This is because Reqit's `with gpa >= 2.0` is scoped to the courses in the requir
 A `quantity` requirement checks a numeric value against a threshold:
 
 ```
-quantity "Clinical Hours" >= 500
+quantity CLINICAL_HOURS >= 500
 ```
 
 "The student must have accumulated at least 500 clinical hours."
@@ -139,10 +156,10 @@ quantity "Clinical Hours" >= 500
 Like scores, quantities support all comparison operators:
 
 ```
-quantity "Clinical Hours" >= 500
-quantity "Research Credits" >= 6
-quantity "Community Service Hours" >= 40
-quantity "Practicum Days" >= 30
+quantity CLINICAL_HOURS >= 500
+quantity RESEARCH_CREDITS >= 6
+quantity COMMUNITY_SERVICE_HOURS >= 40
+quantity PRACTICUM_DAYS >= 30
 ```
 
 ### Quantities vs. Scores
@@ -163,11 +180,11 @@ all of (
   # Course prerequisites
   any of (
     MATH 121 with grade >= "C",
-    score "ACCUPLACER Adv Alg & Functions" >= 280
+    score ACCUPLACER_ADV_ALG >= 280
   ),
 
   # Standing requirement
-  attainment "Sophomore Standing",
+  attainment SOPHOMORE_STANDING,
 
   # Previous coursework
   CMPS 148
@@ -180,9 +197,9 @@ all of (
 
 | Construct | Meaning | Example |
 |---|---|---|
-| `score "name" >= N` | Test score threshold | `score "SAT MATH" >= 580` |
-| `attainment "name"` | Binary achievement | `attainment "Junior Standing"` |
-| `quantity "name" >= N` | Cumulative quantity threshold | `quantity "Clinical Hours" >= 500` |
+| `score CODE >= N` | Test score threshold | `score SAT_MATH >= 580` |
+| `attainment CODE` | Binary achievement | `attainment JUNIOR_STANDING` |
+| `quantity CODE >= N` | Cumulative quantity threshold | `quantity CLINICAL_HOURS >= 500` |
 
 All three support being nested inside `all of`, `any of`, `at least N of`, and other combinations — they're full requirement expressions, just like course references and filters.
 

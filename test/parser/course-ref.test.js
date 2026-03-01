@@ -154,9 +154,9 @@ describe('Course references', () => {
     });
   });
 
-  // Concurrent allowed
-  test('concurrent allowed', () => {
-    expect(parse('CMPS 230 (concurrent allowed)')).toEqual({
+  // Concurrent
+  test('concurrent', () => {
+    expect(parse('CMPS 230 (concurrent)')).toEqual({
       type: 'course',
       subject: 'CMPS',
       number: '230',
@@ -164,14 +164,14 @@ describe('Course references', () => {
     });
   });
 
-  test('concurrent allowed case-insensitive', () => {
-    expect(parse('MATH 151 (Concurrent Allowed)')).toEqual({
+  test('concurrent case-insensitive', () => {
+    expect(parse('MATH 151 (Concurrent)')).toEqual({
       type: 'course',
       subject: 'MATH',
       number: '151',
       concurrentAllowed: true,
     });
-    expect(parse('MATH 151 (CONCURRENT ALLOWED)')).toEqual({
+    expect(parse('MATH 151 (CONCURRENT)')).toEqual({
       type: 'course',
       subject: 'MATH',
       number: '151',
@@ -179,8 +179,8 @@ describe('Course references', () => {
     });
   });
 
-  test('concurrent allowed with extra whitespace', () => {
-    expect(parse('CMPS 230  (  concurrent   allowed  )')).toEqual({
+  test('concurrent with extra whitespace', () => {
+    expect(parse('CMPS 230  (  concurrent  )')).toEqual({
       type: 'course',
       subject: 'CMPS',
       number: '230',
@@ -188,9 +188,9 @@ describe('Course references', () => {
     });
   });
 
-  test('concurrent allowed inside all-of', () => {
+  test('concurrent inside all-of', () => {
     const input = `all of (
-      CMPS 230 (concurrent allowed),
+      CMPS 230 (concurrent),
       MATH 151
     )`;
     expect(parse(input)).toEqual({
@@ -202,7 +202,7 @@ describe('Course references', () => {
     });
   });
 
-  test('without concurrent allowed has no concurrentAllowed field', () => {
+  test('without concurrent has no concurrentAllowed field', () => {
     const ast = parse('MATH 151');
     expect(ast).not.toHaveProperty('concurrentAllowed');
   });
