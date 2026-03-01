@@ -41,7 +41,7 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 
 ### Constraints
 - [x] **1.15** Grammar + parser + tests: `with grade >= "C"` on courses and groups
-- [ ] **1.16** Grammar + parser + tests: `with gpa >= 2.0` on groups
+- [x] **1.16** Grammar + parser + tests: `with gpa >= 2.0` on groups
 - [ ] **1.17** Grammar + parser + tests: `(concurrent allowed)` on course references
 
 ### Non-Course Requirements

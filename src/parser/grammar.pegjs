@@ -22,6 +22,12 @@ Constraint
   = GRADE _ ">=" _ value:StringLiteral {
       return { kind: 'min-grade', value };
     }
+  / GPA _ ">=" _ value:Decimal {
+      return { kind: 'min-gpa', value };
+    }
+
+Decimal "decimal number"
+  = digits:$([0-9]+ ("." [0-9]+)?) { return parseFloat(digits); }
 
 PrimaryExpression
   = AllOf
@@ -160,6 +166,7 @@ EXCEPT       = "except"i       !IdentChar
 NONE         = "none"i         !IdentChar
 WITH         = "with"i         !IdentChar
 GRADE        = "grade"i        !IdentChar
+GPA          = "gpa"i          !IdentChar
 PREREQUISITE = "prerequisite"i !IdentChar
 COREQUISITE  = "corequisite"i  !IdentChar
 INCLUDES     = "includes"i     !IdentChar
