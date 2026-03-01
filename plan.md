@@ -65,7 +65,7 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 - [x] **1.27** Grammar + parser + tests: program context references (`primary major`, `primary minor`)
 
 ### Case Insensitivity & Edge Cases
-- [ ] **1.28** Grammar + parser + tests: case-insensitive keywords (`ALL OF`, `Any Of`, `Courses Where`), whitespace variations
+- [x] **1.28** Grammar + parser + tests: case-insensitive keywords (`ALL OF`, `Any Of`, `Courses Where`), whitespace variations
 - [ ] **1.29** Parser error handling: human-friendly error messages for non-programmers. Catch common mistakes (missing commas, unclosed parens, misspelled keywords, trailing commas, empty lists) and rewrite Peggy's raw `SyntaxError` into actionable messages with location, problem description, and suggested fix. These errors are the UX surface for a code editor in reqit-cloud.
 
 ### Full-Language Integration Tests
