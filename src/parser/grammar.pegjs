@@ -5,6 +5,12 @@ start
   = _ node:Expression _ !. { return node; }
 
 Expression
+  = expr:PrimaryExpression except:(_ EXCEPT _ "(" _ ItemList _ ")")? {
+      if (!except) return expr;
+      return { type: 'except', source: expr, exclude: except[5] };
+    }
+
+PrimaryExpression
   = AllOf
   / AnyOf
   / NOf
@@ -131,6 +137,7 @@ WHERE   = "where"i   !IdentChar
 AND     = "and"i     !IdentChar
 IN           = "in"i           !IdentChar
 NOT          = "not"i          !IdentChar
+EXCEPT       = "except"i       !IdentChar
 PREREQUISITE = "prerequisite"i !IdentChar
 COREQUISITE  = "corequisite"i  !IdentChar
 INCLUDES     = "includes"i     !IdentChar

@@ -36,7 +36,7 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 - [x] **1.12** Grammar + parser + tests: `at least N credits from (...)`, `at most N credits from (...)`, `exactly N credits from (...)`
 
 ### Exclusions
-- [ ] **1.13** Grammar + parser + tests: `except (...)` modifier on course sets and filters
+- [x] **1.13** Grammar + parser + tests: `except (...)` modifier on course sets and filters
 - [ ] **1.14** Grammar + parser + tests: `none of (...)`
 
 ### Constraints
