@@ -165,15 +165,20 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 
 ## Phase 12: Public API, Documentation & Packaging
 
-- [ ] **12.1** `src/index.js` — public API surface, single entry point re-exporting all functions
-- [ ] **12.2** Developer documentation for integration data types — Catalog, Transcript, GradeConfig, AuditResult. These are the integration boundary — consuming applications build these structures to feed into reqit. Documentation must cover every field, its type, whether it's required/optional, and semantic meaning. Key points to document:
+See [22-sdk-api-design.md](../reqit-specs/design/22-sdk-api-design.md) for the full class-based API design. The public surface is a thin facade over the functional modules built in Phases 1–11.
+
+- [ ] **12.1** `src/index.js` — Implement `Requirement`, `Catalog`, `Transcript`, `ResolutionResult`, `AuditResult`, `MultiAuditResult`, `AuditException` classes as thin wrappers delegating to internal modules. Entity factories: `reqit.parse()`, `reqit.fromAST()`, `reqit.catalog()`, `reqit.transcript()`, `reqit.waiver()`, `reqit.substitution()`. Module-level functions: `reqit.auditMulti()`, `reqit.exportPrereqMatrix()`, `reqit.exportDependencyMatrix()`, grade utilities.
+- [ ] **12.2** Public API integration tests — exercise the full public surface through the class-based API. Every entity factory, every instance method, every module-level function. Tests use `require('reqit')` (not internal module imports). Cover: Requirement construction (parse, fromAST), immutability (frozen AST, transform returns new instance), rendering methods (toText, toDescription, toOutline, toHTML), resolve returns ResolutionResult (not a new Requirement), audit returns AuditResult with methods, Catalog/Transcript accept plain objects, AuditException waivers/substitutions, fluent chaining.
+- [ ] **12.3** Developer documentation for integration data types — Catalog, Transcript, GradeConfig, AuditResult. These are the integration boundary — consuming applications build these structures to feed into reqit. Documentation must cover every field, its type, whether it's required/optional, and semantic meaning. Key points to document:
   - **Catalog:** `institution` (slug, opaque to reqit), `ay` (academic year string, e.g. "2025-2026"), courses, programs, attainments, gradeConfig
   - **Course:** `id`, `subject`, `number`, `title`, `creditsMin`, `creditsMax`, `attributes` (array of attribute code strings — these are unique identifiers referencing the institution's attribute definitions; at the SDK level reqit matches them as opaque strings; reqit-pg provides the `attribute` table with names/descriptions), `crossListGroup`
-  - **Transcript:** array of transcript entries — external input, never stored by reqit
+  - **Transcript:** array of transcript entries — external input, never stored by reqit. Grade resolution happens at audit time using catalog.gradeConfig, not at transcript instantiation.
   - **GradeConfig:** scale, passFail, withdrawal, incomplete — configurable per institution per AY
   - **AuditResult:** status, items, summary, warnings — output of `audit()` and `auditMulti()`
-- [ ] **12.3** Final coverage audit — verify 95% line, 90% branch, 100% parser rule coverage; add any missing edge case tests
-- [ ] **12.4** Package metadata (`package.json` fields: main, exports, files, engines, keywords, license), README.md with usage examples
+  - **ResolutionResult:** filters, courses — output of `req.resolve(catalog)`, informational only
+  - **AuditException:** waivers and substitutions with required reason field
+- [ ] **12.4** Final coverage audit — verify 95% line, 90% branch, 100% parser rule coverage; add any missing edge case tests
+- [ ] **12.5** Package metadata (`package.json` fields: main, exports, files, engines, keywords, license), README.md with usage examples
 
 ---
 
@@ -193,8 +198,8 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 | 9 | 5 | AST utilities |
 | 10 | 3 | Audit utilities |
 | 11 | 5 | Export |
-| 12 | 4 | API + docs + packaging |
-| **Total** | **95** | |
+| 12 | 5 | API + integration tests + docs + packaging |
+| **Total** | **96** | |
 
 ## Test Fixture Strategy
 
