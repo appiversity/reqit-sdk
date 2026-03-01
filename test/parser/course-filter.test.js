@@ -276,6 +276,51 @@ describe('courses where — credits filters', () => {
   });
 });
 
+describe('courses where — != operator', () => {
+  test('subject != value', () => {
+    expect(parse('courses where subject != "CSCI"')).toEqual({
+      type: 'course-filter',
+      filters: [{ field: 'subject', op: 'ne', value: 'CSCI' }],
+    });
+  });
+
+  test('attribute != value', () => {
+    expect(parse('courses where attribute != "WI"')).toEqual({
+      type: 'course-filter',
+      filters: [{ field: 'attribute', op: 'ne', value: 'WI' }],
+    });
+  });
+
+  test('!= with compound filters', () => {
+    expect(parse('courses where subject != "PHYS" and number >= 200')).toEqual({
+      type: 'course-filter',
+      filters: [
+        { field: 'subject', op: 'ne', value: 'PHYS' },
+        { field: 'number', op: 'gte', value: 200 },
+      ],
+    });
+  });
+
+  // W&M case study: electives excluding own department
+  test('W&M: electives outside CSCI', () => {
+    const input = 'at least 3 of (courses where subject != "CSCI" and number >= 300)';
+    expect(parse(input)).toEqual({
+      type: 'n-of',
+      comparison: 'at-least',
+      count: 3,
+      items: [
+        {
+          type: 'course-filter',
+          filters: [
+            { field: 'subject', op: 'ne', value: 'CSCI' },
+            { field: 'number', op: 'gte', value: 300 },
+          ],
+        },
+      ],
+    });
+  });
+});
+
 describe('courses where — in / not in operators', () => {
   test('subject in list', () => {
     expect(parse('courses where subject in ("CSCI", "MATH", "ECON")')).toEqual({

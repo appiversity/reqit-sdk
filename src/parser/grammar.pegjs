@@ -58,6 +58,7 @@ ComparisonOp
   / "<=" { return 'lte'; }
   / ">"  { return 'gt'; }
   / "<"  { return 'lt'; }
+  / "!=" { return 'ne'; }
   / "="  { return 'eq'; }
   / NOT __ IN { return 'not-in'; }
   / IN       { return 'in'; }
