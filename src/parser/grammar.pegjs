@@ -5,9 +5,22 @@ start
   = _ node:Expression _ !. { return node; }
 
 Expression
-  = expr:PrimaryExpression except:(_ EXCEPT _ "(" _ ItemList _ ")")? {
-      if (!except) return expr;
-      return { type: 'except', source: expr, exclude: except[5] };
+  = expr:PrimaryExpression
+    except:(_ EXCEPT _ "(" _ ItemList _ ")")?
+    constraint:(_ WITH __ Constraint)? {
+      let node = expr;
+      if (except) {
+        node = { type: 'except', source: node, exclude: except[5] };
+      }
+      if (constraint) {
+        node = { type: 'with-constraint', requirement: node, constraint: constraint[3] };
+      }
+      return node;
+    }
+
+Constraint
+  = GRADE _ ">=" _ value:StringLiteral {
+      return { kind: 'min-grade', value };
     }
 
 PrimaryExpression
@@ -145,6 +158,8 @@ IN           = "in"i           !IdentChar
 NOT          = "not"i          !IdentChar
 EXCEPT       = "except"i       !IdentChar
 NONE         = "none"i         !IdentChar
+WITH         = "with"i         !IdentChar
+GRADE        = "grade"i        !IdentChar
 PREREQUISITE = "prerequisite"i !IdentChar
 COREQUISITE  = "corequisite"i  !IdentChar
 INCLUDES     = "includes"i     !IdentChar
