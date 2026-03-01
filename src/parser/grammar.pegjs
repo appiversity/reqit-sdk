@@ -48,8 +48,10 @@ Filter
     }
 
 FilterField
-  = "subject"i !IdentChar { return 'subject'; }
-  / "number"i  !IdentChar { return 'number'; }
+  = "subject"i   !IdentChar { return 'subject'; }
+  / "number"i    !IdentChar { return 'number'; }
+  / "attribute"i !IdentChar { return 'attribute'; }
+  / "credits"i   !IdentChar { return 'credits'; }
 
 ComparisonOp
   = ">=" { return 'gte'; }

@@ -202,6 +202,80 @@ describe('courses where — inside set operators', () => {
   });
 });
 
+describe('courses where — attribute filters', () => {
+  test('attribute equality', () => {
+    expect(parse('courses where attribute = "WI"')).toEqual({
+      type: 'course-filter',
+      filters: [{ field: 'attribute', op: 'eq', value: 'WI' }],
+    });
+  });
+
+  // W&M case study: COLL curriculum gen-ed attributes
+  test('W&M: COLL 200 requirement', () => {
+    expect(parse('courses where attribute = "C200"')).toEqual({
+      type: 'course-filter',
+      filters: [{ field: 'attribute', op: 'eq', value: 'C200' }],
+    });
+  });
+
+  test('attribute with subject compound', () => {
+    expect(parse('courses where attribute = "WI" and subject = "CSCI"')).toEqual({
+      type: 'course-filter',
+      filters: [
+        { field: 'attribute', op: 'eq', value: 'WI' },
+        { field: 'subject', op: 'eq', value: 'CSCI' },
+      ],
+    });
+  });
+
+  test('case-insensitive Attribute keyword', () => {
+    expect(parse('courses where ATTRIBUTE = "ALV"')).toEqual({
+      type: 'course-filter',
+      filters: [{ field: 'attribute', op: 'eq', value: 'ALV' }],
+    });
+  });
+});
+
+describe('courses where — credits filters', () => {
+  test('credits >= N', () => {
+    expect(parse('courses where credits >= 4')).toEqual({
+      type: 'course-filter',
+      filters: [{ field: 'credits', op: 'gte', value: 4 }],
+    });
+  });
+
+  test('credits <= N', () => {
+    expect(parse('courses where credits <= 3')).toEqual({
+      type: 'course-filter',
+      filters: [{ field: 'credits', op: 'lte', value: 3 }],
+    });
+  });
+
+  test('credits = N', () => {
+    expect(parse('courses where credits = 3')).toEqual({
+      type: 'course-filter',
+      filters: [{ field: 'credits', op: 'eq', value: 3 }],
+    });
+  });
+
+  test('credits with subject compound', () => {
+    expect(parse('courses where subject = "MATH" and credits >= 4')).toEqual({
+      type: 'course-filter',
+      filters: [
+        { field: 'subject', op: 'eq', value: 'MATH' },
+        { field: 'credits', op: 'gte', value: 4 },
+      ],
+    });
+  });
+
+  test('case-insensitive Credits keyword', () => {
+    expect(parse('courses where CREDITS >= 3')).toEqual({
+      type: 'course-filter',
+      filters: [{ field: 'credits', op: 'gte', value: 3 }],
+    });
+  });
+});
+
 describe('courses where — formatting', () => {
   test('multiline with comments', () => {
     const input = `all of (
