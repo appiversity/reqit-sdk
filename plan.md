@@ -23,7 +23,7 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 - [x] **1.5** Grammar + parser + tests: nested `all of` / `any of` (arbitrary depth). Nesting already works via recursive Expression rule; dedicated tests for 3-4 level depth and case study patterns.
 
 ### Counted Selection
-- [ ] **1.6** Grammar + parser + tests: `at least N of (...)`, `at most N of (...)`, `exactly N of (...)`
+- [x] **1.6** Grammar + parser + tests: `at least N of (...)`, `at most N of (...)`, `exactly N of (...)`
 
 ### Course Filters
 - [ ] **1.7** Grammar + parser + tests: `courses where subject = "X"`, `number >= N`, `number <= N`, equality, compound `and` filters

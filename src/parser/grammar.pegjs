@@ -7,6 +7,7 @@ start
 Expression
   = AllOf
   / AnyOf
+  / NOf
   / CourseRef
 
 AllOf
@@ -18,6 +19,20 @@ AnyOf
   = ANY __ OF _ "(" _ items:ItemList _ ")" {
       return { type: 'any-of', items };
     }
+
+NOf
+  = AT __ LEAST __ n:Integer __ OF _ "(" _ items:ItemList _ ")" {
+      return { type: 'n-of', comparison: 'at-least', count: n, items };
+    }
+  / AT __ MOST __ n:Integer __ OF _ "(" _ items:ItemList _ ")" {
+      return { type: 'n-of', comparison: 'at-most', count: n, items };
+    }
+  / EXACTLY __ n:Integer __ OF _ "(" _ items:ItemList _ ")" {
+      return { type: 'n-of', comparison: 'exactly', count: n, items };
+    }
+
+Integer "integer"
+  = digits:$([0-9]+) { return parseInt(digits, 10); }
 
 ItemList
   = head:Expression tail:(_ "," _ Expression)* {
@@ -36,9 +51,13 @@ Number "course number"
   = $([0-9] [0-9A-Za-z.]*)
 
 // Case-insensitive keywords
-ALL = "all"i !IdentChar
-ANY = "any"i !IdentChar
-OF  = "of"i  !IdentChar
+ALL     = "all"i     !IdentChar
+ANY     = "any"i     !IdentChar
+AT      = "at"i      !IdentChar
+LEAST   = "least"i   !IdentChar
+MOST    = "most"i    !IdentChar
+EXACTLY = "exactly"i !IdentChar
+OF      = "of"i      !IdentChar
 
 IdentChar = [A-Za-z0-9]
 
