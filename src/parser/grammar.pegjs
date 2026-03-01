@@ -59,6 +59,10 @@ PrimaryExpression
   / OneFromEach
   / FromNGroups
   / CourseFilter
+  / OverlapLimit
+  / OutsideProgram
+  / ProgramRef
+  / ProgramContextRef
   / Score
   / Attainment
   / Quantity
@@ -94,6 +98,53 @@ VarName "variable name"
 
 ScopeName "scope name"
   = $([a-zA-Z] [a-zA-Z0-9_-]*)
+
+ProgramRef
+  = PROGRAM __ code:StringLiteral __ progType:ProgramType __ level:ProgramLevel {
+      return { type: 'program', code, 'program-type': progType, level };
+    }
+  / ANY __ PROGRAM __ progType:ProgramType __ level:ProgramLevel {
+      return { type: 'program', 'program-type': progType, level };
+    }
+
+ProgramContextRef
+  = PRIMARY __ MAJOR { return { type: 'program-context-ref', role: 'primary-major' }; }
+  / PRIMARY __ MINOR { return { type: 'program-context-ref', role: 'primary-minor' }; }
+
+OverlapLimit
+  = OVERLAP __ BETWEEN _ "(" _ left:OverlapTarget _ "," _ right:OverlapTarget _ ")" __ AT __ MOST __ n:Integer __ unit:OverlapUnit {
+      return { type: 'overlap-limit', left, right, constraint: { comparison: 'at-most', value: n, unit } };
+    }
+
+OutsideProgram
+  = OUTSIDE _ "(" _ prog:OverlapTarget _ ")" __ AT __ LEAST __ n:Integer __ CREDITS {
+      return { type: 'outside-program', program: prog, constraint: { comparison: 'at-least', value: n, unit: 'credits' } };
+    }
+
+OverlapTarget
+  = ProgramContextRef
+  / VariableRef
+
+ProgramType
+  = "major"i         !IdentChar { return 'major'; }
+  / "minor"i         !IdentChar { return 'minor'; }
+  / "certificate"i   !IdentChar { return 'certificate'; }
+  / "concentration"i !IdentChar { return 'concentration'; }
+  / "track"i         !IdentChar { return 'track'; }
+  / "cluster"i       !IdentChar { return 'cluster'; }
+
+ProgramLevel
+  = "undergraduate"i  !IdentChar { return 'undergraduate'; }
+  / "graduate"i        !IdentChar { return 'graduate'; }
+  / "doctoral"i        !IdentChar { return 'doctoral'; }
+  / "professional"i    !IdentChar { return 'professional'; }
+  / "post-graduate"i   !IdentChar { return 'post-graduate'; }
+  / "post-doctoral"i   !IdentChar { return 'post-doctoral'; }
+
+OverlapUnit
+  = "courses"i !IdentChar { return 'courses'; }
+  / "credits"i !IdentChar { return 'credits'; }
+  / "%"                    { return 'percent'; }
 
 Score
   = SCORE __ name:StringLiteral _ op:ComparisonOp _ value:Decimal {
@@ -264,6 +315,13 @@ MATCH        = "match"i        !IdentChar
 PREREQUISITE = "prerequisite"i !IdentChar
 COREQUISITE  = "corequisite"i  !IdentChar
 INCLUDES     = "includes"i     !IdentChar
+PROGRAM      = "program"i      !IdentChar
+PRIMARY      = "primary"i      !IdentChar
+MAJOR        = "major"i        !IdentChar
+MINOR        = "minor"i        !IdentChar
+OVERLAP      = "overlap"i      !IdentChar
+BETWEEN      = "between"i      !IdentChar
+OUTSIDE      = "outside"i      !IdentChar
 
 IdentChar = [A-Za-z0-9]
 

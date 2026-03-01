@@ -59,10 +59,10 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 - [x] **1.23** Grammar + parser + tests: `where at least N match (filter)` on n-of nodes
 
 ### Overlap & Program References
-- [ ] **1.24** Grammar + parser + tests: `program "X" major undergraduate`, `any program major`, program filter
-- [ ] **1.25** Grammar + parser + tests: `overlap between (...) at most N courses/credits/percent`
-- [ ] **1.26** Grammar + parser + tests: `outside (primary major) at least N credits`
-- [ ] **1.27** Grammar + parser + tests: program context references (`primary major`, `primary minor`)
+- [x] **1.24** Grammar + parser + tests: `program "X" major undergraduate`, `any program major`, program filter
+- [x] **1.25** Grammar + parser + tests: `overlap between (...) at most N courses/credits/percent`
+- [x] **1.26** Grammar + parser + tests: `outside (primary major) at least N credits`
+- [x] **1.27** Grammar + parser + tests: program context references (`primary major`, `primary minor`)
 
 ### Case Insensitivity & Edge Cases
 - [ ] **1.28** Grammar + parser + tests: case-insensitive keywords (`ALL OF`, `Any Of`, `Courses Where`), whitespace variations
