@@ -13,6 +13,7 @@ Expression
 PrimaryExpression
   = AllOf
   / AnyOf
+  / NoneOf
   / NOf
   / CreditsFrom
   / CourseFilter
@@ -26,6 +27,11 @@ AllOf
 AnyOf
   = ANY __ OF _ "(" _ items:ItemList _ ")" {
       return { type: 'any-of', items };
+    }
+
+NoneOf
+  = NONE __ OF _ "(" _ items:ItemList _ ")" {
+      return { type: 'none-of', items };
     }
 
 NOf
@@ -138,6 +144,7 @@ AND     = "and"i     !IdentChar
 IN           = "in"i           !IdentChar
 NOT          = "not"i          !IdentChar
 EXCEPT       = "except"i       !IdentChar
+NONE         = "none"i         !IdentChar
 PREREQUISITE = "prerequisite"i !IdentChar
 COREQUISITE  = "corequisite"i  !IdentChar
 INCLUDES     = "includes"i     !IdentChar

@@ -37,7 +37,7 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 
 ### Exclusions
 - [x] **1.13** Grammar + parser + tests: `except (...)` modifier on course sets and filters
-- [ ] **1.14** Grammar + parser + tests: `none of (...)`
+- [x] **1.14** Grammar + parser + tests: `none of (...)`
 
 ### Constraints
 - [ ] **1.15** Grammar + parser + tests: `with grade >= "C"` on courses and groups
