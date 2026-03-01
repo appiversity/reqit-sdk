@@ -154,6 +154,59 @@ describe('Course references', () => {
     });
   });
 
+  // Concurrent allowed
+  test('concurrent allowed', () => {
+    expect(parse('CMPS 230 (concurrent allowed)')).toEqual({
+      type: 'course',
+      subject: 'CMPS',
+      number: '230',
+      concurrentAllowed: true,
+    });
+  });
+
+  test('concurrent allowed case-insensitive', () => {
+    expect(parse('MATH 151 (Concurrent Allowed)')).toEqual({
+      type: 'course',
+      subject: 'MATH',
+      number: '151',
+      concurrentAllowed: true,
+    });
+    expect(parse('MATH 151 (CONCURRENT ALLOWED)')).toEqual({
+      type: 'course',
+      subject: 'MATH',
+      number: '151',
+      concurrentAllowed: true,
+    });
+  });
+
+  test('concurrent allowed with extra whitespace', () => {
+    expect(parse('CMPS 230  (  concurrent   allowed  )')).toEqual({
+      type: 'course',
+      subject: 'CMPS',
+      number: '230',
+      concurrentAllowed: true,
+    });
+  });
+
+  test('concurrent allowed inside all-of', () => {
+    const input = `all of (
+      CMPS 230 (concurrent allowed),
+      MATH 151
+    )`;
+    expect(parse(input)).toEqual({
+      type: 'all-of',
+      items: [
+        { type: 'course', subject: 'CMPS', number: '230', concurrentAllowed: true },
+        { type: 'course', subject: 'MATH', number: '151' },
+      ],
+    });
+  });
+
+  test('without concurrent allowed has no concurrentAllowed field', () => {
+    const ast = parse('MATH 151');
+    expect(ast).not.toHaveProperty('concurrentAllowed');
+  });
+
   // Error cases
   test('missing number fails', () => {
     expect(() => parse('MATH')).toThrow();

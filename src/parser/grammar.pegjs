@@ -137,7 +137,10 @@ ItemList
     }
 
 CourseRef
-  = subject:Subject __ number:Number {
+  = subject:Subject __ number:Number _ "(" _ CONCURRENT __ ALLOWED _ ")" {
+      return { type: 'course', subject: subject.toUpperCase(), number: number.toUpperCase(), concurrentAllowed: true };
+    }
+  / subject:Subject __ number:Number {
       return { type: 'course', subject: subject.toUpperCase(), number: number.toUpperCase() };
     }
 
@@ -167,6 +170,8 @@ NONE         = "none"i         !IdentChar
 WITH         = "with"i         !IdentChar
 GRADE        = "grade"i        !IdentChar
 GPA          = "gpa"i          !IdentChar
+CONCURRENT   = "concurrent"i   !IdentChar
+ALLOWED      = "allowed"i      !IdentChar
 PREREQUISITE = "prerequisite"i !IdentChar
 COREQUISITE  = "corequisite"i  !IdentChar
 INCLUDES     = "includes"i     !IdentChar
