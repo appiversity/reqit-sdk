@@ -406,6 +406,101 @@ describe('courses where — in / not in operators', () => {
   });
 });
 
+describe('courses where — prerequisite/corequisite includes', () => {
+  test('prerequisite includes single course', () => {
+    expect(parse('courses where prerequisite includes (CMPS 104)')).toEqual({
+      type: 'course-filter',
+      filters: [
+        {
+          field: 'prerequisite-includes',
+          op: 'includes',
+          value: { type: 'course', subject: 'CMPS', number: '104' },
+        },
+      ],
+    });
+  });
+
+  test('corequisite includes single course', () => {
+    expect(parse('courses where corequisite includes (MATH 151)')).toEqual({
+      type: 'course-filter',
+      filters: [
+        {
+          field: 'corequisite-includes',
+          op: 'includes',
+          value: { type: 'course', subject: 'MATH', number: '151' },
+        },
+      ],
+    });
+  });
+
+  test('prerequisite includes with any-of value', () => {
+    expect(parse('courses where prerequisite includes (any of (MATH 021, MATH 031))')).toEqual({
+      type: 'course-filter',
+      filters: [
+        {
+          field: 'prerequisite-includes',
+          op: 'includes',
+          value: {
+            type: 'any-of',
+            items: [
+              { type: 'course', subject: 'MATH', number: '021' },
+              { type: 'course', subject: 'MATH', number: '031' },
+            ],
+          },
+        },
+      ],
+    });
+  });
+
+  test('prerequisite includes compound with subject filter', () => {
+    expect(parse('courses where prerequisite includes (CSCI 141) and subject = "CSCI"')).toEqual({
+      type: 'course-filter',
+      filters: [
+        {
+          field: 'prerequisite-includes',
+          op: 'includes',
+          value: { type: 'course', subject: 'CSCI', number: '141' },
+        },
+        { field: 'subject', op: 'eq', value: 'CSCI' },
+      ],
+    });
+  });
+
+  test('case-insensitive keywords', () => {
+    expect(parse('courses where PREREQUISITE INCLUDES (CMPS 147)')).toEqual({
+      type: 'course-filter',
+      filters: [
+        {
+          field: 'prerequisite-includes',
+          op: 'includes',
+          value: { type: 'course', subject: 'CMPS', number: '147' },
+        },
+      ],
+    });
+  });
+
+  test('prerequisite includes inside n-of', () => {
+    const input = 'at least 2 of (courses where prerequisite includes (CSCI 141))';
+    expect(parse(input)).toEqual({
+      type: 'n-of',
+      comparison: 'at-least',
+      count: 2,
+      items: [
+        {
+          type: 'course-filter',
+          filters: [
+            {
+              field: 'prerequisite-includes',
+              op: 'includes',
+              value: { type: 'course', subject: 'CSCI', number: '141' },
+            },
+          ],
+        },
+      ],
+    });
+  });
+});
+
 describe('courses where — formatting', () => {
   test('multiline with comments', () => {
     const input = `all of (

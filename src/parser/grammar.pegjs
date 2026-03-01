@@ -43,7 +43,13 @@ FilterList
     }
 
 Filter
-  = field:FilterField _ op:ComparisonOp _ value:FilterValue {
+  = PREREQUISITE __ INCLUDES _ "(" _ value:Expression _ ")" {
+      return { field: 'prerequisite-includes', op: 'includes', value };
+    }
+  / COREQUISITE __ INCLUDES _ "(" _ value:Expression _ ")" {
+      return { field: 'corequisite-includes', op: 'includes', value };
+    }
+  / field:FilterField _ op:ComparisonOp _ value:FilterValue {
       return { field, op, value };
     }
 
@@ -106,8 +112,11 @@ OF      = "of"i      !IdentChar
 COURSES = "courses"i !IdentChar
 WHERE   = "where"i   !IdentChar
 AND     = "and"i     !IdentChar
-IN      = "in"i      !IdentChar
-NOT     = "not"i     !IdentChar
+IN           = "in"i           !IdentChar
+NOT          = "not"i          !IdentChar
+PREREQUISITE = "prerequisite"i !IdentChar
+COREQUISITE  = "corequisite"i  !IdentChar
+INCLUDES     = "includes"i     !IdentChar
 
 IdentChar = [A-Za-z0-9]
 
