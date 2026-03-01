@@ -48,8 +48,8 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 - [x] **1.18** Grammar + parser + tests: `score "SAT MATH" >= 580`, `attainment "Junior Standing"`, `quantity "Clinical Hours" >= 500`
 
 ### Group Operators
-- [ ] **1.19** Grammar + parser + tests: `one from each of (...)`
-- [ ] **1.20** Grammar + parser + tests: `from at least N of (...)`
+- [x] **1.19** Grammar + parser + tests: `one from each of (...)`
+- [x] **1.20** Grammar + parser + tests: `from at least N of (...)`
 
 ### Variables
 - [ ] **1.21** Grammar + parser + tests: variable definition (`$core = all of (...)`) and reference (`$core`)

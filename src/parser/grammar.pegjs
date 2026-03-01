@@ -35,6 +35,8 @@ PrimaryExpression
   / NoneOf
   / NOf
   / CreditsFrom
+  / OneFromEach
+  / FromNGroups
   / CourseFilter
   / Score
   / Attainment
@@ -94,6 +96,16 @@ CreditsFrom
   / EXACTLY __ n:Integer __ CREDITS __ FROM _ "(" _ items:ItemList _ ")" {
       const source = items.length === 1 ? items[0] : { type: 'all-of', items };
       return { type: 'credits-from', comparison: 'exactly', credits: n, source };
+    }
+
+OneFromEach
+  = ONE __ FROM __ EACH __ OF _ "(" _ items:ItemList _ ")" {
+      return { type: 'one-from-each', items };
+    }
+
+FromNGroups
+  = FROM __ AT __ LEAST __ n:Integer __ OF _ "(" _ items:ItemList _ ")" {
+      return { type: 'from-n-groups', count: n, items };
     }
 
 CourseFilter
@@ -193,6 +205,8 @@ ALLOWED      = "allowed"i      !IdentChar
 SCORE        = "score"i        !IdentChar
 ATTAINMENT   = "attainment"i   !IdentChar
 QUANTITY     = "quantity"i     !IdentChar
+ONE          = "one"i          !IdentChar
+EACH         = "each"i         !IdentChar
 PREREQUISITE = "prerequisite"i !IdentChar
 COREQUISITE  = "corequisite"i  !IdentChar
 INCLUDES     = "includes"i     !IdentChar
