@@ -36,7 +36,25 @@ PrimaryExpression
   / NOf
   / CreditsFrom
   / CourseFilter
+  / Score
+  / Attainment
+  / Quantity
   / CourseRef
+
+Score
+  = SCORE __ name:StringLiteral _ op:ComparisonOp _ value:Decimal {
+      return { type: 'score', name, op, value };
+    }
+
+Attainment
+  = ATTAINMENT __ name:StringLiteral {
+      return { type: 'attainment', name };
+    }
+
+Quantity
+  = QUANTITY __ name:StringLiteral _ op:ComparisonOp _ value:Decimal {
+      return { type: 'quantity', name, op, value };
+    }
 
 AllOf
   = ALL __ OF _ "(" _ items:ItemList _ ")" {
@@ -172,6 +190,9 @@ GRADE        = "grade"i        !IdentChar
 GPA          = "gpa"i          !IdentChar
 CONCURRENT   = "concurrent"i   !IdentChar
 ALLOWED      = "allowed"i      !IdentChar
+SCORE        = "score"i        !IdentChar
+ATTAINMENT   = "attainment"i   !IdentChar
+QUANTITY     = "quantity"i     !IdentChar
 PREREQUISITE = "prerequisite"i !IdentChar
 COREQUISITE  = "corequisite"i  !IdentChar
 INCLUDES     = "includes"i     !IdentChar

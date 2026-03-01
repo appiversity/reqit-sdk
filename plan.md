@@ -45,7 +45,7 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 - [x] **1.17** Grammar + parser + tests: `(concurrent allowed)` on course references
 
 ### Non-Course Requirements
-- [ ] **1.18** Grammar + parser + tests: `score "SAT MATH" >= 580`, `attainment "Junior Standing"`, `quantity "Clinical Hours" >= 500`
+- [x] **1.18** Grammar + parser + tests: `score "SAT MATH" >= 580`, `attainment "Junior Standing"`, `quantity "Clinical Hours" >= 500`
 
 ### Group Operators
 - [ ] **1.19** Grammar + parser + tests: `one from each of (...)`
