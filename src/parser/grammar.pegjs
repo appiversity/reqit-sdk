@@ -8,6 +8,7 @@ Expression
   = AllOf
   / AnyOf
   / NOf
+  / CourseFilter
   / CourseRef
 
 AllOf
@@ -30,6 +31,39 @@ NOf
   / EXACTLY __ n:Integer __ OF _ "(" _ items:ItemList _ ")" {
       return { type: 'n-of', comparison: 'exactly', count: n, items };
     }
+
+CourseFilter
+  = COURSES __ WHERE __ filters:FilterList {
+      return { type: 'course-filter', filters };
+    }
+
+FilterList
+  = head:Filter tail:(_ AND _ Filter)* {
+      return [head, ...tail.map(t => t[3])];
+    }
+
+Filter
+  = field:FilterField _ op:ComparisonOp _ value:FilterValue {
+      return { field, op, value };
+    }
+
+FilterField
+  = "subject"i !IdentChar { return 'subject'; }
+  / "number"i  !IdentChar { return 'number'; }
+
+ComparisonOp
+  = ">=" { return 'gte'; }
+  / "<=" { return 'lte'; }
+  / ">"  { return 'gt'; }
+  / "<"  { return 'lt'; }
+  / "="  { return 'eq'; }
+
+FilterValue
+  = StringLiteral
+  / Integer
+
+StringLiteral "string"
+  = '"' chars:$([^"]*) '"' { return chars; }
 
 Integer "integer"
   = digits:$([0-9]+) { return parseInt(digits, 10); }
@@ -58,6 +92,9 @@ LEAST   = "least"i   !IdentChar
 MOST    = "most"i    !IdentChar
 EXACTLY = "exactly"i !IdentChar
 OF      = "of"i      !IdentChar
+COURSES = "courses"i !IdentChar
+WHERE   = "where"i   !IdentChar
+AND     = "and"i     !IdentChar
 
 IdentChar = [A-Za-z0-9]
 
