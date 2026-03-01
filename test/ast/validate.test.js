@@ -477,33 +477,348 @@ describe('validate()', () => {
   // --- Rules 9–14: Filter, Constraint & Context ---
 
   describe('Rule 9: filter op validity', () => {
-    // Tests added in commit 2.4
+    test('subject with eq is valid', () => {
+      const result = validate({
+        type: 'course-filter',
+        filters: [{ field: 'subject', op: 'eq', value: 'CMPS' }]
+      });
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('subject with in is valid', () => {
+      const result = validate({
+        type: 'course-filter',
+        filters: [{ field: 'subject', op: 'in', value: ['CMPS', 'MATH'] }]
+      });
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('subject with gte fails', () => {
+      const result = validate({
+        type: 'course-filter',
+        filters: [{ field: 'subject', op: 'gte', value: 'CMPS' }]
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(9);
+      expect(result.errors[0].message).toContain('subject');
+    });
+
+    test('number with gte is valid', () => {
+      const result = validate({
+        type: 'course-filter',
+        filters: [{ field: 'number', op: 'gte', value: 300 }]
+      });
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('number with in fails', () => {
+      const result = validate({
+        type: 'course-filter',
+        filters: [{ field: 'number', op: 'in', value: [100, 200] }]
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(9);
+    });
+
+    test('attribute with ne is valid', () => {
+      const result = validate({
+        type: 'course-filter',
+        filters: [{ field: 'attribute', op: 'ne', value: 'WI' }]
+      });
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('attribute with lt fails', () => {
+      const result = validate({
+        type: 'course-filter',
+        filters: [{ field: 'attribute', op: 'lt', value: 'WI' }]
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(9);
+    });
+
+    test('credits with lte is valid', () => {
+      const result = validate({
+        type: 'course-filter',
+        filters: [{ field: 'credits', op: 'lte', value: 4 }]
+      });
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('credits with not-in fails', () => {
+      const result = validate({
+        type: 'course-filter',
+        filters: [{ field: 'credits', op: 'not-in', value: [3, 4] }]
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(9);
+    });
+
+    test('prerequisite-includes with includes is valid', () => {
+      const result = validate({
+        type: 'course-filter',
+        filters: [{ field: 'prerequisite-includes', op: 'includes', value: course('MATH', '151') }]
+      });
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('prerequisite-includes with eq fails', () => {
+      const result = validate({
+        type: 'course-filter',
+        filters: [{ field: 'prerequisite-includes', op: 'eq', value: course('MATH', '151') }]
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(9);
+    });
+
+    test('post_constraint filter with invalid op', () => {
+      const result = validate({
+        type: 'n-of',
+        comparison: 'at-least',
+        count: 3,
+        items: [course('MATH', '151'), course('MATH', '152'), course('MATH', '153')],
+        post_constraints: [
+          { comparison: 'at-least', count: 1, filter: { field: 'subject', op: 'gte', value: 'MATH' } }
+        ]
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(9);
+    });
   });
 
   describe('Rule 10: with-constraint target', () => {
-    // Tests added in commit 2.4
+    test('with-constraint on course is valid', () => {
+      const result = validate({
+        type: 'with-constraint',
+        requirement: course('MATH', '151'),
+        constraint: { kind: 'min-grade', value: 'C' }
+      });
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('with-constraint on all-of is valid', () => {
+      const result = validate({
+        type: 'with-constraint',
+        requirement: { type: 'all-of', items: [course('MATH', '151')] },
+        constraint: { kind: 'min-gpa', value: 2.0 }
+      });
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('with-constraint on score fails', () => {
+      const result = validate({
+        type: 'with-constraint',
+        requirement: { type: 'score', name: 'SAT_MATH', op: 'gte', value: 580 },
+        constraint: { kind: 'min-grade', value: 'C' }
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(10);
+    });
+
+    test('with-constraint on attainment fails', () => {
+      const result = validate({
+        type: 'with-constraint',
+        requirement: { type: 'attainment', name: 'JUNIOR_STANDING' },
+        constraint: { kind: 'min-grade', value: 'C' }
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(10);
+    });
+
+    test('with-constraint on quantity fails', () => {
+      const result = validate({
+        type: 'with-constraint',
+        requirement: { type: 'quantity', name: 'HOURS', op: 'gte', value: 500 },
+        constraint: { kind: 'min-grade', value: 'C' }
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(10);
+    });
+
+    test('with-constraint on program fails', () => {
+      const result = validate({
+        type: 'with-constraint',
+        requirement: { type: 'program', code: 'CS', 'program-type': 'major', level: 'undergraduate' },
+        constraint: { kind: 'min-grade', value: 'C' }
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(10);
+    });
+
+    test('with-constraint on program-context-ref fails', () => {
+      const result = validate({
+        type: 'with-constraint',
+        requirement: { type: 'program-context-ref', role: 'primary-major' },
+        constraint: { kind: 'min-grade', value: 'C' }
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(10);
+    });
   });
 
   describe('Rule 11: concurrentAllowed context', () => {
-    // Tests added in commit 2.4
+    test('concurrentAllowed on course is valid', () => {
+      const result = validate({
+        type: 'course', subject: 'CMPS', number: '230', concurrentAllowed: true
+      });
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('concurrentAllowed on non-course fails', () => {
+      const result = validate({
+        type: 'all-of',
+        items: [course('MATH', '151')],
+        concurrentAllowed: true
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(11);
+    });
   });
 
   describe('Rule 12: post_constraint fields', () => {
-    // Tests added in commit 2.4
+    test('post_constraint with subject field is valid', () => {
+      const result = validate({
+        type: 'n-of',
+        comparison: 'at-least',
+        count: 3,
+        items: [course('MATH', '151'), course('POLI', '101'), course('POLI', '201'), course('POLI', '301')],
+        post_constraints: [
+          { comparison: 'at-least', count: 1, filter: { field: 'subject', op: 'eq', value: 'POLI' } }
+        ]
+      });
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('post_constraint with prerequisite-includes field fails', () => {
+      const result = validate({
+        type: 'n-of',
+        comparison: 'at-least',
+        count: 3,
+        items: [course('MATH', '151'), course('MATH', '152'), course('MATH', '153')],
+        post_constraints: [
+          { comparison: 'at-least', count: 1, filter: { field: 'prerequisite-includes', op: 'includes', value: course('MATH', '100') } }
+        ]
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(12);
+    });
+
+    test('post_constraint with number field is valid', () => {
+      const result = validate({
+        type: 'n-of',
+        comparison: 'at-least',
+        count: 3,
+        items: [course('MATH', '151'), course('MATH', '152'), course('MATH', '301'), course('MATH', '401')],
+        post_constraints: [
+          { comparison: 'at-least', count: 1, filter: { field: 'number', op: 'gte', value: 300 } }
+        ]
+      });
+      expect(result).toEqual({ valid: true });
+    });
   });
 
   describe('Rule 13: top-level only', () => {
-    // Tests added in commit 2.4
+    test('overlap-limit at top level is valid', () => {
+      const result = validate({
+        type: 'overlap-limit',
+        left: { type: 'variable-ref', name: 'gen_ed' },
+        right: { type: 'program-context-ref', role: 'primary-major' },
+        constraint: { comparison: 'at-most', value: 3, unit: 'courses' }
+      });
+      // variable-ref 'gen_ed' will fail rule 5, but NOT rule 13
+      expect(result.errors.every(e => e.rule !== 13)).toBe(true);
+    });
+
+    test('overlap-limit nested inside all-of fails', () => {
+      const result = validate({
+        type: 'all-of',
+        items: [
+          {
+            type: 'overlap-limit',
+            left: { type: 'program-context-ref', role: 'primary-major' },
+            right: { type: 'program-context-ref', role: 'primary-minor' },
+            constraint: { comparison: 'at-most', value: 2, unit: 'courses' }
+          }
+        ]
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors.some(e => e.rule === 13)).toBe(true);
+    });
+
+    test('outside-program at top level is valid', () => {
+      const result = validate({
+        type: 'outside-program',
+        program: { type: 'program-context-ref', role: 'primary-major' },
+        constraint: { comparison: 'at-least', value: 72, unit: 'credits' }
+      });
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('outside-program nested fails', () => {
+      const result = validate({
+        type: 'all-of',
+        items: [
+          {
+            type: 'outside-program',
+            program: { type: 'program-context-ref', role: 'primary-major' },
+            constraint: { comparison: 'at-least', value: 72, unit: 'credits' }
+          }
+        ]
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors.some(e => e.rule === 13)).toBe(true);
+    });
   });
 
   describe('Rule 14: role values', () => {
-    // Tests added in commit 2.4
+    test('primary-major is valid', () => {
+      const result = validate({ type: 'program-context-ref', role: 'primary-major' });
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('primary-minor is valid', () => {
+      const result = validate({ type: 'program-context-ref', role: 'primary-minor' });
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('invalid role fails', () => {
+      const result = validate({ type: 'program-context-ref', role: 'secondary-major' });
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(14);
+    });
   });
 
   // --- Integration tests ---
 
   describe('Parser output validation', () => {
-    // Tests added in commit 2.4
+    test('simple course', () => {
+      expect(validate(parse('MATH 151'))).toEqual({ valid: true });
+    });
+
+    test('all-of with gpa constraint', () => {
+      expect(validate(parse('all of (MATH 151, MATH 152) with gpa >= 2.0'))).toEqual({ valid: true });
+    });
+
+    test('complex requirement with variables and filters', () => {
+      const ast = parse(`
+        all of (
+          $core = all of (CMPS 147, CMPS 148, CMPS 230),
+          $core with gpa >= 2.0,
+          at least 3 of (
+            courses where subject = "CMPS" and number >= 300
+          )
+        )
+      `);
+      expect(validate(ast)).toEqual({ valid: true });
+    });
+
+    test('score requirement', () => {
+      expect(validate(parse('score SAT_MATH >= 580'))).toEqual({ valid: true });
+    });
+
+    test('attainment requirement', () => {
+      expect(validate(parse('attainment JUNIOR_STANDING'))).toEqual({ valid: true });
+    });
   });
 
 });

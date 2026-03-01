@@ -74,6 +74,12 @@ function collectDefs(node, scopeName, defs) {
   if (node.target) {
     collectDefs(node.target, scopeName, defs);
   }
+  if (node.requirement) {
+    collectDefs(node.requirement, scopeName, defs);
+  }
+  if (node.program && typeof node.program === 'object') {
+    collectDefs(node.program, scopeName, defs);
+  }
 
   return defs;
 }
@@ -200,6 +206,79 @@ function walkNode(node, ctx, path, isTopLevel) {
     }
   }
 
+  // Rule 9: Filter op must be valid for field type
+  if (node.type === 'course-filter' && Array.isArray(node.filters)) {
+    for (let i = 0; i < node.filters.length; i++) {
+      validateFilterOp(node.filters[i], ctx, joinPath(path, `filters[${i}]`));
+    }
+  }
+
+  // Rule 9 also applies to post_constraints
+  if (Array.isArray(node.post_constraints)) {
+    for (let i = 0; i < node.post_constraints.length; i++) {
+      const pc = node.post_constraints[i];
+      if (pc.filter) {
+        validateFilterOp(pc.filter, ctx, joinPath(path, `post_constraints[${i}].filter`));
+      }
+    }
+  }
+
+  // Rule 10: with-constraint target must not be non-course types
+  if (node.type === 'with-constraint' && node.requirement) {
+    const forbidden = ['score', 'attainment', 'quantity', 'program', 'program-context-ref', 'overlap-limit', 'outside-program'];
+    if (forbidden.includes(node.requirement.type)) {
+      ctx.errors.push({
+        rule: 10,
+        message: `"with" constraint cannot be applied to a "${node.requirement.type}" node`,
+        path
+      });
+    }
+  }
+
+  // Rule 11: concurrentAllowed property only valid on course nodes
+  if (node.concurrentAllowed && node.type !== 'course') {
+    ctx.errors.push({
+      rule: 11,
+      message: `"concurrentAllowed" is only valid on course nodes, found on "${node.type}"`,
+      path
+    });
+  }
+
+  // Rule 12: post_constraint filter field must be course-specific
+  if (Array.isArray(node.post_constraints)) {
+    const courseFields = ['subject', 'number', 'attribute', 'credits'];
+    for (let i = 0; i < node.post_constraints.length; i++) {
+      const pc = node.post_constraints[i];
+      if (pc.filter && !courseFields.includes(pc.filter.field)) {
+        ctx.errors.push({
+          rule: 12,
+          message: `Post-selection constraint filter field must be one of ${courseFields.join(', ')}, got "${pc.filter.field}"`,
+          path: joinPath(path, `post_constraints[${i}].filter`)
+        });
+      }
+    }
+  }
+
+  // Rule 13: overlap-limit/outside-program may only appear at top level
+  if ((node.type === 'overlap-limit' || node.type === 'outside-program') && !isTopLevel) {
+    ctx.errors.push({
+      rule: 13,
+      message: `"${node.type}" may only appear at the top level`,
+      path
+    });
+  }
+
+  // Rule 14: program-context-ref role must be 'primary-major' or 'primary-minor'
+  if (node.type === 'program-context-ref') {
+    if (node.role !== 'primary-major' && node.role !== 'primary-minor') {
+      ctx.errors.push({
+        rule: 14,
+        message: `Invalid program context role "${node.role}" — must be "primary-major" or "primary-minor"`,
+        path
+      });
+    }
+  }
+
   // Recurse into children
   if (Array.isArray(node.items)) {
     for (let i = 0; i < node.items.length; i++) {
@@ -223,6 +302,43 @@ function walkNode(node, ctx, path, isTopLevel) {
   }
   if (node.target) {
     walkNode(node.target, ctx, joinPath(path, 'target'), false);
+  }
+  if (node.requirement) {
+    walkNode(node.requirement, ctx, joinPath(path, 'requirement'), false);
+  }
+  if (node.program && typeof node.program === 'object') {
+    walkNode(node.program, ctx, joinPath(path, 'program'), false);
+  }
+}
+
+/**
+ * Validate a single filter's field/op compatibility (Rule 9).
+ */
+function validateFilterOp(filter, ctx, path) {
+  if (!filter || typeof filter !== 'object') return;
+  const { field, op } = filter;
+
+  const stringOps = ['eq', 'ne', 'in', 'not-in'];
+  const numericOps = ['eq', 'ne', 'gt', 'gte', 'lt', 'lte'];
+  const includesOps = ['includes'];
+
+  const allowed = {
+    'subject': stringOps,
+    'attribute': stringOps,
+    'number': numericOps,
+    'credits': numericOps,
+    'prerequisite-includes': includesOps,
+    'corequisite-includes': includesOps
+  };
+
+  const ops = allowed[field];
+  if (!ops) return; // Unknown field — not our concern here
+  if (!ops.includes(op)) {
+    ctx.errors.push({
+      rule: 9,
+      message: `Filter field "${field}" does not support operator "${op}" — allowed: ${ops.join(', ')}`,
+      path
+    });
   }
 }
 
