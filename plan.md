@@ -28,7 +28,7 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 ### Course Filters
 - [x] **1.7** Grammar + parser + tests: `courses where subject = "X"`, `number >= N`, `number <= N`, equality, compound `and` filters
 - [x] **1.8** Grammar + parser + tests: `attribute = "X"`, `credits >= N`, `credits <= N`
-- [ ] **1.9** Grammar + parser + tests: `in (...)` and `not in (...)` operators (`subject in ("CSE", "MATH")`, `attribute in ("ALV", "CSI")`)
+- [x] **1.9** Grammar + parser + tests: `in (...)` and `not in (...)` operators (`subject in ("CSE", "MATH")`, `attribute in ("ALV", "CSI")`)
 - [ ] **1.10** Grammar + parser + tests: `!=` operator (`subject != "CSCI"`)
 - [ ] **1.11** Grammar + parser + tests: `prerequisite includes (...)`, `corequisite includes (...)`
 

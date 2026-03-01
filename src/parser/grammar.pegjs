@@ -59,10 +59,18 @@ ComparisonOp
   / ">"  { return 'gt'; }
   / "<"  { return 'lt'; }
   / "="  { return 'eq'; }
+  / NOT __ IN { return 'not-in'; }
+  / IN       { return 'in'; }
 
 FilterValue
-  = StringLiteral
+  = StringList
+  / StringLiteral
   / Integer
+
+StringList "string list"
+  = "(" _ head:StringLiteral tail:(_ "," _ StringLiteral)* _ ")" {
+      return [head, ...tail.map(t => t[3])];
+    }
 
 StringLiteral "string"
   = '"' chars:$([^"]*) '"' { return chars; }
@@ -97,6 +105,8 @@ OF      = "of"i      !IdentChar
 COURSES = "courses"i !IdentChar
 WHERE   = "where"i   !IdentChar
 AND     = "and"i     !IdentChar
+IN      = "in"i      !IdentChar
+NOT     = "not"i     !IdentChar
 
 IdentChar = [A-Za-z0-9]
 

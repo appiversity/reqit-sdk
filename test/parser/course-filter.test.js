@@ -276,6 +276,91 @@ describe('courses where — credits filters', () => {
   });
 });
 
+describe('courses where — in / not in operators', () => {
+  test('subject in list', () => {
+    expect(parse('courses where subject in ("CSCI", "MATH", "ECON")')).toEqual({
+      type: 'course-filter',
+      filters: [{ field: 'subject', op: 'in', value: ['CSCI', 'MATH', 'ECON'] }],
+    });
+  });
+
+  test('subject not in list', () => {
+    expect(parse('courses where subject not in ("PHYS", "CHEM")')).toEqual({
+      type: 'course-filter',
+      filters: [{ field: 'subject', op: 'not-in', value: ['PHYS', 'CHEM'] }],
+    });
+  });
+
+  test('attribute in list', () => {
+    expect(parse('courses where attribute in ("C300", "C30C", "C30T", "C30S")')).toEqual({
+      type: 'course-filter',
+      filters: [{ field: 'attribute', op: 'in', value: ['C300', 'C30C', 'C30T', 'C30S'] }],
+    });
+  });
+
+  // W&M case study: multi-subject COLL 300 pool
+  test('W&M: COLL 300 from multiple subjects', () => {
+    const input = 'courses where subject in ("CSCI", "MATH", "ECON", "ENVR") and attribute = "C300"';
+    expect(parse(input)).toEqual({
+      type: 'course-filter',
+      filters: [
+        { field: 'subject', op: 'in', value: ['CSCI', 'MATH', 'ECON', 'ENVR'] },
+        { field: 'attribute', op: 'eq', value: 'C300' },
+      ],
+    });
+  });
+
+  test('single-element in list', () => {
+    expect(parse('courses where subject in ("MATH")')).toEqual({
+      type: 'course-filter',
+      filters: [{ field: 'subject', op: 'in', value: ['MATH'] }],
+    });
+  });
+
+  test('case-insensitive IN / NOT IN keywords', () => {
+    expect(parse('courses where subject IN ("MATH", "CSCI")')).toEqual({
+      type: 'course-filter',
+      filters: [{ field: 'subject', op: 'in', value: ['MATH', 'CSCI'] }],
+    });
+    expect(parse('courses where subject NOT IN ("PHYS")')).toEqual({
+      type: 'course-filter',
+      filters: [{ field: 'subject', op: 'not-in', value: ['PHYS'] }],
+    });
+  });
+
+  test('in with compound filters', () => {
+    expect(parse('courses where subject in ("CSCI", "MATH") and number >= 300')).toEqual({
+      type: 'course-filter',
+      filters: [
+        { field: 'subject', op: 'in', value: ['CSCI', 'MATH'] },
+        { field: 'number', op: 'gte', value: 300 },
+      ],
+    });
+  });
+
+  test('in list inside n-of', () => {
+    const input = 'at least 3 of (courses where subject in ("CSCI", "MATH") and number >= 200)';
+    expect(parse(input)).toEqual({
+      type: 'n-of',
+      comparison: 'at-least',
+      count: 3,
+      items: [
+        {
+          type: 'course-filter',
+          filters: [
+            { field: 'subject', op: 'in', value: ['CSCI', 'MATH'] },
+            { field: 'number', op: 'gte', value: 200 },
+          ],
+        },
+      ],
+    });
+  });
+
+  test('empty string list fails', () => {
+    expect(() => parse('courses where subject in ()')).toThrow();
+  });
+});
+
 describe('courses where — formatting', () => {
   test('multiline with comments', () => {
     const input = `all of (
