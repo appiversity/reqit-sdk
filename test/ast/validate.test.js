@@ -279,19 +279,199 @@ describe('validate()', () => {
   // --- Rules 5–8: Variable & Course Format ---
 
   describe('Rule 5: variable-ref resolution', () => {
-    // Tests added in commit 2.3
+    test('unscoped ref with matching def is valid', () => {
+      const result = validate({
+        type: 'all-of',
+        items: [
+          { type: 'variable-def', name: 'core', value: course('MATH', '151') },
+          { type: 'variable-ref', name: 'core' }
+        ]
+      });
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('unscoped ref with no matching def fails', () => {
+      const result = validate({ type: 'variable-ref', name: 'missing' });
+      expect(result.valid).toBe(false);
+      expect(result.errors[0]).toEqual({
+        rule: 5,
+        message: expect.stringContaining('$missing'),
+        path: '(root)'
+      });
+    });
+
+    test('cross-scope ref with matching scoped def is valid', () => {
+      const result = validate({
+        type: 'all-of',
+        items: [
+          {
+            type: 'scope', name: 'cs',
+            items: [
+              { type: 'variable-def', name: 'core', value: course('CMPS', '147') }
+            ]
+          },
+          { type: 'variable-ref', name: 'core', scope: 'cs' }
+        ]
+      });
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('cross-scope ref with no matching def fails', () => {
+      const result = validate({
+        type: 'variable-ref', name: 'core', scope: 'math'
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors[0]).toEqual({
+        rule: 5,
+        message: expect.stringContaining('$math.core'),
+        path: '(root)'
+      });
+    });
+
+    test('ref inside scope resolves local def', () => {
+      const result = validate({
+        type: 'scope', name: 'cs',
+        items: [
+          { type: 'variable-def', name: 'core', value: course('CMPS', '147') },
+          { type: 'variable-ref', name: 'core' }
+        ]
+      });
+      expect(result).toEqual({ valid: true });
+    });
   });
 
   describe('Rule 6: circular references', () => {
-    // Tests added in commit 2.3
+    test('direct self-reference', () => {
+      const result = validate({
+        type: 'all-of',
+        items: [
+          { type: 'variable-def', name: 'a', value: { type: 'variable-ref', name: 'a' } }
+        ]
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors.some(e => e.rule === 6)).toBe(true);
+    });
+
+    test('indirect circular reference (a -> b -> a)', () => {
+      const result = validate({
+        type: 'all-of',
+        items: [
+          { type: 'variable-def', name: 'a', value: { type: 'variable-ref', name: 'b' } },
+          { type: 'variable-def', name: 'b', value: { type: 'variable-ref', name: 'a' } }
+        ]
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors.some(e => e.rule === 6)).toBe(true);
+    });
+
+    test('chain without cycle is valid (a -> b -> course)', () => {
+      const result = validate({
+        type: 'all-of',
+        items: [
+          { type: 'variable-def', name: 'b', value: course('MATH', '151') },
+          { type: 'variable-def', name: 'a', value: { type: 'variable-ref', name: 'b' } },
+          { type: 'variable-ref', name: 'a' }
+        ]
+      });
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('three-node cycle (a -> b -> c -> a)', () => {
+      const result = validate({
+        type: 'all-of',
+        items: [
+          { type: 'variable-def', name: 'a', value: { type: 'variable-ref', name: 'b' } },
+          { type: 'variable-def', name: 'b', value: { type: 'variable-ref', name: 'c' } },
+          { type: 'variable-def', name: 'c', value: { type: 'variable-ref', name: 'a' } }
+        ]
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors.some(e => e.rule === 6)).toBe(true);
+    });
   });
 
   describe('Rule 7: course subject format', () => {
-    // Tests added in commit 2.3
+    test('valid 4-letter subject', () => {
+      expect(validate(course('MATH', '151'))).toEqual({ valid: true });
+    });
+
+    test('valid 2-letter subject', () => {
+      expect(validate(course('CS', '101'))).toEqual({ valid: true });
+    });
+
+    test('valid 6-letter subject', () => {
+      expect(validate(course('COMPUT', '100'))).toEqual({ valid: true });
+    });
+
+    test('single character subject fails', () => {
+      const result = validate(course('M', '151'));
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(7);
+    });
+
+    test('7-character subject fails', () => {
+      const result = validate(course('ABCDEFG', '151'));
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(7);
+    });
+
+    test('lowercase subject fails', () => {
+      const result = validate(course('math', '151'));
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(7);
+    });
+
+    test('subject with special chars fails', () => {
+      const result = validate(course('MA-TH', '151'));
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(7);
+    });
+
+    test('alphanumeric subject is valid', () => {
+      expect(validate(course('CS2', '101'))).toEqual({ valid: true });
+    });
   });
 
   describe('Rule 8: course number format', () => {
-    // Tests added in commit 2.3
+    test('valid 3-digit number', () => {
+      expect(validate(course('MATH', '151'))).toEqual({ valid: true });
+    });
+
+    test('valid 1-digit number', () => {
+      expect(validate(course('MATH', '1'))).toEqual({ valid: true });
+    });
+
+    test('valid number with letter suffix', () => {
+      expect(validate(course('CHEM', '101A'))).toEqual({ valid: true });
+    });
+
+    test('valid decimal number', () => {
+      expect(validate(course('CSCI', '220.2'))).toEqual({ valid: true });
+    });
+
+    test('number starting with letter fails', () => {
+      const result = validate(course('MATH', 'A151'));
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(8);
+    });
+
+    test('empty number fails', () => {
+      const result = validate(course('MATH', ''));
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(8);
+    });
+
+    test('7-character number fails', () => {
+      const result = validate(course('MATH', '1234567'));
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(8);
+    });
+
+    test('number with special chars fails', () => {
+      const result = validate(course('MATH', '15-1'));
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(8);
+    });
   });
 
   // --- Rules 9–14: Filter, Constraint & Context ---

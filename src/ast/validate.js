@@ -137,6 +137,69 @@ function walkNode(node, ctx, path, isTopLevel) {
     }
   }
 
+  // Rule 5: Every variable-ref must have a matching variable-def
+  // Rule 6 (part 1): Check if ref targets a def we're currently walking (circular)
+  if (node.type === 'variable-ref') {
+    const refName = node.name;
+    const scope = node.scope;
+    const key = scope ? `${scope}.${refName}` : refName;
+    if (!ctx.defs.has(key)) {
+      ctx.errors.push({
+        rule: 5,
+        message: `Variable reference "$${scope ? scope + '.' : ''}${refName}" has no matching definition`,
+        path
+      });
+    } else if (ctx.visiting.has(key)) {
+      ctx.errors.push({
+        rule: 6,
+        message: `Circular variable reference detected: "$${scope ? scope + '.' : ''}${refName}"`,
+        path
+      });
+    } else {
+      // Walk into the referenced def's value to detect indirect circularity
+      const def = ctx.defs.get(key);
+      if (def && def.value) {
+        ctx.visiting.add(key);
+        walkNode(def.value, ctx, joinPath(path, `->$${key}`), false);
+        ctx.visiting.delete(key);
+      }
+    }
+    return; // variable-ref has no children to recurse into
+  }
+
+  // Rule 6 (part 2): Track variable-def in visiting set while walking its value
+  if (node.type === 'variable-def') {
+    const name = node.name;
+    ctx.visiting.add(name);
+    if (node.value) {
+      walkNode(node.value, ctx, joinPath(path, 'value'), false);
+    }
+    ctx.visiting.delete(name);
+    return; // Already walked value above, skip normal recursion
+  }
+
+  // Rule 7: Course subject format (2–6 uppercase alphanumeric)
+  if (node.type === 'course') {
+    if (typeof node.subject !== 'string' || !/^[A-Z0-9]{2,6}$/.test(node.subject)) {
+      ctx.errors.push({
+        rule: 7,
+        message: `Invalid course subject "${node.subject}" — must be 2–6 uppercase alphanumeric characters`,
+        path
+      });
+    }
+  }
+
+  // Rule 8: Course number format (1–6 chars, starts with digit)
+  if (node.type === 'course') {
+    if (typeof node.number !== 'string' || !/^[0-9][A-Z0-9.]{0,5}$/.test(node.number)) {
+      ctx.errors.push({
+        rule: 8,
+        message: `Invalid course number "${node.number}" — must be 1–6 characters starting with a digit`,
+        path
+      });
+    }
+  }
+
   // Recurse into children
   if (Array.isArray(node.items)) {
     for (let i = 0; i < node.items.length; i++) {
