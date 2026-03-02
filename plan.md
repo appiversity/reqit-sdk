@@ -85,16 +85,28 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 ## Phase 3: Renderers
 
 ### toText (Round-Trip)
-- [ ] **3.1** `toText()` for leaf nodes (course, course-filter, score, attainment, quantity, variable-ref)
-- [ ] **3.2** `toText()` for composite nodes (all-of, any-of, n-of, none-of, one-from-each, from-n-groups, credits-from)
-- [ ] **3.3** `toText()` for wrapper/modifier nodes (with-constraint, except), variable-def, scope blocks
-- [ ] **3.4** `toText()` for policy nodes (overlap-limit, outside-program, program, program-context-ref)
-- [ ] **3.5** Round-trip tests: `parse(toText(parse(text))) ≡ parse(text)` for every fixture in the test suite (all 4 case studies)
+- [x] **3.1** `toText()` for leaf nodes (course, course-filter, score, attainment, quantity, variable-ref)
+- [x] **3.2** `toText()` for composite nodes (all-of, any-of, n-of, none-of, one-from-each, from-n-groups, credits-from)
+- [x] **3.3** `toText()` for wrapper/modifier nodes (with-constraint, except), variable-def, scope blocks
+- [x] **3.4** `toText()` for policy nodes (overlap-limit, outside-program, program, program-context-ref)
+- [x] **3.5** Round-trip tests: `parse(toText(parse(text))) ≡ parse(text)` for every fixture in the test suite (all 4 case studies)
 
 ### Human-Readable Renderers
-- [ ] **3.6** `toDescription()` — AST → human-readable paragraph text + tests
-- [ ] **3.7** `toOutline()` — AST → indented outline with course titles from catalog + tests
-- [ ] **3.8** `toHTML()` — AST → semantic HTML with `reqit-` CSS classes + tests
+- [x] **3.6** `toDescription()` — AST → human-readable paragraph text + tests
+- [x] **3.7** `toOutline()` — AST → indented outline with course titles from catalog + tests
+- [x] **3.8** `toHTML()` — AST → semantic HTML with `reqit-` CSS classes + tests
+
+### Render Quality Pass
+- [x] **3.9** Render package quality pass — documentation, modularity, performance:
+  - Maintenance guide in `shared.js` documenting cross-module change impact
+  - `NODE_TYPES` frozen registry of all 21 node types
+  - `unwrapCreditsSource()` shared helper replacing 4 inline copies
+  - `lookupTitle()` WeakMap-cached O(1) index replacing O(n) `find()`
+  - JSDoc on all exports and internal functions across all 5 render modules
+  - Module headers on all 4 renderers documenting purpose and architecture
+  - `renderScorePhrase`/`renderQuantityPhrase` throw on unknown operators (was silent fallback)
+  - `to-html.js`: extracted `renderFilter(f, catalog)` helper; bug fix threading `catalog` through `renderPostConstraints`
+  - New `test/render/exhaustiveness.test.js` — structural guard verifying every NODE_TYPE is handled by every renderer
 
 **Do not proceed to Phase 4 without asking for verification.  This is a checkpoint**.
 
@@ -105,7 +117,11 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 - [ ] **4.3** GPA calculation function (weighted by credits) + tests
 - [ ] **4.4** Custom grade scale support (international scales, institution-specific) + tests
 
+Commit Phase 4 before moving on.  As long as test coverage remains on target, can proceed to Phase 5.
+
 ## Phase 5: Catalog Resolution
+
+Each of the following 8 steps must be distinct commits.
 
 - [ ] **5.1** `resolve()` skeleton + catalog normalization (default missing optional fields: `attributes` → `[]`, `crossListGroup` → `undefined`) + course reference resolution (match `MATH 151` to catalog entry) + tests including catalogs with omitted optional fields
 - [ ] **5.2** Filter evaluation: subject, number (with numeric coercion for comparisons, exact string for equality) + tests
@@ -189,8 +205,9 @@ See [22-sdk-api-design.md](../reqit-specs/design/22-sdk-api-design.md) for the f
   - **AuditResult:** status, items, summary, warnings — output of `audit()` and `auditMulti()`
   - **ResolutionResult:** filters, courses — output of `req.resolve(catalog)`, informational only
   - **AuditException:** waivers and substitutions with required reason field
-- [ ] **12.4** Final coverage audit — verify 95% line, 90% branch, 100% parser rule coverage; add any missing edge case tests
-- [ ] **12.5** Package metadata (`package.json` fields: main, exports, files, engines, keywords, license), README.md with usage examples
+- [ ] **12.4** CSS class reference for `toHTML()` — comprehensive documentation of every `reqit-` CSS class emitted by the HTML renderer. Developers using the SDK will customize these styles for their own UIs, so the docs must cover: every class name and which node type / structural role produces it, the HTML structure (nesting of `div`/`span`/`ul`/`li`/`p` elements), which classes appear on leaf vs composite vs wrapper nodes, semantic meaning of each class (e.g. `reqit-post-constraint`, `reqit-concurrent`), and a starter stylesheet example. This is an integration boundary — the CSS class names and DOM structure are the SDK's visual contract with consuming applications.
+- [ ] **12.5** Final coverage audit — verify 95% line, 90% branch, 100% parser rule coverage; add any missing edge case tests
+- [ ] **12.6** Package metadata (`package.json` fields: main, exports, files, engines, keywords, license), README.md with usage examples
 
 ---
 
@@ -201,7 +218,7 @@ See [22-sdk-api-design.md](../reqit-specs/design/22-sdk-api-design.md) for the f
 | 0 | 2 | Scaffolding + fixtures |
 | 1 | 30 | Grammar & parser |
 | 2 | 4 | AST validation |
-| 3 | 8 | Renderers |
+| 3 | 9 | Renderers |
 | 4 | 4 | Grade config |
 | 5 | 8 | Resolution |
 | 6 | 14 | Single-tree audit |
@@ -210,8 +227,8 @@ See [22-sdk-api-design.md](../reqit-specs/design/22-sdk-api-design.md) for the f
 | 9 | 5 | AST utilities |
 | 10 | 3 | Audit utilities |
 | 11 | 5 | Export |
-| 12 | 5 | API + integration tests + docs + packaging |
-| **Total** | **96** | |
+| 12 | 6 | API + integration tests + docs + packaging |
+| **Total** | **98** | |
 
 ## Test Fixture Strategy
 

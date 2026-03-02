@@ -1,7 +1,19 @@
 'use strict';
 
-const { OP_SYMBOLS, comparisonPhrase, lookupTitle, renderFilterPhrase } = require('./shared');
+/**
+ * to-html.js — Render an AST as semantic HTML with `reqit-` prefixed CSS classes.
+ *
+ * All user-supplied text is escaped via `esc()` to prevent XSS.
+ * CSS class prefix: `reqit-` (e.g. `.reqit-course`, `.reqit-label`).
+ */
 
+const { OP_SYMBOLS, comparisonPhrase, lookupTitle, renderFilterPhrase, unwrapCreditsSource } = require('./shared');
+
+/**
+ * HTML-escape a string (guards against XSS in user-supplied values).
+ * @param {string} str
+ * @returns {string}
+ */
 function esc(str) {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -10,21 +22,50 @@ function esc(str) {
     .replace(/"/g, '&quot;');
 }
 
-function renderPostConstraints(node) {
+/**
+ * Render a single filter clause as HTML, delegating to shared `renderFilterPhrase`
+ * with HTML-safe escaping and quoting callbacks.
+ * @param {Object} f - Filter with `field`, `op`, `value`
+ * @param {Object|null} catalog - Catalog for title lookup inside prerequisite-includes values
+ * @returns {string} HTML fragment
+ */
+function renderFilter(f, catalog) {
+  return renderFilterPhrase(f, v => renderNode(v, catalog), esc, v => '&quot;' + esc(v) + '&quot;');
+}
+
+/**
+ * Render post-constraint clauses as HTML spans.
+ * @param {Object} node - Node potentially carrying `post_constraints`
+ * @param {Object|null} catalog - Catalog for title lookup inside filter values
+ * @returns {string} HTML string (empty if no constraints)
+ */
+function renderPostConstraints(node, catalog) {
   if (!node.post_constraints) return '';
   return node.post_constraints.map(pc => {
     const comp = comparisonPhrase(pc.comparison);
-    const fv = renderFilterPhrase(pc.filter, v => renderNode(v, null), esc, v => '&quot;' + esc(v) + '&quot;');
+    const fv = renderFilter(pc.filter, catalog);
     return ` <span class="reqit-post-constraint">where ${comp} ${pc.count} have ${fv}</span>`;
   }).join('');
 }
 
+/**
+ * Render a list of child items as an HTML `<ul>`.
+ * @param {Array<Object>} items
+ * @param {Object|null} catalog
+ * @returns {string}
+ */
 function renderItemList(items, catalog) {
   return '<ul class="reqit-items">' +
     items.map(item => `<li>${renderNode(item, catalog)}</li>`).join('') +
     '</ul>';
 }
 
+/**
+ * Recursive single-dispatch renderer producing semantic HTML.
+ * @param {Object} node - AST node
+ * @param {Object|null} catalog - Optional catalog for course title lookup
+ * @returns {string} HTML string
+ */
 function renderNode(node, catalog) {
   switch (node.type) {
     case 'course': {
@@ -43,7 +84,7 @@ function renderNode(node, catalog) {
     }
 
     case 'course-filter':
-      return `<span class="reqit-course-filter">Any course where ${node.filters.map(f => renderFilterPhrase(f, v => renderNode(v, null), esc, v => '&quot;' + esc(v) + '&quot;')).join(' and ')}</span>`;
+      return `<span class="reqit-course-filter">Any course where ${node.filters.map(f => renderFilter(f, catalog)).join(' and ')}</span>`;
 
     case 'score':
       return `<span class="reqit-score">Score ${esc(node.name)} ${OP_SYMBOLS[node.op]} ${node.value}</span>`;
@@ -62,21 +103,21 @@ function renderNode(node, catalog) {
     case 'all-of':
       return `<div class="reqit-requirement reqit-all-of">` +
         `<p class="reqit-label">Complete <strong>all</strong> of the following:</p>` +
-        renderPostConstraints(node) +
+        renderPostConstraints(node, catalog) +
         renderItemList(node.items, catalog) +
         `</div>`;
 
     case 'any-of':
       return `<div class="reqit-requirement reqit-any-of">` +
         `<p class="reqit-label">Complete <strong>any one</strong> of the following:</p>` +
-        renderPostConstraints(node) +
+        renderPostConstraints(node, catalog) +
         renderItemList(node.items, catalog) +
         `</div>`;
 
     case 'none-of':
       return `<div class="reqit-requirement reqit-none-of">` +
         `<p class="reqit-label"><strong>None</strong> of the following may be used:</p>` +
-        renderPostConstraints(node) +
+        renderPostConstraints(node, catalog) +
         renderItemList(node.items, catalog) +
         `</div>`;
 
@@ -84,7 +125,7 @@ function renderNode(node, catalog) {
       const comp = comparisonPhrase(node.comparison);
       return `<div class="reqit-requirement reqit-n-of">` +
         `<p class="reqit-label">Complete <strong>${comp} ${node.count}</strong> of the following:</p>` +
-        renderPostConstraints(node) +
+        renderPostConstraints(node, catalog) +
         renderItemList(node.items, catalog) +
         `</div>`;
     }
@@ -92,23 +133,23 @@ function renderNode(node, catalog) {
     case 'one-from-each':
       return `<div class="reqit-requirement reqit-one-from-each">` +
         `<p class="reqit-label">Complete <strong>one from each</strong> of the following:</p>` +
-        renderPostConstraints(node) +
+        renderPostConstraints(node, catalog) +
         renderItemList(node.items, catalog) +
         `</div>`;
 
     case 'from-n-groups':
       return `<div class="reqit-requirement reqit-from-n-groups">` +
         `<p class="reqit-label">Complete courses from <strong>at least ${node.count}</strong> of the following groups:</p>` +
-        renderPostConstraints(node) +
+        renderPostConstraints(node, catalog) +
         renderItemList(node.items, catalog) +
         `</div>`;
 
     case 'credits-from': {
       const comp = comparisonPhrase(node.comparison);
-      const sourceItems = node.source.type === 'all-of' ? node.source.items : [node.source];
+      const sourceItems = unwrapCreditsSource(node);
       return `<div class="reqit-requirement reqit-credits-from">` +
         `<p class="reqit-label">Complete <strong>${comp} ${node.credits} credits</strong> from:</p>` +
-        renderPostConstraints(node) +
+        renderPostConstraints(node, catalog) +
         renderItemList(sourceItems, catalog) +
         `</div>`;
     }
@@ -129,7 +170,7 @@ function renderNode(node, catalog) {
       return `<div class="reqit-requirement reqit-except">` +
         source +
         `<p class="reqit-label">Except:</p>` +
-        renderPostConstraints(node) +
+        renderPostConstraints(node, catalog) +
         renderItemList(node.exclude, catalog) +
         `</div>`;
     }

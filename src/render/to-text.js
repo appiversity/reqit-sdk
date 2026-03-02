@@ -1,11 +1,30 @@
 'use strict';
 
-const { OP_SYMBOLS, comparisonPhrase } = require('./shared');
+/**
+ * to-text.js — Render an AST back to reqit DSL text.
+ *
+ * Round-trip guarantee: parse(toText(parse(input))) ≡ parse(input).
+ * Uses single-dispatch on `node.type` — every node type maps to exactly one
+ * branch in `renderNode`.
+ */
 
+const { OP_SYMBOLS, comparisonPhrase, unwrapCreditsSource } = require('./shared');
+
+/**
+ * Return the symbolic operator for an AST op string (e.g. `gte` → `>=`).
+ * @param {string} op
+ * @returns {string}
+ */
 function renderOp(op) {
   return OP_SYMBOLS[op];
 }
 
+/**
+ * Format a filter value for DSL output.
+ * Arrays become `("a", "b")`, strings become `"a"`, numbers stay bare.
+ * @param {string|number|Array} value
+ * @returns {string}
+ */
 function renderFilterValue(value) {
   if (Array.isArray(value)) {
     return '(' + value.map(v => `"${v}"`).join(', ') + ')';
@@ -16,6 +35,12 @@ function renderFilterValue(value) {
   return String(value);
 }
 
+/**
+ * Render a single filter clause (e.g. `subject = "MATH"`).
+ * Special-cases `prerequisite-includes` / `corequisite-includes`.
+ * @param {Object} f - Filter with `field`, `op`, `value`
+ * @returns {string}
+ */
 function renderFilter(f) {
   if (f.field === 'prerequisite-includes' || f.field === 'corequisite-includes') {
     const keyword = f.field === 'prerequisite-includes' ? 'prerequisite' : 'corequisite';
@@ -24,6 +49,12 @@ function renderFilter(f) {
   return `${f.field} ${renderOp(f.op)} ${renderFilterValue(f.value)}`;
 }
 
+/**
+ * Append post-constraint clauses (e.g. `where at least 2 match (...)`) to text.
+ * @param {Object} node - Node potentially carrying `post_constraints`
+ * @param {string} text - Text accumulated so far
+ * @returns {string}
+ */
 function renderPostConstraints(node, text) {
   if (!node.post_constraints) return text;
   for (const pc of node.post_constraints) {
@@ -33,10 +64,20 @@ function renderPostConstraints(node, text) {
   return text;
 }
 
+/**
+ * Render a comma-separated list of child nodes.
+ * @param {Array<Object>} items
+ * @returns {string}
+ */
 function renderItems(items) {
   return items.map(renderNode).join(', ');
 }
 
+/**
+ * Recursive single-dispatch renderer. Every AST node type has exactly one branch.
+ * @param {Object} node - AST node
+ * @returns {string} DSL text
+ */
 function renderNode(node) {
   let text;
 
@@ -89,13 +130,7 @@ function renderNode(node) {
 
     case 'credits-from': {
       const prefix = comparisonPhrase(node.comparison);
-      // Unwrap synthesized all-of
-      let sourceItems;
-      if (node.source.type === 'all-of') {
-        sourceItems = renderItems(node.source.items);
-      } else {
-        sourceItems = renderNode(node.source);
-      }
+      const sourceItems = renderItems(unwrapCreditsSource(node));
       text = `${prefix} ${node.credits} credits from (${sourceItems})`;
       return renderPostConstraints(node, text);
     }

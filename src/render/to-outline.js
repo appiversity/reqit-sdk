@@ -1,7 +1,24 @@
 'use strict';
 
-const { OP_PHRASES, comparisonPhrase, lookupTitle, renderFilterPhrase } = require('./shared');
+/**
+ * to-outline.js — Render an AST as an indented tree outline with box-drawing connectors.
+ *
+ * Unlike the other renderers (single `renderNode` dispatch), this module uses a
+ * two-level dispatch: `renderLeaf` for terminal nodes and `renderTree` for
+ * composite/wrapper nodes. The split exists because tree formatting needs to
+ * distinguish leaf vs composite when choosing connector prefixes (`├──` / `└──`)
+ * and propagating indentation.
+ */
 
+const { OP_PHRASES, comparisonPhrase, lookupTitle, renderFilterPhrase, unwrapCreditsSource } = require('./shared');
+
+/**
+ * Render a leaf (terminal) node as a single line of text.
+ * Returns `null` for non-leaf nodes so `renderTree` can handle them.
+ * @param {Object} node - AST node
+ * @param {Object|null} catalog - Catalog for title lookup
+ * @returns {string|null} Single-line text, or null if not a leaf
+ */
 function renderLeaf(node, catalog) {
   switch (node.type) {
     case 'course': {
@@ -32,6 +49,12 @@ function renderLeaf(node, catalog) {
   }
 }
 
+/**
+ * Render inline post-constraint suffixes (e.g. ` (where at least 2 have ...)`).
+ * @param {Object} node - Node potentially carrying `post_constraints`
+ * @param {Object|null} catalog - Catalog for title lookup inside filter values
+ * @returns {string} Suffix string (empty if no constraints)
+ */
 function renderPostConstraintSuffix(node, catalog) {
   if (!node.post_constraints) return '';
   return node.post_constraints.map(pc => {
@@ -90,7 +113,7 @@ function renderTree(node, catalog, prefix, connector) {
     case 'credits-from': {
       const comp = comparisonPhrase(node.comparison) + ' ' + node.credits;
       label = `Complete ${comp} credits from:` + renderPostConstraintSuffix(node, catalog);
-      children = node.source.type === 'all-of' ? node.source.items : [node.source];
+      children = unwrapCreditsSource(node);
       break;
     }
     case 'with-constraint': {

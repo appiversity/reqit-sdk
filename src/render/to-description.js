@@ -1,7 +1,20 @@
 'use strict';
 
-const { comparisonPhrase, renderFilterPhrase } = require('./shared');
+/**
+ * to-description.js — Render an AST as a human-readable prose description.
+ *
+ * Output is not round-trippable — it is meant for display to end users
+ * (e.g. academic advisors, students) who should not need to understand the DSL.
+ */
 
+const { comparisonPhrase, renderFilterPhrase, unwrapCreditsSource } = require('./shared');
+
+/**
+ * Render child items as an indented bulleted list (multi-item) or inline (single item).
+ * @param {Array<Object>} items
+ * @param {number} [indent]
+ * @returns {string}
+ */
 function renderItems(items, indent) {
   if (items.length === 1) {
     return ' ' + renderNode(items[0], indent);
@@ -10,6 +23,14 @@ function renderItems(items, indent) {
   return '\n' + items.map(item => `${prefix}- ${renderNode(item, (indent || 1) + 1)}`).join('\n');
 }
 
+/**
+ * Convert a score node into a natural-language phrase.
+ * Operator-dependent — throws on unrecognised operators.
+ * @param {string} op - Operator (eq, ne, gt, gte, lt, lte)
+ * @param {number} value
+ * @param {string} name - Score name
+ * @returns {string}
+ */
 function renderScorePhrase(op, value, name) {
   switch (op) {
     case 'gte': return `Score of ${value} or higher on ${name}`;
@@ -18,10 +39,18 @@ function renderScorePhrase(op, value, name) {
     case 'lt': return `Score below ${value} on ${name}`;
     case 'eq': return `Score of exactly ${value} on ${name}`;
     case 'ne': return `Score other than ${value} on ${name}`;
-    default: return `Score ${op} ${value} on ${name}`;
+    default: throw new Error(`Unknown score operator: ${op}`);
   }
 }
 
+/**
+ * Convert a quantity node into a natural-language phrase.
+ * Operator-dependent — throws on unrecognised operators.
+ * @param {string} op - Operator (eq, ne, gt, gte, lt, lte)
+ * @param {number} value
+ * @param {string} name - Quantity name
+ * @returns {string}
+ */
 function renderQuantityPhrase(op, value, name) {
   switch (op) {
     case 'gte': return `At least ${value} ${name}`;
@@ -30,10 +59,16 @@ function renderQuantityPhrase(op, value, name) {
     case 'lt': return `Fewer than ${value} ${name}`;
     case 'eq': return `Exactly ${value} ${name}`;
     case 'ne': return `Not ${value} ${name}`;
-    default: return `${value} ${name}`;
+    default: throw new Error(`Unknown quantity operator: ${op}`);
   }
 }
 
+/**
+ * Append post-constraint clauses as prose (e.g. ", where at least 2 must have ...").
+ * @param {Object} node - Node potentially carrying `post_constraints`
+ * @param {string} text - Text accumulated so far
+ * @returns {string}
+ */
 function renderPostConstraints(node, text) {
   if (!node.post_constraints) return text;
   for (const pc of node.post_constraints) {
@@ -44,6 +79,12 @@ function renderPostConstraints(node, text) {
   return text;
 }
 
+/**
+ * Recursive single-dispatch renderer producing prose output.
+ * @param {Object} node - AST node
+ * @param {number} [indent] - Current indentation depth
+ * @returns {string}
+ */
 function renderNode(node, indent) {
   switch (node.type) {
     case 'course': {
@@ -100,8 +141,7 @@ function renderNode(node, indent) {
 
     case 'credits-from': {
       const comp = comparisonPhrase(node.comparison) + ' ' + node.credits;
-      // Unwrap synthesized all-of for credits-from
-      const sourceItems = node.source.type === 'all-of' ? node.source.items : [node.source];
+      const sourceItems = unwrapCreditsSource(node);
       let text = `Complete ${comp} credits from:${renderItems(sourceItems, indent)}`;
       return renderPostConstraints(node, text);
     }
