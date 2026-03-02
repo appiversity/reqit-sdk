@@ -1,38 +1,6 @@
 'use strict';
 
-const OP_PHRASES = {
-  eq: 'is',
-  ne: 'is not',
-  gt: 'is above',
-  gte: 'is at least',
-  lt: 'is below',
-  lte: 'is at most',
-  in: 'is one of',
-  'not-in': 'is not one of',
-};
-
-function lookupTitle(node, catalog) {
-  if (!catalog || !catalog.courses) return null;
-  const course = catalog.courses.find(
-    c => c.subject === node.subject && c.number === node.number
-  );
-  return course ? course.title : null;
-}
-
-function renderFilterPhrase(f) {
-  if (f.field === 'prerequisite-includes' || f.field === 'corequisite-includes') {
-    const kind = f.field === 'prerequisite-includes' ? 'prerequisite' : 'corequisite';
-    return `${kind} includes ${renderLeaf(f.value, null)}`;
-  }
-  const phrase = OP_PHRASES[f.op];
-  if (Array.isArray(f.value)) {
-    return `${f.field} ${phrase} ${f.value.map(v => `"${v}"`).join(', ')}`;
-  }
-  if (typeof f.value === 'string') {
-    return `${f.field} ${phrase} "${f.value}"`;
-  }
-  return `${f.field} ${phrase} ${f.value}`;
-}
+const { OP_PHRASES, comparisonPhrase, lookupTitle, renderFilterPhrase } = require('./shared');
 
 function renderLeaf(node, catalog) {
   switch (node.type) {
@@ -44,7 +12,7 @@ function renderLeaf(node, catalog) {
       return text;
     }
     case 'course-filter':
-      return `Any course where ${node.filters.map(renderFilterPhrase).join(' and ')}`;
+      return `Any course where ${node.filters.map(f => renderFilterPhrase(f, v => renderLeaf(v, catalog))).join(' and ')}`;
     case 'score':
       return `Score ${node.name} ${OP_PHRASES[node.op]} ${node.value}`;
     case 'attainment':
@@ -64,17 +32,11 @@ function renderLeaf(node, catalog) {
   }
 }
 
-function comparisonPhrase(comparison, count) {
-  if (comparison === 'at-least') return `at least ${count}`;
-  if (comparison === 'at-most') return `at most ${count}`;
-  return `exactly ${count}`;
-}
-
-function renderPostConstraintSuffix(node) {
+function renderPostConstraintSuffix(node, catalog) {
   if (!node.post_constraints) return '';
   return node.post_constraints.map(pc => {
-    const comp = comparisonPhrase(pc.comparison, pc.count);
-    return ` (where ${comp} have ${renderFilterPhrase(pc.filter)})`;
+    const comp = comparisonPhrase(pc.comparison) + ' ' + pc.count;
+    return ` (where ${comp} have ${renderFilterPhrase(pc.filter, v => renderLeaf(v, catalog))})`;
   }).join('');
 }
 
@@ -102,32 +64,32 @@ function renderTree(node, catalog, prefix, connector) {
 
   switch (node.type) {
     case 'all-of':
-      label = 'All of the following:' + renderPostConstraintSuffix(node);
+      label = 'All of the following:' + renderPostConstraintSuffix(node, catalog);
       children = node.items;
       break;
     case 'any-of':
-      label = 'Any one of the following:' + renderPostConstraintSuffix(node);
+      label = 'Any one of the following:' + renderPostConstraintSuffix(node, catalog);
       children = node.items;
       break;
     case 'none-of':
-      label = 'None of the following:' + renderPostConstraintSuffix(node);
+      label = 'None of the following:' + renderPostConstraintSuffix(node, catalog);
       children = node.items;
       break;
     case 'n-of':
-      label = `Complete ${comparisonPhrase(node.comparison, node.count)} of the following:` + renderPostConstraintSuffix(node);
+      label = `Complete ${comparisonPhrase(node.comparison)} ${node.count} of the following:` + renderPostConstraintSuffix(node, catalog);
       children = node.items;
       break;
     case 'one-from-each':
-      label = 'One from each of the following:' + renderPostConstraintSuffix(node);
+      label = 'One from each of the following:' + renderPostConstraintSuffix(node, catalog);
       children = node.items;
       break;
     case 'from-n-groups':
-      label = `From at least ${node.count} of the following groups:` + renderPostConstraintSuffix(node);
+      label = `From at least ${node.count} of the following groups:` + renderPostConstraintSuffix(node, catalog);
       children = node.items;
       break;
     case 'credits-from': {
-      const comp = comparisonPhrase(node.comparison, node.credits);
-      label = `Complete ${comp} credits from:` + renderPostConstraintSuffix(node);
+      const comp = comparisonPhrase(node.comparison) + ' ' + node.credits;
+      label = `Complete ${comp} credits from:` + renderPostConstraintSuffix(node, catalog);
       children = node.source.type === 'all-of' ? node.source.items : [node.source];
       break;
     }
@@ -150,10 +112,10 @@ function renderTree(node, catalog, prefix, connector) {
     case 'except': {
       const srcLeaf = renderLeaf(node.source, catalog);
       if (srcLeaf !== null) {
-        label = srcLeaf + ', except:' + renderPostConstraintSuffix(node);
+        label = srcLeaf + ', except:' + renderPostConstraintSuffix(node, catalog);
       } else {
         const srcLines = renderTree(node.source, catalog, '', '');
-        label = (srcLines[0] || 'Source') + ', except:' + renderPostConstraintSuffix(node);
+        label = srcLines[0] + ', except:' + renderPostConstraintSuffix(node, catalog);
       }
       children = node.exclude;
       break;
@@ -163,14 +125,14 @@ function renderTree(node, catalog, prefix, connector) {
     case 'scope':
       return renderTree(node.body, catalog, prefix, connector);
     case 'overlap-limit': {
-      const left = renderLeaf(node.left, catalog) || 'left';
-      const right = renderLeaf(node.right, catalog) || 'right';
+      const left = renderLeaf(node.left, catalog);
+      const right = renderLeaf(node.right, catalog);
       const unit = node.constraint.unit === 'percent' ? '%' : ` ${node.constraint.unit}`;
       label = `Overlap between ${left} and ${right}: at most ${node.constraint.value}${unit}`;
       break;
     }
     case 'outside-program': {
-      const prog = renderLeaf(node.program, catalog) || 'program';
+      const prog = renderLeaf(node.program, catalog);
       label = `At least ${node.constraint.value} credits from outside ${prog}`;
       break;
     }

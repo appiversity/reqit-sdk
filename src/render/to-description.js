@@ -1,30 +1,6 @@
 'use strict';
 
-const OP_PHRASES = {
-  eq: 'is',
-  ne: 'is not',
-  gt: 'is above',
-  gte: 'is at least',
-  lt: 'is below',
-  lte: 'is at most',
-  in: 'is one of',
-  'not-in': 'is not one of',
-};
-
-function renderFilterPhrase(f) {
-  if (f.field === 'prerequisite-includes' || f.field === 'corequisite-includes') {
-    const kind = f.field === 'prerequisite-includes' ? 'prerequisite' : 'corequisite';
-    return `${kind} includes ${renderNode(f.value)}`;
-  }
-  const phrase = OP_PHRASES[f.op];
-  if (Array.isArray(f.value)) {
-    return `${f.field} ${phrase} ${f.value.map(v => `"${v}"`).join(', ')}`;
-  }
-  if (typeof f.value === 'string') {
-    return `${f.field} ${phrase} "${f.value}"`;
-  }
-  return `${f.field} ${phrase} ${f.value}`;
-}
+const { comparisonPhrase, renderFilterPhrase } = require('./shared');
 
 function renderItems(items, indent) {
   if (items.length === 1) {
@@ -32,12 +8,6 @@ function renderItems(items, indent) {
   }
   const prefix = indent ? '  '.repeat(indent) : '  ';
   return '\n' + items.map(item => `${prefix}- ${renderNode(item, (indent || 1) + 1)}`).join('\n');
-}
-
-function renderComparisonPhrase(comparison, count) {
-  if (comparison === 'at-least') return `at least ${count}`;
-  if (comparison === 'at-most') return `at most ${count}`;
-  return `exactly ${count}`;
 }
 
 function renderScorePhrase(op, value, name) {
@@ -67,8 +37,8 @@ function renderQuantityPhrase(op, value, name) {
 function renderPostConstraints(node, text) {
   if (!node.post_constraints) return text;
   for (const pc of node.post_constraints) {
-    const comp = renderComparisonPhrase(pc.comparison, pc.count);
-    const fv = renderFilterPhrase(pc.filter);
+    const comp = comparisonPhrase(pc.comparison) + ' ' + pc.count;
+    const fv = renderFilterPhrase(pc.filter, v => renderNode(v));
     text += `, where ${comp} must have ${fv}`;
   }
   return text;
@@ -83,7 +53,7 @@ function renderNode(node, indent) {
     }
 
     case 'course-filter':
-      return `Any course where ${node.filters.map(renderFilterPhrase).join(' and ')}`;
+      return `Any course where ${node.filters.map(f => renderFilterPhrase(f, v => renderNode(v))).join(' and ')}`;
 
     case 'score':
       return renderScorePhrase(node.op, node.value, node.name);
@@ -113,7 +83,7 @@ function renderNode(node, indent) {
     }
 
     case 'n-of': {
-      const comp = renderComparisonPhrase(node.comparison, node.count);
+      const comp = comparisonPhrase(node.comparison) + ' ' + node.count;
       let text = `Complete ${comp} of the following:${renderItems(node.items, indent)}`;
       return renderPostConstraints(node, text);
     }
@@ -129,7 +99,7 @@ function renderNode(node, indent) {
     }
 
     case 'credits-from': {
-      const comp = renderComparisonPhrase(node.comparison, node.credits);
+      const comp = comparisonPhrase(node.comparison) + ' ' + node.credits;
       // Unwrap synthesized all-of for credits-from
       const sourceItems = node.source.type === 'all-of' ? node.source.items : [node.source];
       let text = `Complete ${comp} credits from:${renderItems(sourceItems, indent)}`;

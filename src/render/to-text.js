@@ -1,18 +1,9 @@
 'use strict';
 
-const OP_MAP = {
-  eq: '=',
-  ne: '!=',
-  gt: '>',
-  gte: '>=',
-  lt: '<',
-  lte: '<=',
-  in: 'in',
-  'not-in': 'not in',
-};
+const { OP_SYMBOLS, comparisonPhrase } = require('./shared');
 
 function renderOp(op) {
-  return OP_MAP[op];
+  return OP_SYMBOLS[op];
 }
 
 function renderFilterValue(value) {
@@ -37,19 +28,13 @@ function renderPostConstraints(node, text) {
   if (!node.post_constraints) return text;
   for (const pc of node.post_constraints) {
     const filterValue = renderFilterValue(pc.filter.value);
-    text += ` where ${pc.comparison === 'at-least' ? 'at least' : pc.comparison === 'at-most' ? 'at most' : 'exactly'} ${pc.count} match (${pc.filter.field} ${renderOp(pc.filter.op)} ${filterValue})`;
+    text += ` where ${comparisonPhrase(pc.comparison)} ${pc.count} match (${pc.filter.field} ${renderOp(pc.filter.op)} ${filterValue})`;
   }
   return text;
 }
 
 function renderItems(items) {
   return items.map(renderNode).join(', ');
-}
-
-function renderComparisonPrefix(comparison) {
-  if (comparison === 'at-least') return 'at least';
-  if (comparison === 'at-most') return 'at most';
-  return 'exactly';
 }
 
 function renderNode(node) {
@@ -91,7 +76,7 @@ function renderNode(node) {
       return renderPostConstraints(node, text);
 
     case 'n-of':
-      text = `${renderComparisonPrefix(node.comparison)} ${node.count} of (${renderItems(node.items)})`;
+      text = `${comparisonPhrase(node.comparison)} ${node.count} of (${renderItems(node.items)})`;
       return renderPostConstraints(node, text);
 
     case 'one-from-each':
@@ -103,7 +88,7 @@ function renderNode(node) {
       return renderPostConstraints(node, text);
 
     case 'credits-from': {
-      const prefix = renderComparisonPrefix(node.comparison);
+      const prefix = comparisonPhrase(node.comparison);
       // Unwrap synthesized all-of
       let sourceItems;
       if (node.source.type === 'all-of') {

@@ -1,26 +1,6 @@
 'use strict';
 
-const OP_TEXT = {
-  eq: '=',
-  ne: '!=',
-  gt: '>',
-  gte: '>=',
-  lt: '<',
-  lte: '<=',
-  in: 'in',
-  'not-in': 'not in',
-};
-
-const OP_PHRASES = {
-  eq: 'is',
-  ne: 'is not',
-  gt: 'is above',
-  gte: 'is at least',
-  lt: 'is below',
-  lte: 'is at most',
-  in: 'is one of',
-  'not-in': 'is not one of',
-};
+const { OP_SYMBOLS, comparisonPhrase, lookupTitle, renderFilterPhrase } = require('./shared');
 
 function esc(str) {
   return String(str)
@@ -30,40 +10,11 @@ function esc(str) {
     .replace(/"/g, '&quot;');
 }
 
-function lookupTitle(node, catalog) {
-  if (!catalog || !catalog.courses) return '';
-  const course = catalog.courses.find(
-    c => c.subject === node.subject && c.number === node.number
-  );
-  return course ? course.title : '';
-}
-
-function renderFilterHTML(f) {
-  if (f.field === 'prerequisite-includes' || f.field === 'corequisite-includes') {
-    const kind = f.field === 'prerequisite-includes' ? 'prerequisite' : 'corequisite';
-    return `${kind} includes ${renderNode(f.value, null)}`;
-  }
-  const phrase = OP_PHRASES[f.op];
-  if (Array.isArray(f.value)) {
-    return `${esc(f.field)} ${phrase} ${f.value.map(v => `&quot;${esc(v)}&quot;`).join(', ')}`;
-  }
-  if (typeof f.value === 'string') {
-    return `${esc(f.field)} ${phrase} &quot;${esc(f.value)}&quot;`;
-  }
-  return `${esc(f.field)} ${phrase} ${f.value}`;
-}
-
-function comparisonPhrase(comparison) {
-  if (comparison === 'at-least') return 'at least';
-  if (comparison === 'at-most') return 'at most';
-  return 'exactly';
-}
-
 function renderPostConstraints(node) {
   if (!node.post_constraints) return '';
   return node.post_constraints.map(pc => {
     const comp = comparisonPhrase(pc.comparison);
-    const fv = renderFilterHTML(pc.filter);
+    const fv = renderFilterPhrase(pc.filter, v => renderNode(v, null), esc, v => '&quot;' + esc(v) + '&quot;');
     return ` <span class="reqit-post-constraint">where ${comp} ${pc.count} have ${fv}</span>`;
   }).join('');
 }
@@ -80,7 +31,7 @@ function renderNode(node, catalog) {
       let html = `<span class="reqit-course">` +
         `<span class="reqit-subject">${esc(node.subject)}</span> ` +
         `<span class="reqit-number">${esc(node.number)}</span>`;
-      const title = lookupTitle(node, catalog);
+      const title = lookupTitle(node, catalog) || '';
       if (title) {
         html += ` <span class="reqit-title">${esc(title)}</span>`;
       }
@@ -92,16 +43,16 @@ function renderNode(node, catalog) {
     }
 
     case 'course-filter':
-      return `<span class="reqit-course-filter">Any course where ${node.filters.map(renderFilterHTML).join(' and ')}</span>`;
+      return `<span class="reqit-course-filter">Any course where ${node.filters.map(f => renderFilterPhrase(f, v => renderNode(v, null), esc, v => '&quot;' + esc(v) + '&quot;')).join(' and ')}</span>`;
 
     case 'score':
-      return `<span class="reqit-score">Score ${esc(node.name)} ${OP_TEXT[node.op]} ${node.value}</span>`;
+      return `<span class="reqit-score">Score ${esc(node.name)} ${OP_SYMBOLS[node.op]} ${node.value}</span>`;
 
     case 'attainment':
       return `<span class="reqit-attainment">Attainment: ${esc(node.name)}</span>`;
 
     case 'quantity':
-      return `<span class="reqit-quantity">Quantity: ${esc(node.name)} ${OP_TEXT[node.op]} ${node.value}</span>`;
+      return `<span class="reqit-quantity">Quantity: ${esc(node.name)} ${OP_SYMBOLS[node.op]} ${node.value}</span>`;
 
     case 'variable-ref': {
       const ref = node.scope ? `$${esc(node.scope)}.${esc(node.name)}` : `$${esc(node.name)}`;
