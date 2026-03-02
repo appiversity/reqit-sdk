@@ -129,7 +129,7 @@ Each of the following 8 steps must be distinct commits.
 - [ ] **5.4** Filter evaluation: `in`, `not-in`, `!=` operators + tests
 - [ ] **5.5** Filter evaluation: `prerequisite includes`, `corequisite includes` + tests
 - [ ] **5.6** Variable expansion with scope resolution (local → institution → error) + tests
-- [ ] **5.7** Cross-list group resolution + tests
+- [ ] **5.7** Cross-list group resolution: when resolving an explicit course reference (e.g. `CSE 340`), also match any catalog course sharing the same `crossListGroup` (e.g. `MATH 340`). Filter results likewise include cross-listed equivalents. + tests
 - [ ] **5.8** Resolution integration tests using all 4 case study catalogs (Lehigh tech electives, Moravian multi-subject pools, W&M attribute-based gen-ed, RCNJ institution-wide filters)
 
 **Do not proceed to Phase 6 without asking for verification.  This is a checkpoint**.
