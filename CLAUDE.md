@@ -6,7 +6,7 @@ This is the **reqit** npm package — the core SDK for the Reqit product family 
 
 ## Project Family
 
-Reqit is organized as 5 sibling projects:
+Reqit is organized as 4 sibling projects:
 
 | Project | What | Visibility |
 |---------|------|-----------|
@@ -14,9 +14,8 @@ Reqit is organized as 5 sibling projects:
 | **reqit-sdk** (this repo) | Phase 1 — `reqit` npm package: parser, AST, resolver, auditor, exporters | Open source |
 | **reqit-pg** | Phase 2 — `reqit-pg` npm package: PostgreSQL schema, materialization, rollover | Open source |
 | **reqit-catalog** | Phase 3 — Self-hosted web app: Express 5, Pug, HTMX, Bootstrap 5, PostgreSQL | Open source |
-| **reqit-cloud** | Phase 4 — SaaS hosted instance: multi-tenancy, billing, onboarding | Private |
 
-**Dependency chain:** reqit-sdk → reqit-pg → reqit-catalog → reqit-cloud
+**Dependency chain:** reqit-sdk → reqit-pg → reqit-catalog
 
 All design documents live in `../reqit-specs/design/`. Read `../reqit-specs/design/strategy.md` for the master plan.
 
@@ -44,7 +43,7 @@ These design documents define what this package implements:
 
 ## Critical Constraints
 
-- **No external system dependencies.** This package is a pure computation library — no database, no network, no dependency on reqit-pg, reqit-catalog, or reqit-cloud. npm dependencies are fine where useful; architectural dependencies are not.
+- **No external system dependencies.** This package is a pure computation library — no database, no network, no dependency on reqit-pg or reqit-catalog. npm dependencies are fine where useful; architectural dependencies are not.
 - **No student data storage.** Transcripts are in-memory input to `audit()` — never persisted.
 - **Parser:** Peggy.js (PEG grammar). Not Nearley.js, not ANTLR.
 - **Three representations:** Text (DSL) ↔ JSON AST. This package handles only Text ↔ AST. Relational (database) is reqit-pg.
