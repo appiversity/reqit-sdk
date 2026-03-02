@@ -112,10 +112,10 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 
 ## Phase 4: Grade Configuration
 
-- [ ] **4.1** Grade config data structure, default US letter grade scale (A+ through F), pass/fail, withdrawal, incomplete
-- [ ] **4.2** Grade comparison functions (`meetsMinGrade`, `isPassingGrade`) + tests
-- [ ] **4.3** GPA calculation function (weighted by credits) + tests
-- [ ] **4.4** Custom grade scale support (international scales, institution-specific) + tests
+- [x] **4.1** Grade config data structure, default US letter grade scale (A+ through F), pass/fail, withdrawal, incomplete
+- [x] **4.2** Grade comparison functions (`meetsMinGrade`, `isPassingGrade`) + tests
+- [x] **4.3** GPA calculation function (weighted by credits) + tests
+- [x] **4.4** Custom grade scale support (international scales, institution-specific) + tests
 
 Commit Phase 4 before moving on.  As long as test coverage remains on target, can proceed to Phase 5.
 
