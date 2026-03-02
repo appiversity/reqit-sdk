@@ -42,10 +42,10 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 ### Constraints
 - [x] **1.15** Grammar + parser + tests: `with grade >= "C"` on courses and groups
 - [x] **1.16** Grammar + parser + tests: `with gpa >= 2.0` on groups
-- [x] **1.17** Grammar + parser + tests: `(concurrent allowed)` on course references
+- [x] **1.17** Grammar + parser + tests: `(concurrent)` on course references
 
 ### Non-Course Requirements
-- [x] **1.18** Grammar + parser + tests: `score "SAT MATH" >= 580`, `attainment "Junior Standing"`, `quantity "Clinical Hours" >= 500`
+- [x] **1.18** Grammar + parser + tests: `score SAT_MATH >= 580`, `attainment JUNIOR_STANDING`, `quantity CLINICAL_HOURS >= 500` (unquoted codes, case-insensitive, normalized to uppercase)
 
 ### Group Operators
 - [x] **1.19** Grammar + parser + tests: `one from each of (...)`
@@ -59,7 +59,7 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 - [x] **1.23** Grammar + parser + tests: `where at least N match (filter)` on n-of nodes
 
 ### Overlap & Program References
-- [x] **1.24** Grammar + parser + tests: `program "X" major undergraduate`, `any program major`, program filter
+- [x] **1.24** Grammar + parser + tests: `program CS major undergraduate` (unquoted code), `any program major`, program filter
 - [x] **1.25** Grammar + parser + tests: `overlap between (...) at most N courses/credits/percent`
 - [x] **1.26** Grammar + parser + tests: `outside (primary major) at least N credits`
 - [x] **1.27** Grammar + parser + tests: program context references (`primary major`, `primary minor`)
@@ -75,10 +75,12 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 
 ## Phase 2: AST Validation
 
-- [ ] **2.1** AST type definitions (all 20 node types, TypeScript-style JSDoc or similar) and `validate()` function skeleton
-- [ ] **2.2** Validation rules 1–4 + tests: required `type` field, non-empty `items`, `n-of` count bounds, `credits-from` positive credits
-- [ ] **2.3** Validation rules 5–8 + tests: variable-ref must be defined, no circular variable refs, course subject format (2–6 uppercase alphanum), course number format (1–6 alphanum)
-- [ ] **2.4** Validation rules 9–14 + tests: filter op validity per field type, with-constraint targets courses, concurrentAllowed context, post_constraint filter fields, overlap/outside only in overlap_rules, program-context-ref role values
+- [x] **2.1** `validate()` function skeleton with `walkNode`, `collectDefs`, `joinPath` + test file with smoke tests
+- [x] **2.2** Validation rules 1–4 + tests: required `type` field, non-empty `items`, `n-of`/`from-n-groups` count bounds, `credits-from` positive credits
+- [x] **2.3** Validation rules 5–8 + tests: variable-ref must be defined, no circular variable refs (direct + indirect), course subject format (2–6 uppercase alphanum), course number format (1–6 alphanum starting with digit)
+- [x] **2.4** Validation rules 9–14 + tests: filter op validity per field type, with-constraint targets courses, concurrentAllowed context, post_constraint filter fields, overlap/outside top-level only, program-context-ref role values. Integration tests with parser output. 100% line + branch coverage.
+
+**Do not proceed to Phase 3 without asking for verification.  This is a checkpoint**.
 
 ## Phase 3: Renderers
 
@@ -93,6 +95,8 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 - [ ] **3.6** `toDescription()` — AST → human-readable paragraph text + tests
 - [ ] **3.7** `toOutline()` — AST → indented outline with course titles from catalog + tests
 - [ ] **3.8** `toHTML()` — AST → semantic HTML with `reqit-` CSS classes + tests
+
+**Do not proceed to Phase 4 without asking for verification.  This is a checkpoint**.
 
 ## Phase 4: Grade Configuration
 
@@ -111,6 +115,8 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 - [ ] **5.6** Variable expansion with scope resolution (local → institution → error) + tests
 - [ ] **5.7** Cross-list group resolution + tests
 - [ ] **5.8** Resolution integration tests using all 4 case study catalogs (Lehigh tech electives, Moravian multi-subject pools, W&M attribute-based gen-ed, RCNJ institution-wide filters)
+
+**Do not proceed to Phase 6 without asking for verification.  This is a checkpoint**.
 
 ## Phase 6: Single-Tree Auditing
 
@@ -135,6 +141,8 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 - [ ] **7.2** `ambiguous-credit-match`, `post-constraint-failed` warnings + tests
 - [ ] **7.3** `cross-listed-match` warning (informational) + tests
 
+**Do not proceed to Phase 8 without asking for verification.  This is a checkpoint**.
+
 ## Phase 8: Multi-Tree Auditing
 
 - [ ] **8.1** `auditMulti()` skeleton + global course assignment tracking across trees + tests
@@ -142,6 +150,8 @@ Build the Peggy.js grammar one construct at a time. Each step adds grammar rules
 - [ ] **8.3** `outside-program` evaluation (complement constraint) + tests
 - [ ] **8.4** Program context reference resolution (primary-major, primary-minor, declared-department) + tests
 - [ ] **8.5** Multi-tree integration tests: W&M (CS major + COLL gen-ed + graduation requirements with overlap rules)
+
+**Do not proceed to Phase 9 without asking for verification.  This is a checkpoint**.
 
 ## Phase 9: AST Utilities
 

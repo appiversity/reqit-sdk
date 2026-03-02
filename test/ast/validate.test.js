@@ -821,4 +821,165 @@ describe('validate()', () => {
     });
   });
 
+  // --- Edge cases for coverage ---
+
+  describe('tree traversal edge cases', () => {
+    test('walks expression property', () => {
+      // A synthetic node with an expression child containing invalid content
+      const result = validate({
+        type: 'some-custom-node',
+        expression: { subject: 'MATH', number: '151' } // missing type
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(1);
+      expect(result.errors[0].path).toBe('expression');
+    });
+
+    test('walks target property', () => {
+      const result = validate({
+        type: 'some-custom-node',
+        target: { subject: 'MATH', number: '151' } // missing type
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(1);
+      expect(result.errors[0].path).toBe('target');
+    });
+
+    test('collectDefs finds variable-defs inside expression property', () => {
+      const result = validate({
+        type: 'all-of',
+        items: [
+          {
+            type: 'some-wrapper',
+            expression: {
+              type: 'variable-def', name: 'inner', value: course('MATH', '151')
+            }
+          },
+          { type: 'variable-ref', name: 'inner' }
+        ]
+      });
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('collectDefs finds variable-defs inside target property', () => {
+      const result = validate({
+        type: 'all-of',
+        items: [
+          {
+            type: 'some-wrapper',
+            target: {
+              type: 'variable-def', name: 'inner', value: course('MATH', '151')
+            }
+          },
+          { type: 'variable-ref', name: 'inner' }
+        ]
+      });
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('scope with missing name defaults to empty string', () => {
+      const result = validate({
+        type: 'scope',
+        items: [
+          { type: 'variable-def', name: 'x', value: course('MATH', '151') },
+          { type: 'variable-ref', name: 'x' }
+        ]
+      });
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('validateFilterOp with null filter is a no-op', () => {
+      const result = validate({
+        type: 'course-filter',
+        filters: [null]
+      });
+      // Should not crash; null filter is skipped
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('validateFilterOp with unknown field is a no-op', () => {
+      const result = validate({
+        type: 'course-filter',
+        filters: [{ field: 'unknown-field', op: 'eq', value: 'test' }]
+      });
+      // Unknown field — no error from rule 9
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('collectDefs recurses into requirement property', () => {
+      const result = validate({
+        type: 'all-of',
+        items: [
+          {
+            type: 'with-constraint',
+            requirement: {
+              type: 'all-of',
+              items: [
+                { type: 'variable-def', name: 'nested', value: course('MATH', '151') }
+              ]
+            },
+            constraint: { kind: 'min-gpa', value: 2.0 }
+          },
+          { type: 'variable-ref', name: 'nested' }
+        ]
+      });
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('collectDefs recurses into program property', () => {
+      const result = validate({
+        type: 'outside-program',
+        program: { type: 'program-context-ref', role: 'primary-major' },
+        constraint: { comparison: 'at-least', value: 72, unit: 'credits' }
+      });
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('scope with no items array', () => {
+      const result = validate({ type: 'scope', name: 'empty' });
+      // Should not crash — scope with no items is valid but useless
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('variable-def with no value', () => {
+      const result = validate({
+        type: 'all-of',
+        items: [
+          { type: 'variable-def', name: 'empty' },
+          { type: 'variable-ref', name: 'empty' }
+        ]
+      });
+      // Ref resolves, but def has no value — should not crash
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('circular reference with scoped variable', () => {
+      const result = validate({
+        type: 'all-of',
+        items: [
+          {
+            type: 'scope', name: 'sc',
+            items: [
+              { type: 'variable-def', name: 'a', value: { type: 'variable-ref', name: 'a', scope: 'sc' } }
+            ]
+          }
+        ]
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors.some(e => e.rule === 6 && e.message.includes('sc.'))).toBe(true);
+    });
+
+    test('post_constraint with missing filter property', () => {
+      const result = validate({
+        type: 'n-of',
+        comparison: 'at-least',
+        count: 2,
+        items: [course('MATH', '151'), course('MATH', '152')],
+        post_constraints: [{ comparison: 'at-least', count: 1 }]
+      });
+      // Missing filter — should not crash
+      expect(result).toEqual({ valid: true });
+    });
+  });
+
 });

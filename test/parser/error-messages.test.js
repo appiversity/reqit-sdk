@@ -1,6 +1,7 @@
 'use strict';
 
 const { parse } = require('../../src/parser');
+const { rewriteError } = require('../../src/parser/errors');
 
 /**
  * Helper: parse and expect a ReqitSyntaxError with specific properties.
@@ -162,5 +163,115 @@ describe('error: still throws for genuinely invalid input', () => {
 
   test('number without subject', () => {
     expect(() => parse('151')).toThrow();
+  });
+});
+
+describe('rewriteError edge cases', () => {
+  test('error without location is returned as-is', () => {
+    const err = new Error('some error');
+    const result = rewriteError(err, 'MATH 151');
+    expect(result).toBe(err);
+  });
+
+  test('error with missing expected property', () => {
+    const err = new Error('test');
+    err.name = 'SyntaxError';
+    err.location = { start: { line: 1, column: 1, offset: 0 } };
+    err.found = null;
+    // expected is undefined — falls through to fallback
+    const result = rewriteError(err, '');
+    expect(result.name).toBe('ReqitSyntaxError');
+  });
+
+  test('misspelled keyword with no word before', () => {
+    // Simulate: cursor at start, expected includes course number
+    const err = new Error('test');
+    err.name = 'SyntaxError';
+    err.location = { start: { line: 1, column: 1, offset: 0 } };
+    err.found = '!';
+    err.expected = [{ type: 'other', description: 'course number' }];
+    const result = rewriteError(err, '!');
+    // getWordBefore returns '' at offset 0, so the 'if (word)' check is false
+    // Falls through to fallback
+    expect(result.name).toBe('ReqitSyntaxError');
+  });
+
+  test('unknown keyword (no suggested correction)', () => {
+    const err = new Error('test');
+    err.name = 'SyntaxError';
+    err.location = { start: { line: 1, column: 7, offset: 6 } };
+    err.found = ' ';
+    err.expected = [{ type: 'other', description: 'course number' }];
+    const result = rewriteError(err, 'foobar 151');
+    expect(result.problem).toContain('foobar');
+    expect(result.suggestion).toContain('Valid keywords');
+  });
+
+  test('fallback when no pattern matches', () => {
+    const err = new Error('Peggy raw message');
+    err.name = 'SyntaxError';
+    err.location = { start: { line: 1, column: 1, offset: 0 } };
+    err.found = '@';
+    err.expected = [{ type: 'literal', text: 'something-unlikely' }];
+    const result = rewriteError(err, '@');
+    expect(result.name).toBe('ReqitSyntaxError');
+    expect(result.suggestion).toBeNull();
+  });
+
+  test('expectsExpression matches $ literal', () => {
+    // Trigger the e.text === '$' branch in expectsExpression
+    const err = new Error('test');
+    err.name = 'SyntaxError';
+    err.location = { start: { line: 1, column: 3, offset: 2 } };
+    err.found = ')';
+    err.expected = [{ type: 'literal', text: '$' }];
+    const result = rewriteError(err, 'x )');
+    // found === ')' and expectsExpression returns true → trailing comma message
+    expect(result.name).toBe('ReqitSyntaxError');
+  });
+
+  test('getWordAt returns empty string for non-word chars', () => {
+    // Trigger the match ? match[0] : '' falsy branch
+    // The 'missing comma' pattern calls getWordAt; we need found to be a letter
+    // but offset pointing to a non-alphanumeric position
+    const err = new Error('test');
+    err.name = 'SyntaxError';
+    err.location = { start: { line: 1, column: 9, offset: 8 } };
+    err.found = 'M';
+    err.expected = [{ type: 'literal', text: ',' }, { type: 'literal', text: ')' }];
+    // offset 8 is past end of the 3-char input — getWordAt gets empty slice
+    const result = rewriteError(err, 'ab');
+    expect(result.name).toBe('ReqitSyntaxError');
+    expect(result.suggestion).toContain('comma before');
+  });
+
+  test('non-SyntaxError propagated by parse()', () => {
+    // rewriteError returns error as-is when no location
+    const err = new Error('unexpected');
+    const result = rewriteError(err, 'test');
+    expect(result).toBe(err);
+  });
+});
+
+describe('parse() error propagation', () => {
+  test('non-SyntaxError is re-thrown directly', () => {
+    // Trigger via invalid argument type (not a string) — Peggy throws TypeError
+    expect(() => parse(null)).toThrow();
+  });
+
+  test('SyntaxError without location is re-thrown directly', () => {
+    // A SyntaxError missing the .location property goes through the else path
+    // This is nearly impossible to trigger naturally, but validates the code path
+    const peg = require('../../src/parser/grammar.js');
+    const original = peg.parse;
+    peg.parse = () => {
+      const e = new SyntaxError('no location');
+      throw e;
+    };
+    try {
+      expect(() => parse('test')).toThrow(SyntaxError);
+    } finally {
+      peg.parse = original;
+    }
   });
 });
