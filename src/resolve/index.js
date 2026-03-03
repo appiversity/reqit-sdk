@@ -117,7 +117,8 @@ function evaluateFilter(filter, course) {
       return evaluateAttributeFilter(course, op, value);
 
     default:
-      // Other filter fields will be added in steps 5.4–5.5.
+      // Other filter fields (prerequisite-includes, corequisite-includes)
+      // will be added in step 5.5.
       return false;
   }
 }
@@ -134,6 +135,9 @@ function evaluateStringFilter(courseValue, op, filterValue) {
   switch (op) {
     case 'eq': return courseValue === filterValue;
     case 'ne': return courseValue !== filterValue;
+    case 'in': return Array.isArray(filterValue) && filterValue.includes(courseValue);
+    case 'not-in': return Array.isArray(filterValue) && !filterValue.includes(courseValue);
+    case 'wildcard': return true; // matches all values
     default: return false;
   }
 }
@@ -221,6 +225,8 @@ function evaluateAttributeFilter(course, op, value) {
   switch (op) {
     case 'eq': return course.attributes.includes(value);
     case 'ne': return !course.attributes.includes(value);
+    case 'in': return Array.isArray(value) && value.some(v => course.attributes.includes(v));
+    case 'not-in': return Array.isArray(value) && !value.some(v => course.attributes.includes(v));
     default: return false;
   }
 }
