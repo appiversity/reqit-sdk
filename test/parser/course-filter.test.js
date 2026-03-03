@@ -31,6 +31,13 @@ describe('courses where — subject filters', () => {
       filters: [{ field: 'subject', op: 'eq', value: 'CSE' }],
     });
   });
+
+  test('subject = "*" produces wildcard operator', () => {
+    expect(parse('courses where subject = "*"')).toEqual({
+      type: 'course-filter',
+      filters: [{ field: 'subject', op: 'wildcard', value: '*' }],
+    });
+  });
 });
 
 describe('courses where — number filters', () => {

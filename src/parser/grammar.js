@@ -488,6 +488,9 @@ function peg$parse(input, options) {
       return { field: 'corequisite-includes', op: 'includes', value };
     };
   var peg$f52 = function(field, op, value) {
+      if (field === 'subject' && op === 'eq' && value === '*') {
+        return { field, op: 'wildcard', value };
+      }
       return { field, op, value };
     };
   var peg$f53 = function() { return 'subject'; };

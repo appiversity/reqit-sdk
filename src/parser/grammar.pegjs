@@ -229,6 +229,9 @@ Filter
       return { field: 'corequisite-includes', op: 'includes', value };
     }
   / field:FilterField _ op:ComparisonOp _ value:FilterValue {
+      if (field === 'subject' && op === 'eq' && value === '*') {
+        return { field, op: 'wildcard', value };
+      }
       return { field, op, value };
     }
 

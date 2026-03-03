@@ -46,6 +46,9 @@ function renderFilter(f) {
     const keyword = f.field === 'prerequisite-includes' ? 'prerequisite' : 'corequisite';
     return `${keyword} includes (${renderNode(f.value)})`;
   }
+  if (f.op === 'wildcard') {
+    return `${f.field} = "${f.value}"`;
+  }
   return `${f.field} ${renderOp(f.op)} ${renderFilterValue(f.value)}`;
 }
 

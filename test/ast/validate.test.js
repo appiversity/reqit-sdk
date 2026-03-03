@@ -493,6 +493,14 @@ describe('validate()', () => {
       expect(result).toEqual({ valid: true });
     });
 
+    test('subject with wildcard is valid', () => {
+      const result = validate({
+        type: 'course-filter',
+        filters: [{ field: 'subject', op: 'wildcard', value: '*' }]
+      });
+      expect(result).toEqual({ valid: true });
+    });
+
     test('subject with gte fails', () => {
       const result = validate({
         type: 'course-filter',

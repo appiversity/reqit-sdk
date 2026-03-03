@@ -323,7 +323,7 @@ function validateFilterOp(filter, ctx, path) {
   const includesOps = ['includes'];
 
   const allowed = {
-    'subject': stringOps,
+    'subject': [...stringOps, 'wildcard'],
     'attribute': stringOps,
     'number': numericOps,
     'credits': numericOps,

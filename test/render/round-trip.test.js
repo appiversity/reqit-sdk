@@ -64,6 +64,7 @@ describe('round-trip — course-filter', () => {
     'courses where prerequisite includes (CSCI 141) and subject = "CSCI"',
     'courses where subject != "CSCI" and number >= 300',
     'courses where subject != "PHYS" and number >= 200',
+    'courses where subject = "*"',
   ])('%s', (text) => roundTrip(text));
 });
 
