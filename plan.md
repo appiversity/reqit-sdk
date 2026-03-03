@@ -123,7 +123,7 @@ Commit Phase 4 before moving on.  As long as test coverage remains on target, ca
 
 Each of the following 8 steps must be distinct commits.
 
-- [ ] **5.1** `resolve()` skeleton + catalog normalization (default missing optional fields: `attributes` → `[]`, `crossListGroup` → `undefined`, `prerequisites` → `null`, `corequisites` → `null`) + course reference resolution (match `MATH 151` to catalog entry) + tests including catalogs with omitted optional fields
+- [x] **5.1** `resolve()` skeleton + catalog normalization (default missing optional fields: `attributes` → `[]`, `crossListGroup` → `undefined`, `prerequisites` → `null`, `corequisites` → `null`) + course reference resolution (match `MATH 151` to catalog entry) + tests including catalogs with omitted optional fields
 - [ ] **5.2** Filter evaluation: subject, number (with numeric coercion for comparisons, exact string for equality) + tests
 - [ ] **5.3** Filter evaluation: credits (range matching — gte uses credits_max, lte uses credits_min, eq checks range), attribute + tests
 - [ ] **5.4** Filter evaluation: `in`, `not-in`, `!=` operators + tests
