@@ -116,9 +116,13 @@ function evaluateFilter(filter, course) {
     case 'attribute':
       return evaluateAttributeFilter(course, op, value);
 
+    case 'prerequisite-includes':
+      return astContainsCourse(course.prerequisites, value);
+
+    case 'corequisite-includes':
+      return astContainsCourse(course.corequisites, value);
+
     default:
-      // Other filter fields (prerequisite-includes, corequisite-includes)
-      // will be added in step 5.5.
       return false;
   }
 }
@@ -229,6 +233,36 @@ function evaluateAttributeFilter(course, op, value) {
     case 'not-in': return Array.isArray(value) && !value.some(v => course.attributes.includes(v));
     default: return false;
   }
+}
+
+/**
+ * Check whether an AST tree contains a course node matching the given
+ * course reference. Used for prerequisite-includes and corequisite-includes
+ * filter evaluation.
+ *
+ * @param {object|null} ast - An AST node (typically a course's prerequisites or corequisites)
+ * @param {object} courseRef - A course AST node { type:'course', subject, number }
+ * @returns {boolean} Whether the AST contains a matching course reference
+ */
+function astContainsCourse(ast, courseRef) {
+  if (!ast || typeof ast !== 'object') return false;
+
+  if (ast.type === 'course') {
+    return ast.subject === courseRef.subject && ast.number === courseRef.number;
+  }
+
+  // Recurse into children using the same traversal pattern as walkNode
+  if (Array.isArray(ast.items)) {
+    for (const item of ast.items) {
+      if (astContainsCourse(item, courseRef)) return true;
+    }
+  }
+  if (ast.source && astContainsCourse(ast.source, courseRef)) return true;
+  if (ast.value && astContainsCourse(ast.value, courseRef)) return true;
+  if (ast.requirement && astContainsCourse(ast.requirement, courseRef)) return true;
+  if (ast.expression && astContainsCourse(ast.expression, courseRef)) return true;
+
+  return false;
 }
 
 /**
