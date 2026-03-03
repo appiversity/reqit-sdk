@@ -36,10 +36,88 @@ These design documents define what this package implements:
 - **Parse** reqit DSL text into a JSON AST
 - **Validate** AST structure (20 node types, validation rules)
 - **Render** AST back to text (round-trip guarantee: parse → render → parse produces identical AST)
+- **Render** AST to human-readable formats (description, outline, HTML)
 - **Resolve** course filters against a catalog (match `courses where subject = "CMPS"` to actual courses)
-- **Audit** a requirement tree against a transcript (single-tree and multi-tree with overlap rules)
-- **Export** requirements to multiple formats (description, outline, HTML, XLSX, CSV, JSON)
-- **Utilities:** `walk`, `transform`, `diff`, `findUnmet`, `findNextEligible`, `extractCourses`
+- **Grade** comparison and GPA calculation with configurable scales
+- **Audit** a requirement tree against a transcript *(not yet implemented)*
+- **Export** requirements to multiple formats *(not yet implemented)*
+- **Utilities:** `walk`, `transform`, `diff`, `findUnmet`, `findNextEligible`, `extractCourses` *(not yet implemented)*
+
+## Current Implementation Status
+
+| Subsystem | Status | Tests |
+|-----------|--------|-------|
+| Parser (Peggy.js grammar) | Complete | ~650 tests |
+| AST validation | Complete | ~30 tests |
+| Renderers (4 renderers + shared) | Complete | ~330 tests |
+| Resolver (catalog resolution) | Complete | ~270 tests |
+| Grade system | Complete | ~80 tests |
+| Auditor | Not started | — |
+| Exporters (XLSX, CSV, JSON) | Not started | — |
+| Utility functions | Not started | — |
+
+## Source Organization
+
+```
+src/
+  index.js              — Public API exports
+  parser/               — Peggy.js grammar + error rewriting
+  ast/                  — AST validation
+  render/
+    shared.js           — NODE_TYPES, courseKey(), COMPOSITE_LABELS, lookupTitle, helpers
+    to-text.js          — CODE renderer (round-trip guarantee)
+    to-description.js   — Display renderer (prose)
+    to-outline.js       — Display renderer (tree with box-drawing)
+    to-html.js          — Display renderer (semantic HTML, reqit- CSS classes)
+  resolve/index.js      — Catalog resolution
+  grade/index.js        — Grade comparison, GPA, custom scales
+test/
+  fixtures/catalogs/    — Lehigh, Moravian, W&M, RCNJ, minimal catalogs
+  parser/               — Grammar tests by construct
+  render/               — Renderer tests + exhaustiveness guard
+  resolve/              — Resolution tests + exhaustiveness guard + edge cases
+  grade/                — Grade system tests
+  ast/                  — Validation tests
+```
+
+## Coding Standards
+
+These patterns are established and must be followed. They come from a code review that identified and fixed violations — do not reintroduce them.
+
+### Always use `courseKey()`
+```js
+const { courseKey } = require('./render/shared');
+courseKey(course) // → "MATH:151"
+```
+**Never** inline `course.subject + ':' + course.number`. The `courseKey()` helper in `shared.js` is the single canonical key constructor.
+
+### Code Renderer vs Display Renderer
+`toText` is a **code renderer** — it produces parseable DSL source code. The other three renderers (`toDescription`, `toOutline`, `toHTML`) are **display renderers** producing human-readable output.
+
+- In display renderers, `variable-def` and `scope` are transparent wrappers (render through to inner content)
+- In `toText`, they produce real DSL syntax (`$name = ...`, `scope "name" { ... }`)
+- Composite labels use `COMPOSITE_LABELS` table in display renderers, but stay as explicit switch cases in `toText`
+- **Never apply display-renderer patterns to toText or vice versa**
+
+### Centralize shared constants
+- New node type → add to `NODE_TYPES` in `shared.js`, then add cases in all 4 renderers + resolver
+- New composite label → add to `COMPOSITE_LABELS` in `shared.js`
+- New operator → add to `OP_SYMBOLS` + `OP_PHRASES` in `shared.js`
+- `shared.js` has a maintenance guide comment at the top listing all change-impact points
+
+### Exhaustiveness tests are structural guards
+Both `test/render/exhaustiveness.test.js` and `test/resolve/exhaustiveness.test.js` verify every `NODE_TYPE` is handled. Adding a node type without updating all renderers/resolver will fail these tests.
+
+### Test precision
+- Use `toHaveLength(N)` with exact expected counts, not `toBeGreaterThan(0)`
+- Document intentional design decisions in test comments when behaviour is non-obvious
+- Cover edge cases: null/undefined inputs, empty catalogs, unknown fields, missing courses
+
+### Don't over-abstract
+Three similar switch cases are better than one premature `forEachChild` abstraction. Centralize only when there's a clear, proven maintenance burden.
+
+### Remove dead code
+Don't comment out dead code or leave no-op loops. Remove it and add a test proving the correct behaviour. If keeping dead code intentionally, explain why in a comment.
 
 ## Critical Constraints
 
