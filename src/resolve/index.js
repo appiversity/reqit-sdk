@@ -110,8 +110,14 @@ function evaluateFilter(filter, course) {
     case 'number':
       return evaluateNumberFilter(course.number, op, value);
 
+    case 'credits':
+      return evaluateCreditsFilter(course, op, value);
+
+    case 'attribute':
+      return evaluateAttributeFilter(course, op, value);
+
     default:
-      // Other filter fields will be added in steps 5.3–5.5.
+      // Other filter fields will be added in steps 5.4–5.5.
       return false;
   }
 }
@@ -173,6 +179,50 @@ function evaluateNumberFilter(courseNumber, op, filterValue) {
 function extractLeadingNumber(s) {
   const match = s.match(/^(\d+(?:\.\d+)?)/);
   return match ? Number(match[1]) : null;
+}
+
+/**
+ * Evaluate a credits filter against a course's credit range.
+ *
+ * Credit range semantics:
+ * - gte: course can provide at least the threshold → creditsMax >= value
+ * - gt:  course can provide more than the threshold → creditsMax > value
+ * - lte: course can cost at most the threshold → creditsMin <= value
+ * - lt:  course can cost less than the threshold → creditsMin < value
+ * - eq:  threshold falls within the course's credit range
+ * - ne:  threshold falls outside the course's credit range
+ *
+ * @param {object} course - Normalized catalog course
+ * @param {string} op - Comparison operator
+ * @param {number} value - Credit threshold
+ * @returns {boolean}
+ */
+function evaluateCreditsFilter(course, op, value) {
+  switch (op) {
+    case 'eq': return course.creditsMin <= value && value <= course.creditsMax;
+    case 'ne': return value < course.creditsMin || value > course.creditsMax;
+    case 'gte': return course.creditsMax >= value;
+    case 'gt': return course.creditsMax > value;
+    case 'lte': return course.creditsMin <= value;
+    case 'lt': return course.creditsMin < value;
+    default: return false;
+  }
+}
+
+/**
+ * Evaluate an attribute filter against a course's attributes array.
+ *
+ * @param {object} course - Normalized catalog course (attributes defaults to [])
+ * @param {string} op - Comparison operator (eq or ne)
+ * @param {string} value - Attribute code to match
+ * @returns {boolean}
+ */
+function evaluateAttributeFilter(course, op, value) {
+  switch (op) {
+    case 'eq': return course.attributes.includes(value);
+    case 'ne': return !course.attributes.includes(value);
+    default: return false;
+  }
 }
 
 /**

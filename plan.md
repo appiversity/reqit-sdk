@@ -125,7 +125,7 @@ Each of the following 8 steps must be distinct commits.
 
 - [x] **5.1** `resolve()` skeleton + catalog normalization (default missing optional fields: `attributes` → `[]`, `crossListGroup` → `undefined`, `prerequisites` → `null`, `corequisites` → `null`) + course reference resolution (match `MATH 151` to catalog entry) + tests including catalogs with omitted optional fields
 - [x] **5.2** Filter evaluation: subject, number (with numeric coercion for comparisons, exact string for equality) + tests
-- [ ] **5.3** Filter evaluation: credits (range matching — gte uses credits_max, lte uses credits_min, eq checks range), attribute + tests
+- [x] **5.3** Filter evaluation: credits (range matching — gte uses creditsMax, lte uses creditsMin, eq checks range), attribute + tests
 - [ ] **5.4** Filter evaluation: `in`, `not-in`, `!=` operators + tests
 - [ ] **5.5** Filter evaluation: `prerequisite includes`, `corequisite includes` — walk each catalog course's `prerequisites`/`corequisites` AST to check whether it contains the specified course reference. Courses with `null` prerequisites/corequisites never match. + tests
 - [ ] **5.6** Variable expansion with scope resolution (local → institution → error) + tests
