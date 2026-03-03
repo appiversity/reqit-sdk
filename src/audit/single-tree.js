@@ -224,12 +224,7 @@ function auditAttainment(node, ctx) {
     return result;
   }
 
-  if (attainment.kind === 'boolean') {
-    result.status = attainment.value ? MET : NOT_MET;
-  } else {
-    // If attainment exists and has any truthy value, treat as met
-    result.status = attainment.value ? MET : NOT_MET;
-  }
+  result.status = attainment.value ? MET : NOT_MET;
 
   return result;
 }
@@ -363,13 +358,7 @@ function auditOneFromEach(node, ctx) {
 function auditFromNGroups(node, ctx) {
   const items = (node.items || []).map(group => auditNode(group, ctx));
 
-  // Count groups that have at least one met course
-  const groupStatuses = items.map(r => {
-    if (r.status === MET) return MET;
-    if (r.status === IN_PROGRESS) return IN_PROGRESS;
-    if (r.status === PARTIAL_PROGRESS) return PARTIAL_PROGRESS;
-    return NOT_MET;
-  });
+  const groupStatuses = items.map(r => r.status);
 
   // Use nOf at-least logic on group statuses
   const status = nOf(groupStatuses, 'at-least', node.count);
