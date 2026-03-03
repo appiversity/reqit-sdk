@@ -40,7 +40,7 @@ describe('Resolution integration tests', () => {
         lehighCatalog
       );
       // CSE courses with number >= 200 + MATH 340 cross-listed
-      expect(result.courses.length).toBeGreaterThan(0);
+      expect(result.courses).toHaveLength(10);
       const directCSE = result.courses.filter(c => c.subject === 'CSE');
       expect(directCSE.every(c => parseInt(c.number, 10) >= 200)).toBe(true);
       // MATH 340 should also appear (cross-listed with CSE 340)
@@ -52,7 +52,7 @@ describe('Resolution integration tests', () => {
         'courses where attribute = "HSS"',
         lehighCatalog
       );
-      expect(result.courses.length).toBeGreaterThan(0);
+      expect(result.courses).toHaveLength(6);
       expect(result.courses.every(c => c.attributes.includes('HSS'))).toBe(true);
     });
 
@@ -97,7 +97,7 @@ describe('Resolution integration tests', () => {
         'courses where subject = "CSCI" and number >= 200',
         moravianCatalog
       );
-      expect(result.courses.length).toBeGreaterThan(0);
+      expect(result.courses).toHaveLength(14);
       expect(result.courses.every(c =>
         c.subject === 'CSCI' && parseInt(c.number, 10) >= 200
       )).toBe(true);
@@ -108,7 +108,7 @@ describe('Resolution integration tests', () => {
         'courses where subject in ("CSCI", "MATH", "ECON")',
         moravianCatalog
       );
-      expect(result.courses.length).toBeGreaterThan(0);
+      expect(result.courses).toHaveLength(29);
       expect(result.courses.every(c =>
         ['CSCI', 'MATH', 'ECON'].includes(c.subject)
       )).toBe(true);
@@ -121,7 +121,7 @@ describe('Resolution integration tests', () => {
       );
       expect(result.filters).toHaveLength(1);
       const matched = result.filters[0].matched;
-      expect(matched.length).toBeGreaterThan(0);
+      expect(matched).toHaveLength(5);
       expect(matched.every(c => c.subject === 'CSCI' && parseInt(c.number, 10) >= 300)).toBe(true);
     });
 
@@ -155,7 +155,7 @@ describe('Resolution integration tests', () => {
         moravianCatalog
       );
       // CSCI 220.2 and 243.2 are 2-credit courses
-      expect(result.courses.length).toBeGreaterThan(0);
+      expect(result.courses).toHaveLength(2);
       expect(result.courses.every(c => c.creditsMin <= 2)).toBe(true);
     });
   });
@@ -166,7 +166,7 @@ describe('Resolution integration tests', () => {
         'courses where attribute = "COLL150"',
         wmCatalog
       );
-      expect(result.courses.length).toBeGreaterThan(0);
+      expect(result.courses).toHaveLength(1);
       expect(result.courses.every(c => c.attributes.includes('COLL150'))).toBe(true);
     });
 
@@ -175,7 +175,7 @@ describe('Resolution integration tests', () => {
         'courses where attribute in ("COLL150", "COLL350", "COLL400")',
         wmCatalog
       );
-      expect(result.courses.length).toBeGreaterThan(0);
+      expect(result.courses).toHaveLength(3);
       expect(result.courses.every(c =>
         c.attributes.includes('COLL150') ||
         c.attributes.includes('COLL350') ||
@@ -188,7 +188,7 @@ describe('Resolution integration tests', () => {
         'courses where attribute = "NQR"',
         wmCatalog
       );
-      expect(result.courses.length).toBeGreaterThan(0);
+      expect(result.courses).toHaveLength(6);
       expect(result.courses.every(c => c.attributes.includes('NQR'))).toBe(true);
     });
 
@@ -197,7 +197,7 @@ describe('Resolution integration tests', () => {
         'courses where subject != "CSCI" and subject != "MATH"',
         wmCatalog
       );
-      expect(result.courses.length).toBeGreaterThan(0);
+      expect(result.courses).toHaveLength(10);
       expect(result.courses.every(c => c.subject !== 'CSCI' && c.subject !== 'MATH')).toBe(true);
     });
 
@@ -218,7 +218,7 @@ describe('Resolution integration tests', () => {
         wmCatalog
       );
       expect(result.filters).toHaveLength(1);
-      expect(result.filters[0].matched.length).toBeGreaterThan(0);
+      expect(result.filters[0].matched).toHaveLength(6);
     });
   });
 
@@ -228,7 +228,7 @@ describe('Resolution integration tests', () => {
         'courses where attribute = "GE-QR"',
         rcnjCatalog
       );
-      expect(result.courses.length).toBeGreaterThan(0);
+      expect(result.courses).toHaveLength(6);
       expect(result.courses.every(c => c.attributes.includes('GE-QR'))).toBe(true);
     });
 
@@ -251,7 +251,7 @@ describe('Resolution integration tests', () => {
         'courses where subject = "CMPS" and number >= 300',
         rcnjCatalog
       );
-      expect(result.courses.length).toBeGreaterThan(0);
+      expect(result.courses).toHaveLength(20);
       expect(result.courses.every(c =>
         c.subject === 'CMPS' && parseInt(c.number, 10) >= 300
       )).toBe(true);
@@ -270,10 +270,10 @@ describe('Resolution integration tests', () => {
         `courses where subject = "CMPS" except (CMPS 490, CMPS 491)`,
         rcnjCatalog
       );
+      // Filter matches all CMPS; except lists 490 and 491 which are already CMPS.
+      // Resolver collects both source and exclusion courses.
       const cmpsTotal = rcnjCatalog.courses.filter(c => c.subject === 'CMPS').length;
-      // Filter matches all CMPS, except lists 490 and 491
-      // All are in result.courses (except collects both source and exclusion courses)
-      expect(result.courses.length).toBeGreaterThanOrEqual(cmpsTotal);
+      expect(result.courses).toHaveLength(cmpsTotal);
     });
 
     it('resolves credits-from with subject exclusion', () => {
@@ -293,7 +293,7 @@ describe('Resolution integration tests', () => {
         'courses where subject = "CMPS" and attribute = "WI"',
         rcnjCatalog
       );
-      expect(result.courses.length).toBeGreaterThan(0);
+      expect(result.courses).toHaveLength(1);
       expect(result.courses.every(c =>
         c.subject === 'CMPS' && c.attributes.includes('WI')
       )).toBe(true);
@@ -306,7 +306,6 @@ describe('Resolution integration tests', () => {
         'courses where prerequisite includes (CMPS 230)',
         minimalCatalog
       );
-      expect(result.courses.length).toBeGreaterThan(0);
       // CMPS 310, 320, 350, 360, 380 all require CMPS 230
       expect(result.courses).toHaveLength(5);
     });
@@ -369,8 +368,8 @@ describe('Resolution integration tests', () => {
         }`,
         minimalCatalog
       );
-      // Should have all referenced courses + filter matched courses
-      expect(result.courses.length).toBeGreaterThan(4);
+      // 4 core + 4 elective refs + filter-matched CMPS >= 300 and WI courses
+      expect(result.courses).toHaveLength(13);
       expect(result.filters).toHaveLength(2);  // CMPS >= 300 and WI
     });
 

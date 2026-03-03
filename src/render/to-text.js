@@ -1,7 +1,19 @@
 'use strict';
 
 /**
- * to-text.js — Render an AST back to reqit DSL text.
+ * to-text.js — CODE RENDERER: Render an AST back to parseable reqit DSL text.
+ *
+ * This is a **code renderer**, NOT a display renderer. Unlike the three
+ * human-readable renderers (to-description, to-outline, to-html), this module
+ * produces parseable DSL source code. The distinction matters:
+ *
+ * - Grammar constructs (`variable-def`, `scope`) are structural — they produce
+ *   real DSL syntax (`$name = ...`, `scope "name" { ... }`). They must NOT be
+ *   treated as transparent wrappers.
+ * - The round-trip guarantee depends on this: parse(toText(ast)) must reproduce
+ *   the original AST structure.
+ * - Refactoring patterns from the display renderers (e.g. compositeLabel tables,
+ *   transparent variable-def/scope rendering) must NOT be applied here.
  *
  * Round-trip guarantee: parse(toText(parse(input))) ≡ parse(input).
  * Uses single-dispatch on `node.type` — every node type maps to exactly one

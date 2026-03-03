@@ -10,6 +10,23 @@
 const { comparisonPhrase, renderFilterPhrase, unwrapCreditsSource } = require('./shared');
 
 /**
+ * Generate a human-readable label for composite node types.
+ * @param {Object} node - AST node
+ * @returns {string}
+ */
+function compositeLabel(node) {
+  switch (node.type) {
+    case 'all-of': return 'Complete all of the following';
+    case 'any-of': return 'Complete any one of the following';
+    case 'none-of': return 'None of the following may be used';
+    case 'n-of': return `Complete ${comparisonPhrase(node.comparison)} ${node.count} of the following`;
+    case 'one-from-each': return 'Complete one course from each of the following areas';
+    case 'from-n-groups': return `Complete courses from at least ${node.count} of the following groups`;
+    default: return node.type;
+  }
+}
+
+/**
  * Render child items as an indented bulleted list (multi-item) or inline (single item).
  * @param {Array<Object>} items
  * @param {number} [indent]
@@ -64,19 +81,18 @@ function renderQuantityPhrase(op, value, name) {
 }
 
 /**
- * Append post-constraint clauses as prose (e.g. ", where at least 2 must have ...").
+ * Render post-constraint clauses as a standalone prose fragment.
+ * Returns an empty string if no post_constraints exist.
  * @param {Object} node - Node potentially carrying `post_constraints`
- * @param {string} text - Text accumulated so far
  * @returns {string}
  */
-function renderPostConstraints(node, text) {
-  if (!node.post_constraints) return text;
-  for (const pc of node.post_constraints) {
+function renderPostConstraints(node) {
+  if (!node.post_constraints) return '';
+  return node.post_constraints.map(pc => {
     const comp = comparisonPhrase(pc.comparison) + ' ' + pc.count;
     const fv = renderFilterPhrase(pc.filter, v => renderNode(v));
-    text += `, where ${comp} must have ${fv}`;
-  }
-  return text;
+    return `, where ${comp} must have ${fv}`;
+  }).join('');
 }
 
 /**
@@ -108,42 +124,18 @@ function renderNode(node, indent) {
     case 'variable-ref':
       return node.scope ? `(see $${node.scope}.${node.name})` : `(see $${node.name})`;
 
-    case 'all-of': {
-      let text = `Complete all of the following:${renderItems(node.items, indent)}`;
-      return renderPostConstraints(node, text);
-    }
-
-    case 'any-of': {
-      let text = `Complete any one of the following:${renderItems(node.items, indent)}`;
-      return renderPostConstraints(node, text);
-    }
-
-    case 'none-of': {
-      let text = `None of the following may be used:${renderItems(node.items, indent)}`;
-      return renderPostConstraints(node, text);
-    }
-
-    case 'n-of': {
-      const comp = comparisonPhrase(node.comparison) + ' ' + node.count;
-      let text = `Complete ${comp} of the following:${renderItems(node.items, indent)}`;
-      return renderPostConstraints(node, text);
-    }
-
-    case 'one-from-each': {
-      let text = `Complete one course from each of the following areas:${renderItems(node.items, indent)}`;
-      return renderPostConstraints(node, text);
-    }
-
-    case 'from-n-groups': {
-      let text = `Complete courses from at least ${node.count} of the following groups:${renderItems(node.items, indent)}`;
-      return renderPostConstraints(node, text);
-    }
+    case 'all-of':
+    case 'any-of':
+    case 'none-of':
+    case 'n-of':
+    case 'one-from-each':
+    case 'from-n-groups':
+      return `${compositeLabel(node)}:${renderItems(node.items, indent)}` + renderPostConstraints(node);
 
     case 'credits-from': {
       const comp = comparisonPhrase(node.comparison) + ' ' + node.credits;
       const sourceItems = unwrapCreditsSource(node);
-      let text = `Complete ${comp} credits from:${renderItems(sourceItems, indent)}`;
-      return renderPostConstraints(node, text);
+      return `Complete ${comp} credits from:${renderItems(sourceItems, indent)}` + renderPostConstraints(node);
     }
 
     case 'with-constraint': {
@@ -156,8 +148,7 @@ function renderNode(node, indent) {
 
     case 'except': {
       const source = renderNode(node.source, indent);
-      let text = `${source}, except:${renderItems(node.exclude, indent)}`;
-      return renderPostConstraints(node, text);
+      return `${source}, except:${renderItems(node.exclude, indent)}` + renderPostConstraints(node);
     }
 
     case 'variable-def':

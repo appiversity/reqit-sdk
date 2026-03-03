@@ -249,10 +249,28 @@ describe('toOutline — with-constraint', () => {
 });
 
 describe('toOutline — except', () => {
-  test('filter except courses', () => {
+  test('filter except courses (leaf source)', () => {
     const result = outline('courses where subject = "CMPS" except (CMPS 490)');
     expect(result).toContain('except:');
     expect(result).toContain('CMPS 490');
+  });
+
+  test('except with composite source preserves source tree children', () => {
+    const result = outline('all of (MATH 151, MATH 152, CMPS 130) except (CMPS 130)');
+    // Source tree's children must not be dropped
+    expect(result).toContain('MATH 151');
+    expect(result).toContain('MATH 152');
+    expect(result).toContain('CMPS 130');
+    expect(result).toContain('Source:');
+    expect(result).toContain('Except:');
+  });
+
+  test('except with deeply nested composite source', () => {
+    const result = outline('all of (MATH 151, any of (MATH 152, CMPS 130)) except (CMPS 130)');
+    expect(result).toContain('MATH 151');
+    expect(result).toContain('MATH 152');
+    expect(result).toContain('CMPS 130');
+    expect(result).toContain('Source:');
   });
 });
 
@@ -352,9 +370,11 @@ describe('toOutline — additional coverage', () => {
     expect(result).toContain('where at most 1 have');
   });
 
-  test('except with composite source', () => {
+  test('except with composite source preserves all items', () => {
     const result = outline('all of (CMPS 301, CMPS 302) except (CMPS 302)');
-    expect(result).toContain('except:');
+    expect(result).toContain('Except:');
+    expect(result).toContain('CMPS 301');
+    expect(result).toContain('CMPS 302');
   });
 });
 

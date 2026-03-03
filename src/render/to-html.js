@@ -61,6 +61,23 @@ function renderItemList(items, catalog) {
 }
 
 /**
+ * Generate an HTML label for composite node types.
+ * @param {Object} node - AST node
+ * @returns {string} HTML string
+ */
+function compositeLabel(node) {
+  switch (node.type) {
+    case 'all-of': return 'Complete <strong>all</strong> of the following:';
+    case 'any-of': return 'Complete <strong>any one</strong> of the following:';
+    case 'none-of': return '<strong>None</strong> of the following may be used:';
+    case 'n-of': return `Complete <strong>${comparisonPhrase(node.comparison)} ${node.count}</strong> of the following:`;
+    case 'one-from-each': return 'Complete <strong>one from each</strong> of the following:';
+    case 'from-n-groups': return `Complete courses from <strong>at least ${node.count}</strong> of the following groups:`;
+    default: return node.type;
+  }
+}
+
+/**
  * Recursive single-dispatch renderer producing semantic HTML.
  * @param {Object} node - AST node
  * @param {Object|null} catalog - Optional catalog for course title lookup
@@ -101,45 +118,13 @@ function renderNode(node, catalog) {
     }
 
     case 'all-of':
-      return `<div class="reqit-requirement reqit-all-of">` +
-        `<p class="reqit-label">Complete <strong>all</strong> of the following:</p>` +
-        renderPostConstraints(node, catalog) +
-        renderItemList(node.items, catalog) +
-        `</div>`;
-
     case 'any-of':
-      return `<div class="reqit-requirement reqit-any-of">` +
-        `<p class="reqit-label">Complete <strong>any one</strong> of the following:</p>` +
-        renderPostConstraints(node, catalog) +
-        renderItemList(node.items, catalog) +
-        `</div>`;
-
     case 'none-of':
-      return `<div class="reqit-requirement reqit-none-of">` +
-        `<p class="reqit-label"><strong>None</strong> of the following may be used:</p>` +
-        renderPostConstraints(node, catalog) +
-        renderItemList(node.items, catalog) +
-        `</div>`;
-
-    case 'n-of': {
-      const comp = comparisonPhrase(node.comparison);
-      return `<div class="reqit-requirement reqit-n-of">` +
-        `<p class="reqit-label">Complete <strong>${comp} ${node.count}</strong> of the following:</p>` +
-        renderPostConstraints(node, catalog) +
-        renderItemList(node.items, catalog) +
-        `</div>`;
-    }
-
+    case 'n-of':
     case 'one-from-each':
-      return `<div class="reqit-requirement reqit-one-from-each">` +
-        `<p class="reqit-label">Complete <strong>one from each</strong> of the following:</p>` +
-        renderPostConstraints(node, catalog) +
-        renderItemList(node.items, catalog) +
-        `</div>`;
-
     case 'from-n-groups':
-      return `<div class="reqit-requirement reqit-from-n-groups">` +
-        `<p class="reqit-label">Complete courses from <strong>at least ${node.count}</strong> of the following groups:</p>` +
+      return `<div class="reqit-requirement reqit-${node.type}">` +
+        `<p class="reqit-label">${compositeLabel(node)}</p>` +
         renderPostConstraints(node, catalog) +
         renderItemList(node.items, catalog) +
         `</div>`;

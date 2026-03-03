@@ -13,6 +13,23 @@
 const { OP_PHRASES, comparisonPhrase, lookupTitle, renderFilterPhrase, unwrapCreditsSource } = require('./shared');
 
 /**
+ * Generate a label for composite node types in outline format.
+ * @param {Object} node - AST node
+ * @returns {string}
+ */
+function compositeLabel(node) {
+  switch (node.type) {
+    case 'all-of': return 'All of the following:';
+    case 'any-of': return 'Any one of the following:';
+    case 'none-of': return 'None of the following:';
+    case 'n-of': return `Complete ${comparisonPhrase(node.comparison)} ${node.count} of the following:`;
+    case 'one-from-each': return 'One from each of the following:';
+    case 'from-n-groups': return `From at least ${node.count} of the following groups:`;
+    default: return node.type;
+  }
+}
+
+/**
  * Render a leaf (terminal) node as a single line of text.
  * Returns `null` for non-leaf nodes so `renderTree` can handle them.
  * @param {Object} node - AST node
@@ -55,7 +72,7 @@ function renderLeaf(node, catalog) {
  * @param {Object|null} catalog - Catalog for title lookup inside filter values
  * @returns {string} Suffix string (empty if no constraints)
  */
-function renderPostConstraintSuffix(node, catalog) {
+function renderPostConstraints(node, catalog) {
   if (!node.post_constraints) return '';
   return node.post_constraints.map(pc => {
     const comp = comparisonPhrase(pc.comparison) + ' ' + pc.count;
@@ -87,32 +104,17 @@ function renderTree(node, catalog, prefix, connector) {
 
   switch (node.type) {
     case 'all-of':
-      label = 'All of the following:' + renderPostConstraintSuffix(node, catalog);
-      children = node.items;
-      break;
     case 'any-of':
-      label = 'Any one of the following:' + renderPostConstraintSuffix(node, catalog);
-      children = node.items;
-      break;
     case 'none-of':
-      label = 'None of the following:' + renderPostConstraintSuffix(node, catalog);
-      children = node.items;
-      break;
     case 'n-of':
-      label = `Complete ${comparisonPhrase(node.comparison)} ${node.count} of the following:` + renderPostConstraintSuffix(node, catalog);
-      children = node.items;
-      break;
     case 'one-from-each':
-      label = 'One from each of the following:' + renderPostConstraintSuffix(node, catalog);
-      children = node.items;
-      break;
     case 'from-n-groups':
-      label = `From at least ${node.count} of the following groups:` + renderPostConstraintSuffix(node, catalog);
+      label = compositeLabel(node) + renderPostConstraints(node, catalog);
       children = node.items;
       break;
     case 'credits-from': {
       const comp = comparisonPhrase(node.comparison) + ' ' + node.credits;
-      label = `Complete ${comp} credits from:` + renderPostConstraintSuffix(node, catalog);
+      label = `Complete ${comp} credits from:` + renderPostConstraints(node, catalog);
       children = unwrapCreditsSource(node);
       break;
     }
@@ -135,12 +137,37 @@ function renderTree(node, catalog, prefix, connector) {
     case 'except': {
       const srcLeaf = renderLeaf(node.source, catalog);
       if (srcLeaf !== null) {
-        label = srcLeaf + ', except:' + renderPostConstraintSuffix(node, catalog);
+        // Source is a leaf — use compact single-line format
+        label = srcLeaf + ', except:' + renderPostConstraints(node, catalog);
+        children = node.exclude;
       } else {
-        const srcLines = renderTree(node.source, catalog, '', '');
-        label = srcLines[0] + ', except:' + renderPostConstraintSuffix(node, catalog);
+        // Source is composite — render source and exclude as named subtrees
+        label = 'Except:' + renderPostConstraints(node, catalog);
+        // Manually render the two subtrees (Source: and Except:)
+        const childBase = prefix + (connector === '' ? '' :
+          connector === '└── ' ? '    ' : '│   ');
+        lines.push(prefix + connector + label);
+        // Source subtree
+        lines.push(childBase + '├── Source:');
+        const srcBase = childBase + '│   ';
+        const srcItems = node.source.items || [node.source];
+        for (let i = 0; i < srcItems.length; i++) {
+          const isLast = i === srcItems.length - 1;
+          const srcConn = isLast ? '└── ' : '├── ';
+          const srcChildLines = renderTree(srcItems[i], catalog, srcBase, srcConn);
+          lines.push(...srcChildLines);
+        }
+        // Exclude subtree
+        lines.push(childBase + '└── Except:');
+        const excBase = childBase + '    ';
+        for (let i = 0; i < node.exclude.length; i++) {
+          const isLast = i === node.exclude.length - 1;
+          const excConn = isLast ? '└── ' : '├── ';
+          const excChildLines = renderTree(node.exclude[i], catalog, excBase, excConn);
+          lines.push(...excChildLines);
+        }
+        return lines;
       }
-      children = node.exclude;
       break;
     }
     case 'variable-def':

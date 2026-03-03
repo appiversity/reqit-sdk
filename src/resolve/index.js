@@ -18,6 +18,8 @@
  * prerequisites → null, corequisites → null).
  */
 
+const { courseKey } = require('../render/shared');
+
 /**
  * Normalize a catalog by defaulting optional fields on each course.
  *
@@ -46,7 +48,7 @@ function normalizeCatalog(catalog) {
 function buildCourseIndex(courses) {
   const index = new Map();
   for (const c of courses) {
-    index.set(c.subject + ':' + c.number, c);
+    index.set(courseKey(c), c);
   }
   return index;
 }
@@ -68,31 +70,6 @@ function buildCrossListIndex(courses) {
     }
   }
   return index;
-}
-
-/**
- * Collect a course and all its cross-listed equivalents into the context.
- *
- * @param {object} course - A normalized catalog course
- * @param {object} ctx - Resolution context
- */
-function collectWithCrossListed(course, ctx) {
-  const key = course.subject + ':' + course.number;
-  if (!ctx.collected.has(key)) {
-    ctx.collected.set(key, course);
-  }
-  // Also collect cross-listed equivalents
-  if (course.crossListGroup) {
-    const group = ctx.crossListIndex.get(course.crossListGroup);
-    if (group) {
-      for (const equiv of group) {
-        const eKey = equiv.subject + ':' + equiv.number;
-        if (!ctx.collected.has(eKey)) {
-          ctx.collected.set(eKey, equiv);
-        }
-      }
-    }
-  }
 }
 
 /**
@@ -380,13 +357,13 @@ function astContainsCourse(ast, courseRef) {
 function expandCrossListed(courses, crossListIndex) {
   const seen = new Map();
   for (const c of courses) {
-    const key = c.subject + ':' + c.number;
+    const key = courseKey(c);
     if (!seen.has(key)) seen.set(key, c);
     if (c.crossListGroup) {
       const group = crossListIndex.get(c.crossListGroup);
       if (group) {
         for (const equiv of group) {
-          const eKey = equiv.subject + ':' + equiv.number;
+          const eKey = courseKey(equiv);
           if (!seen.has(eKey)) seen.set(eKey, equiv);
         }
       }
@@ -408,11 +385,17 @@ function walkNode(node, ctx) {
 
   switch (node.type) {
     case 'course': {
-      const key = node.subject + ':' + node.number;
+      const key = courseKey(node);
       if (!ctx.collected.has(key)) {
         const course = ctx.courseIndex.get(key);
         if (course) {
-          collectWithCrossListed(course, ctx);
+          const expanded = expandCrossListed([course], ctx.crossListIndex);
+          for (const c of expanded) {
+            const cKey = courseKey(c);
+            if (!ctx.collected.has(cKey)) {
+              ctx.collected.set(cKey, c);
+            }
+          }
         }
       }
       break;
@@ -424,7 +407,7 @@ function walkNode(node, ctx) {
       const matched = expandCrossListed(directMatches, ctx.crossListIndex);
       ctx.filters.push({ node, matched });
       for (const course of matched) {
-        const key = course.subject + ':' + course.number;
+        const key = courseKey(course);
         if (!ctx.collected.has(key)) {
           ctx.collected.set(key, course);
         }
@@ -480,11 +463,9 @@ function walkNode(node, ctx) {
     }
 
     case 'scope':
-      if (Array.isArray(node.defs)) {
-        for (const def of node.defs) {
-          walkNode(def, ctx);
-        }
-      }
+      // Defs are registered by the collectDefs pre-pass and resolved lazily
+      // through variable-ref expansion. Walking them here would be a no-op
+      // (variable-def's case is intentionally empty).
       walkNode(node.body, ctx);
       break;
 

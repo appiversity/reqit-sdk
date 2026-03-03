@@ -298,4 +298,52 @@ describe('variable expansion', () => {
       expect(result.courses).toHaveLength(1);
     });
   });
+
+  describe('scope defs resolve only through references', () => {
+    it('does not resolve unreferenced variable defs inside a scope', () => {
+      // The scope has a def that is never referenced by $core.
+      // The resolver should NOT walk the def's value — it should only
+      // resolve courses that are reachable through the scope body.
+      const ast = {
+        type: 'scope',
+        name: 'test',
+        defs: [
+          {
+            type: 'variable-def',
+            name: 'core',
+            value: { type: 'course', subject: 'MATH', number: '101' },
+          },
+        ],
+        body: { type: 'course', subject: 'MATH', number: '151' },
+      };
+      const result = resolve(ast, minimalCatalog);
+      // Only MATH 151 (from body) should be resolved, not MATH 101 (from unreferenced def)
+      expect(result.courses).toHaveLength(1);
+      expect(result.courses[0].number).toBe('151');
+    });
+
+    it('resolves scoped variable defs only when referenced', () => {
+      const ast = {
+        type: 'scope',
+        name: 'test',
+        defs: [
+          {
+            type: 'variable-def',
+            name: 'core',
+            value: { type: 'course', subject: 'MATH', number: '101' },
+          },
+        ],
+        body: {
+          type: 'all-of',
+          items: [
+            { type: 'variable-ref', name: 'core' },
+            { type: 'course', subject: 'MATH', number: '151' },
+          ],
+        },
+      };
+      const result = resolve(ast, minimalCatalog);
+      // Both MATH 101 (via $core) and MATH 151 (direct) should be resolved
+      expect(result.courses).toHaveLength(2);
+    });
+  });
 });

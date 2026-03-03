@@ -16,6 +16,16 @@
  */
 
 /**
+ * Canonical key for a course object or AST course node.
+ * Always use this instead of inlining `subject + ':' + number`.
+ * @param {{ subject: string, number: string }} course
+ * @returns {string} Key in the form "SUBJECT:NUMBER"
+ */
+function courseKey(course) {
+  return course.subject + ':' + course.number;
+}
+
+/**
  * Symbolic operators used in the reqit DSL (e.g. `>=`, `!=`).
  * Keyed by the AST's operator string.
  * @type {Object<string, string>}
@@ -88,7 +98,7 @@ function getCatalogIndex(catalog) {
   if (_catalogIndex.has(catalog)) return _catalogIndex.get(catalog);
   const index = new Map();
   for (const c of catalog.courses) {
-    index.set(c.subject + ':' + c.number, c.title);
+    index.set(courseKey(c), c.title);
   }
   _catalogIndex.set(catalog, index);
   return index;
@@ -104,7 +114,7 @@ function getCatalogIndex(catalog) {
 function lookupTitle(node, catalog) {
   if (!catalog || !catalog.courses) return null;
   const index = getCatalogIndex(catalog);
-  return index.get(node.subject + ':' + node.number) || null;
+  return index.get(courseKey(node)) || null;
 }
 
 /**
@@ -147,6 +157,7 @@ function unwrapCreditsSource(node) {
 }
 
 module.exports = {
+  courseKey,
   OP_SYMBOLS,
   OP_PHRASES,
   NODE_TYPES,
