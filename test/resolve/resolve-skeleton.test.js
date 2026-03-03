@@ -308,7 +308,7 @@ describe('resolve() skeleton', () => {
   });
 
   describe('course-filter nodes', () => {
-    it('records a course-filter in filters with empty matched array', () => {
+    it('records a course-filter in filters with matched courses', () => {
       const ast = {
         type: 'course-filter',
         filters: [{ field: 'subject', op: 'eq', value: 'CMPS' }],
@@ -316,9 +316,10 @@ describe('resolve() skeleton', () => {
       const result = resolve(ast, minimalCatalog);
       expect(result.filters).toHaveLength(1);
       expect(result.filters[0].node).toBe(ast);
-      expect(result.filters[0].matched).toEqual([]);
-      // No courses added yet — filter evaluation comes later
-      expect(result.courses).toEqual([]);
+      expect(result.filters[0].matched.length).toBeGreaterThan(0);
+      expect(result.filters[0].matched.every(c => c.subject === 'CMPS')).toBe(true);
+      // Filter-matched courses are also added to result.courses
+      expect(result.courses.length).toBe(result.filters[0].matched.length);
     });
 
     it('records multiple filters from nested structures', () => {
@@ -331,14 +332,15 @@ describe('resolve() skeleton', () => {
           },
           {
             type: 'course-filter',
-            filters: [{ field: 'attribute', op: 'eq', value: 'WI' }],
+            filters: [{ field: 'subject', op: 'eq', value: 'ART' }],
           },
           { type: 'course', subject: 'MATH', number: '101' },
         ],
       };
       const result = resolve(ast, minimalCatalog);
       expect(result.filters).toHaveLength(2);
-      expect(result.courses).toHaveLength(1); // only the explicit course ref
+      // CMPS (11) + ART (4) + MATH 101 (1) = 16 distinct courses
+      expect(result.courses).toHaveLength(16);
     });
   });
 

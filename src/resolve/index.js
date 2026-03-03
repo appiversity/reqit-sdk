@@ -77,6 +77,105 @@ function resolve(ast, catalog) {
 }
 
 /**
+ * Evaluate a list of filters (AND logic) against all catalog courses.
+ * Returns courses that match every filter.
+ *
+ * @param {object[]} filters - Array of filter objects { field, op, value }
+ * @param {object[]} courses - Normalized catalog courses
+ * @returns {object[]} Matching courses
+ */
+function evaluateFilters(filters, courses) {
+  return courses.filter(course => {
+    for (const f of filters) {
+      if (!evaluateFilter(f, course)) return false;
+    }
+    return true;
+  });
+}
+
+/**
+ * Evaluate a single filter against a course.
+ *
+ * @param {object} filter - { field, op, value }
+ * @param {object} course - Normalized catalog course
+ * @returns {boolean} Whether the course matches the filter
+ */
+function evaluateFilter(filter, course) {
+  const { field, op, value } = filter;
+
+  switch (field) {
+    case 'subject':
+      return evaluateStringFilter(course.subject, op, value);
+
+    case 'number':
+      return evaluateNumberFilter(course.number, op, value);
+
+    default:
+      // Other filter fields will be added in steps 5.3–5.5.
+      return false;
+  }
+}
+
+/**
+ * Evaluate a string-field filter (eq, ne).
+ *
+ * @param {string} courseValue - The course's field value
+ * @param {string} op - Comparison operator
+ * @param {*} filterValue - The filter value to compare against
+ * @returns {boolean}
+ */
+function evaluateStringFilter(courseValue, op, filterValue) {
+  switch (op) {
+    case 'eq': return courseValue === filterValue;
+    case 'ne': return courseValue !== filterValue;
+    default: return false;
+  }
+}
+
+/**
+ * Evaluate a number-field filter. For equality (eq/ne), uses exact string
+ * comparison. For ordering comparisons (gt/gte/lt/lte), extracts leading
+ * digits from the course number for numeric comparison.
+ *
+ * @param {string} courseNumber - The course's number field (string, e.g. "101", "101A")
+ * @param {string} op - Comparison operator
+ * @param {*} filterValue - The filter value (string for eq/ne, number for comparisons)
+ * @returns {boolean}
+ */
+function evaluateNumberFilter(courseNumber, op, filterValue) {
+  switch (op) {
+    case 'eq': return courseNumber === String(filterValue);
+    case 'ne': return courseNumber !== String(filterValue);
+    case 'gt':
+    case 'gte':
+    case 'lt':
+    case 'lte': {
+      const numeric = extractLeadingNumber(courseNumber);
+      if (numeric === null) return false;
+      const target = Number(filterValue);
+      if (op === 'gt') return numeric > target;
+      if (op === 'gte') return numeric >= target;
+      if (op === 'lt') return numeric < target;
+      if (op === 'lte') return numeric <= target;
+    }
+    // falls through only if op is somehow none of the above (unreachable)
+    default: return false;
+  }
+}
+
+/**
+ * Extract the leading numeric portion of a course number string.
+ * E.g. "101" → 101, "101A" → 101, "220.2" → 220.2, "ABC" → null
+ *
+ * @param {string} s - Course number string
+ * @returns {number|null}
+ */
+function extractLeadingNumber(s) {
+  const match = s.match(/^(\d+(?:\.\d+)?)/);
+  return match ? Number(match[1]) : null;
+}
+
+/**
  * Recursively walk the AST, resolving course references and collecting
  * filter nodes. Filter evaluation is handled separately — this walk
  * identifies which nodes need resolution and dispatches accordingly.
@@ -100,10 +199,14 @@ function walkNode(node, ctx) {
     }
 
     case 'course-filter': {
-      // Filter evaluation will be added in steps 5.2–5.5.
-      // For now, record the filter node with an empty match list.
-      const matched = [];
+      const matched = evaluateFilters(node.filters, ctx.catalog.courses);
       ctx.filters.push({ node, matched });
+      for (const course of matched) {
+        const key = course.subject + ':' + course.number;
+        if (!ctx.collected.has(key)) {
+          ctx.collected.set(key, course);
+        }
+      }
       break;
     }
 
