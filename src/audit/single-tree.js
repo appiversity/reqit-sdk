@@ -630,18 +630,18 @@ function emitPostConstraintWarnings(constraintResults, ctx) {
  */
 function evaluateMinGradeConstraint(minGrade, entries, ctx) {
   let allMeet = true;
-  let hasGradedEntries = false;
+  let gradedCount = 0;
 
   for (const entry of entries) {
     if (entry.status === 'in-progress') continue; // skip in-progress
     if (entry.grade == null) continue;
-    hasGradedEntries = true;
+    gradedCount++;
     if (!meetsMinGrade(entry.grade, minGrade, ctx.gradeConfig)) {
       allMeet = false;
     }
   }
 
-  return { met: hasGradedEntries ? allMeet : true, minGrade };
+  return { met: gradedCount > 0 ? allMeet : true, minGrade, gradedCount };
 }
 
 /**
@@ -653,11 +653,11 @@ function evaluateMinGpaConstraint(minGpa, entries, ctx) {
   );
 
   if (gradedEntries.length === 0) {
-    return { met: true, actual: 0, minGpa };
+    return { met: true, actual: 0, minGpa, gradedCount: 0 };
   }
 
   const gpa = calculateGPA(gradedEntries, ctx.gradeConfig);
-  return { met: gpa >= minGpa, actual: gpa, minGpa };
+  return { met: gpa >= minGpa, actual: gpa, minGpa, gradedCount: gradedEntries.length };
 }
 
 module.exports = {
