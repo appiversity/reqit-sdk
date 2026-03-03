@@ -17,6 +17,22 @@
 const { evaluatePostConstraints } = require('./post-constraints');
 
 /**
+ * Compute C(n, k) — the binomial coefficient.
+ * Returns Infinity for overflow-prone values to avoid precision issues.
+ */
+function binomial(n, k) {
+  if (k < 0 || k > n) return 0;
+  if (k === 0 || k === n) return 1;
+  if (k > n - k) k = n - k;
+  let result = 1;
+  for (let i = 0; i < k; i++) {
+    result = result * (n - i) / (i + 1);
+    if (!Number.isFinite(result)) return Infinity;
+  }
+  return Math.round(result);
+}
+
+/**
  * Try to find a subset of exactly K items from metItems that satisfies
  * all post-constraints.
  *
@@ -30,6 +46,17 @@ function backtrackPostConstraints(metItems, k, postConstraints, ctx) {
   // If K >= metItems.length, no choice — must use all
   if (k >= metItems.length) {
     return { found: false, selected: null, constraintResults: null };
+  }
+
+  // Warn if the combination space is large
+  const comboCount = binomial(metItems.length, k);
+  if (comboCount > 100_000) {
+    ctx.warnings.push({
+      type: 'backtrack-combinatorial-explosion',
+      count: comboCount,
+      n: metItems.length,
+      k,
+    });
   }
 
   // Generate combinations of size K and test each
