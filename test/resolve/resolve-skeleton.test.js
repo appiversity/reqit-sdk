@@ -213,7 +213,8 @@ describe('resolve() skeleton', () => {
       expect(result.courses).toHaveLength(3);
     });
 
-    it('resolves courses inside variable-def', () => {
+    it('variable-def without ref does not resolve its courses', () => {
+      // Variable defs are only expanded through variable-refs
       const ast = {
         type: 'variable-def',
         name: 'core',
@@ -226,10 +227,10 @@ describe('resolve() skeleton', () => {
         },
       };
       const result = resolve(ast, minimalCatalog);
-      expect(result.courses).toHaveLength(2);
+      expect(result.courses).toHaveLength(0);
     });
 
-    it('resolves courses inside scope (defs and body)', () => {
+    it('resolves courses inside scope body (defs expanded via refs)', () => {
       const ast = {
         type: 'scope',
         name: 'cs-major',
@@ -249,6 +250,7 @@ describe('resolve() skeleton', () => {
         body: {
           type: 'all-of',
           items: [
+            { type: 'variable-ref', name: 'core' },
             { type: 'course', subject: 'MATH', number: '151' },
             { type: 'course', subject: 'MATH', number: '152' },
           ],

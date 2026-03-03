@@ -61,11 +61,14 @@ function buildCourseIndex(courses) {
 function resolve(ast, catalog) {
   const norm = normalizeCatalog(catalog);
   const courseIndex = buildCourseIndex(norm.courses);
+  const defs = collectDefs(ast, '', new Map());
   const ctx = {
     catalog: norm,
     courseIndex,
     collected: new Map(),  // "SUBJECT:NUMBER" → normalized course object
     filters: [],           // { node, matched: Course[] }
+    defs,                  // variable name → variable-def node
+    expanding: new Set(),  // guards against circular variable refs
   };
 
   walkNode(ast, ctx);
@@ -74,6 +77,61 @@ function resolve(ast, catalog) {
     courses: Array.from(ctx.collected.values()),
     filters: ctx.filters,
   };
+}
+
+/**
+ * Pre-pass: collect all variable-def nodes, registering them in a map.
+ * Defs inside a scope register under both "scope.name" and "name".
+ * Unscoped defs register under "name" only.
+ *
+ * @param {object} node - AST node
+ * @param {string} scopeName - Current scope name (empty string if none)
+ * @param {Map<string, object>} defs - Accumulator map
+ * @returns {Map<string, object>}
+ */
+function collectDefs(node, scopeName, defs) {
+  if (!node || typeof node !== 'object') return defs;
+
+  if (node.type === 'scope') {
+    const scope = node.name || '';
+    if (Array.isArray(node.defs)) {
+      for (const def of node.defs) {
+        collectDefs(def, scope, defs);
+      }
+    }
+    if (node.body) {
+      collectDefs(node.body, scope, defs);
+    }
+    return defs;
+  }
+
+  if (node.type === 'variable-def') {
+    const name = node.name;
+    if (scopeName) {
+      defs.set(`${scopeName}.${name}`, node);
+      defs.set(name, node);
+    } else {
+      defs.set(name, node);
+    }
+    if (node.value) {
+      collectDefs(node.value, scopeName, defs);
+    }
+    return defs;
+  }
+
+  // Recurse into children
+  if (Array.isArray(node.items)) {
+    for (const child of node.items) {
+      collectDefs(child, scopeName, defs);
+    }
+  }
+  if (node.expression) collectDefs(node.expression, scopeName, defs);
+  if (node.value) collectDefs(node.value, scopeName, defs);
+  if (node.source) collectDefs(node.source, scopeName, defs);
+  if (node.requirement) collectDefs(node.requirement, scopeName, defs);
+  if (node.body) collectDefs(node.body, scopeName, defs);
+
+  return defs;
 }
 
 /**
@@ -331,12 +389,21 @@ function walkNode(node, ctx) {
       break;
 
     case 'variable-def':
-      walkNode(node.value, ctx);
+      // Don't walk the value here — it will be expanded through variable-refs.
+      // Walking it here would cause duplicate resolution when the variable
+      // is also referenced via $name.
       break;
 
-    case 'variable-ref':
-      // Variable expansion will be added in step 5.6.
+    case 'variable-ref': {
+      const key = node.scope ? `${node.scope}.${node.name}` : node.name;
+      const def = ctx.defs.get(key);
+      if (def && def.value && !ctx.expanding.has(key)) {
+        ctx.expanding.add(key);
+        walkNode(def.value, ctx);
+        ctx.expanding.delete(key);
+      }
       break;
+    }
 
     case 'scope':
       if (Array.isArray(node.defs)) {
