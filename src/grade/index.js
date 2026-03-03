@@ -8,10 +8,16 @@
  * Comparison and GPA calculation happen at audit time using the functions below.
  *
  * GradeConfig shape:
- *   scale      — ordered array of { grade, points }; first entry is highest
- *   passFail   — array of { grade, passing }
+ *   scale      — ordered array of { grade, points, audit? }; first entry is highest
+ *   passFail   — array of { grade, passing, audit? }
  *   withdrawal — array of grade strings (non-calculated)
  *   incomplete — array of grade strings (non-calculated)
+ *
+ * The optional `audit` boolean on scale and passFail entries defaults to true.
+ * When set to false, the grade is excluded from all audit evaluation, GPA
+ * calculation, and grade comparison. This handles retake scenarios where an
+ * institution marks the original grade (e.g. "RD") as non-auditable so only
+ * the replacement grade participates in the audit.
  */
 
 /**
@@ -72,11 +78,45 @@ function getScaleIndex(scale) {
 }
 
 /**
+ * Check whether a grade is auditable (participates in audit and GPA).
+ * A grade is auditable unless its config entry has `audit: false`.
+ * The `audit` field defaults to true when omitted.
+ *
+ * Grades not found in scale or passFail are considered auditable (they will
+ * be flagged separately as unrecognized during audit).
+ *
+ * @param {string} grade - The grade to check
+ * @param {GradeConfig} gradeConfig - Grade configuration
+ * @returns {boolean} True if the grade is auditable
+ */
+function isAuditableGrade(grade, gradeConfig) {
+  const config = gradeConfig || DEFAULT_GRADE_CONFIG;
+
+  // Check scale entries
+  const index = getScaleIndex(config.scale);
+  const scalePos = index.get(grade);
+  if (scalePos !== undefined) {
+    return config.scale[scalePos].audit !== false;
+  }
+
+  // Check passFail entries
+  if (config.passFail) {
+    const pf = config.passFail.find(p => p.grade === grade);
+    if (pf) return pf.audit !== false;
+  }
+
+  // Withdrawal, incomplete, or unrecognized — auditable by default
+  // (withdrawal/incomplete are already handled as non-passing)
+  return true;
+}
+
+/**
  * Check whether `grade` meets or exceeds `minGrade` on the given scale.
  * Both grades must appear in `gradeConfig.scale`. A grade meets the minimum
  * if its position in the scale is <= the position of minGrade (earlier = higher).
  *
  * Pass/fail, withdrawal, and incomplete grades never meet a minimum letter grade.
+ * Grades with `audit: false` never meet a minimum grade.
  *
  * @param {string} grade - The grade to check
  * @param {string} minGrade - The minimum required grade
@@ -99,6 +139,9 @@ function meetsMinGrade(grade, minGrade, gradeConfig) {
     return false;
   }
 
+  // Non-auditable grades never meet a minimum
+  if (config.scale[gradePos].audit === false) return false;
+
   return gradePos <= minPos;
 }
 
@@ -107,6 +150,7 @@ function meetsMinGrade(grade, minGrade, gradeConfig) {
  * A grade is passing if it appears in the scale with points > 0,
  * or appears in passFail with `passing: true`.
  * Withdrawal and incomplete grades are not passing.
+ * Grades with `audit: false` are not passing.
  *
  * @param {string} grade - The grade to check
  * @param {GradeConfig} gradeConfig - Grade configuration
@@ -115,17 +159,21 @@ function meetsMinGrade(grade, minGrade, gradeConfig) {
 function isPassingGrade(grade, gradeConfig) {
   const config = gradeConfig || DEFAULT_GRADE_CONFIG;
 
-  // Check scale grades — passing if points > 0
+  // Check scale grades — passing if points > 0 and auditable
   const index = getScaleIndex(config.scale);
   const scalePos = index.get(grade);
   if (scalePos !== undefined) {
+    if (config.scale[scalePos].audit === false) return false;
     return config.scale[scalePos].points > 0;
   }
 
   // Check pass/fail grades
   if (config.passFail) {
     const pf = config.passFail.find(p => p.grade === grade);
-    if (pf) return pf.passing;
+    if (pf) {
+      if (pf.audit === false) return false;
+      return pf.passing;
+    }
   }
 
   // Withdrawal, incomplete, or unrecognised — not passing
@@ -134,8 +182,9 @@ function isPassingGrade(grade, gradeConfig) {
 
 /**
  * Calculate credit-weighted GPA from transcript entries.
- * Only grades appearing in `gradeConfig.scale` contribute to GPA.
- * Pass/fail, withdrawal, and incomplete grades are excluded from calculation.
+ * Only grades appearing in `gradeConfig.scale` with `audit !== false`
+ * contribute to GPA. Pass/fail, withdrawal, incomplete, and non-auditable
+ * grades are excluded from calculation.
  *
  * @param {Array<{grade: string, credits: number}>} entries - Transcript entries
  * @param {GradeConfig} gradeConfig - Grade configuration
@@ -151,6 +200,7 @@ function calculateGPA(entries, gradeConfig) {
   for (const entry of entries) {
     const scalePos = index.get(entry.grade);
     if (scalePos === undefined) continue; // skip non-scale grades
+    if (config.scale[scalePos].audit === false) continue; // skip non-auditable
     const points = config.scale[scalePos].points;
     totalPoints += points * entry.credits;
     totalCredits += entry.credits;
@@ -162,6 +212,7 @@ function calculateGPA(entries, gradeConfig) {
 
 module.exports = {
   DEFAULT_GRADE_CONFIG,
+  isAuditableGrade,
   meetsMinGrade,
   isPassingGrade,
   calculateGPA,

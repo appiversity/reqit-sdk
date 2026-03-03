@@ -481,4 +481,12 @@ function walkNode(node, ctx) {
   }
 }
 
-module.exports = { resolve, normalizeCatalog };
+module.exports = {
+  resolve,
+  normalizeCatalog,
+  buildCourseIndex,
+  buildCrossListIndex,
+  evaluateFilter,
+  evaluateFilters,
+  collectDefs,
+};
