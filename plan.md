@@ -130,7 +130,7 @@ Each of the following 8 steps must be distinct commits.
 - [x] **5.5** Filter evaluation: `prerequisite includes`, `corequisite includes` — walk each catalog course's `prerequisites`/`corequisites` AST to check whether it contains the specified course reference. Courses with `null` prerequisites/corequisites never match. + tests
 - [x] **5.6** Variable expansion with scope resolution (local → institution → error) + tests
 - [x] **5.7** Cross-list group resolution: when resolving an explicit course reference (e.g. `CSE 340`), also match any catalog course sharing the same `crossListGroup` (e.g. `MATH 340`). Filter results likewise include cross-listed equivalents. + tests
-- [ ] **5.8** Resolution integration tests using all 4 case study catalogs (Lehigh tech electives, Moravian multi-subject pools, W&M attribute-based gen-ed, RCNJ institution-wide filters)
+- [x] **5.8** Resolution integration tests using all 4 case study catalogs (Lehigh tech electives, Moravian multi-subject pools, W&M attribute-based gen-ed, RCNJ institution-wide filters)
 
 **Do not proceed to Phase 6 without asking for verification.  This is a checkpoint**.
 
