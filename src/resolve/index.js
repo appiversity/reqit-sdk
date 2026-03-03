@@ -52,6 +52,50 @@ function buildCourseIndex(courses) {
 }
 
 /**
+ * Build a crossListGroup → courses[] index for cross-list resolution.
+ *
+ * @param {object[]} courses - Normalized catalog courses
+ * @returns {Map<string, object[]>} Index keyed by crossListGroup
+ */
+function buildCrossListIndex(courses) {
+  const index = new Map();
+  for (const c of courses) {
+    if (c.crossListGroup) {
+      if (!index.has(c.crossListGroup)) {
+        index.set(c.crossListGroup, []);
+      }
+      index.get(c.crossListGroup).push(c);
+    }
+  }
+  return index;
+}
+
+/**
+ * Collect a course and all its cross-listed equivalents into the context.
+ *
+ * @param {object} course - A normalized catalog course
+ * @param {object} ctx - Resolution context
+ */
+function collectWithCrossListed(course, ctx) {
+  const key = course.subject + ':' + course.number;
+  if (!ctx.collected.has(key)) {
+    ctx.collected.set(key, course);
+  }
+  // Also collect cross-listed equivalents
+  if (course.crossListGroup) {
+    const group = ctx.crossListIndex.get(course.crossListGroup);
+    if (group) {
+      for (const equiv of group) {
+        const eKey = equiv.subject + ':' + equiv.number;
+        if (!ctx.collected.has(eKey)) {
+          ctx.collected.set(eKey, equiv);
+        }
+      }
+    }
+  }
+}
+
+/**
  * Resolve a reqit AST against a catalog.
  *
  * @param {object} ast - A validated reqit AST
@@ -61,10 +105,12 @@ function buildCourseIndex(courses) {
 function resolve(ast, catalog) {
   const norm = normalizeCatalog(catalog);
   const courseIndex = buildCourseIndex(norm.courses);
+  const crossListIndex = buildCrossListIndex(norm.courses);
   const defs = collectDefs(ast, '', new Map());
   const ctx = {
     catalog: norm,
     courseIndex,
+    crossListIndex,
     collected: new Map(),  // "SUBJECT:NUMBER" → normalized course object
     filters: [],           // { node, matched: Course[] }
     defs,                  // variable name → variable-def node
@@ -324,6 +370,32 @@ function astContainsCourse(ast, courseRef) {
 }
 
 /**
+ * Expand a list of matched courses to include cross-listed equivalents.
+ * Deduplicates by subject:number.
+ *
+ * @param {object[]} courses - Directly matched courses
+ * @param {Map<string, object[]>} crossListIndex - Cross-list group index
+ * @returns {object[]} Expanded course list
+ */
+function expandCrossListed(courses, crossListIndex) {
+  const seen = new Map();
+  for (const c of courses) {
+    const key = c.subject + ':' + c.number;
+    if (!seen.has(key)) seen.set(key, c);
+    if (c.crossListGroup) {
+      const group = crossListIndex.get(c.crossListGroup);
+      if (group) {
+        for (const equiv of group) {
+          const eKey = equiv.subject + ':' + equiv.number;
+          if (!seen.has(eKey)) seen.set(eKey, equiv);
+        }
+      }
+    }
+  }
+  return Array.from(seen.values());
+}
+
+/**
  * Recursively walk the AST, resolving course references and collecting
  * filter nodes. Filter evaluation is handled separately — this walk
  * identifies which nodes need resolution and dispatches accordingly.
@@ -340,14 +412,16 @@ function walkNode(node, ctx) {
       if (!ctx.collected.has(key)) {
         const course = ctx.courseIndex.get(key);
         if (course) {
-          ctx.collected.set(key, course);
+          collectWithCrossListed(course, ctx);
         }
       }
       break;
     }
 
     case 'course-filter': {
-      const matched = evaluateFilters(node.filters, ctx.catalog.courses);
+      const directMatches = evaluateFilters(node.filters, ctx.catalog.courses);
+      // Expand matches with cross-listed equivalents
+      const matched = expandCrossListed(directMatches, ctx.crossListIndex);
       ctx.filters.push({ node, matched });
       for (const course of matched) {
         const key = course.subject + ':' + course.number;
