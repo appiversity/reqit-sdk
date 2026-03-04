@@ -121,10 +121,14 @@ function findUnmet(result) {
   return unmet;
 }
 
+const { auditMulti, CourseAssignmentMap } = require('./multi-tree');
+
 module.exports = {
   audit,
   prepareAudit,
   findUnmet,
+  auditMulti,
+  CourseAssignmentMap,
   MET,
   IN_PROGRESS,
   PARTIAL_PROGRESS,
