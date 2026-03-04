@@ -1,0 +1,11 @@
+[
+  { "subject": "CMPS", "number": "147", "grade": "B+", "credits": 4, "term": "Fall 2022", "status": "completed" },
+  { "subject": "CMPS", "number": "148", "grade": "B",  "credits": 4, "term": "Spring 2023", "status": "completed" },
+  { "subject": "CMPS", "number": "231", "grade": "A-", "credits": 4, "term": "Fall 2023", "status": "completed" },
+  { "subject": "CMPS", "number": "345", "grade": "B",  "credits": 4, "term": "Spring 2024", "status": "completed" },
+  { "subject": "CMPS", "number": "305", "grade": "B+", "credits": 4, "term": "Fall 2024", "status": "completed" },
+  { "subject": "CMPS", "number": "310", "grade": "A",  "credits": 4, "term": "Fall 2024", "status": "completed" },
+
+  { "subject": "MATH", "number": "121", "grade": "B+", "credits": 4, "term": "Fall 2022", "status": "completed" },
+  { "subject": "MATH", "number": "205", "grade": "B",  "credits": 4, "term": "Spring 2023", "status": "completed" }
+]

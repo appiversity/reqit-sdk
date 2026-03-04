@@ -1,0 +1,36 @@
+[
+  { "subject": "CMPS", "number": "147", "grade": "B+", "credits": 4, "term": "Fall 2022", "status": "completed" },
+  { "subject": "CMPS", "number": "148", "grade": "B",  "credits": 4, "term": "Spring 2023", "status": "completed" },
+  { "subject": "CMPS", "number": "231", "grade": "A-", "credits": 4, "term": "Fall 2023", "status": "completed" },
+  { "subject": "CMPS", "number": "220", "grade": "B+", "credits": 4, "term": "Fall 2023", "status": "completed" },
+  { "subject": "CMPS", "number": "345", "grade": "B",  "credits": 4, "term": "Spring 2024", "status": "completed" },
+  { "subject": "CMPS", "number": "361", "grade": "A-", "credits": 4, "term": "Spring 2024", "status": "completed" },
+  { "subject": "CMPS", "number": "364", "grade": "B+", "credits": 4, "term": "Fall 2024", "status": "completed" },
+  { "subject": "CMPS", "number": "366", "grade": "B",  "credits": 4, "term": "Fall 2024", "status": "completed" },
+  { "subject": "CMPS", "number": "450", "grade": "A",  "credits": 4, "term": "Spring 2025", "status": "completed" },
+
+  { "subject": "MATH", "number": "121", "grade": "B+", "credits": 4, "term": "Fall 2022", "status": "completed" },
+  { "subject": "MATH", "number": "205", "grade": "B",  "credits": 4, "term": "Spring 2023", "status": "completed" },
+  { "subject": "MATH", "number": "237", "grade": "A-", "credits": 4, "term": "Fall 2023", "status": "completed" },
+  { "subject": "MATH", "number": "108", "grade": "B+", "credits": 3, "term": "Fall 2022", "status": "completed" },
+  { "subject": "MATH", "number": "101", "grade": "B",  "credits": 3, "term": "Fall 2022", "status": "completed" },
+
+  { "subject": "CMPS", "number": "305", "grade": "B+", "credits": 4, "term": "Fall 2024", "status": "completed" },
+  { "subject": "CMPS", "number": "310", "grade": "A",  "credits": 4, "term": "Fall 2024", "status": "completed" },
+  { "subject": "CMPS", "number": "311", "grade": "B",  "credits": 4, "term": "Spring 2025", "status": "completed" },
+  { "subject": "CMPS", "number": "320", "grade": "A-", "credits": 4, "term": "Spring 2025", "status": "completed" },
+  { "subject": "CMPS", "number": "327", "grade": "B+", "credits": 4, "term": "Fall 2024", "status": "completed" },
+  { "subject": "CMPS", "number": "331", "grade": "B",  "credits": 4, "term": "Spring 2025", "status": "completed" },
+  { "subject": "CMPS", "number": "369", "grade": "A",  "credits": 4, "term": "Spring 2025", "status": "completed" },
+
+  { "subject": "INTD", "number": "101", "grade": "B+", "credits": 3, "term": "Fall 2022", "status": "completed" },
+  { "subject": "CRWT", "number": "102", "grade": "B",  "credits": 3, "term": "Fall 2022", "status": "completed" },
+  { "subject": "AIID", "number": "201", "grade": "A",  "credits": 3, "term": "Spring 2023", "status": "completed" },
+  { "subject": "SOSC", "number": "110", "grade": "B+", "credits": 3, "term": "Spring 2023", "status": "completed" },
+  { "subject": "HIST", "number": "101", "grade": "B",  "credits": 3, "term": "Fall 2023", "status": "completed" },
+  { "subject": "SPAN", "number": "101", "grade": "A-", "credits": 3, "term": "Fall 2023", "status": "completed" },
+  { "subject": "ENSC", "number": "103", "grade": "B+", "credits": 4, "term": "Spring 2024", "status": "completed" },
+  { "subject": "MUSC", "number": "201", "grade": "B",  "credits": 3, "term": "Spring 2024", "status": "completed" },
+  { "subject": "PHIL", "number": "210", "grade": "A",  "credits": 3, "term": "Fall 2024", "status": "completed" },
+  { "subject": "SUST", "number": "201", "grade": "B+", "credits": 3, "term": "Spring 2025", "status": "completed" }
+]
