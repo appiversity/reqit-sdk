@@ -15,9 +15,7 @@
  */
 
 const {
-  normalizeCatalog,
-  buildCourseIndex,
-  buildCrossListIndex,
+  prepareCatalog,
   collectDefs,
 } = require('../resolve');
 const { normalizeTranscript } = require('./transcript');
@@ -160,10 +158,7 @@ function auditMulti(trees, catalog, transcript, options) {
   }
 
   // Pre-build shared catalog structures
-  const norm = normalizeCatalog(catalog);
-  const catalogIndex = buildCourseIndex(norm.courses);
-  const crossListIndex = buildCrossListIndex(norm.courses);
-  const gradeConfig = norm.gradeConfig || catalog.gradeConfig;
+  const { norm, catalogIndex, crossListIndex, gradeConfig } = prepareCatalog(catalog);
   const normTranscript = normalizeTranscript(transcript, gradeConfig, catalogIndex);
 
   // --- Pass 1: Audit each tree independently ---

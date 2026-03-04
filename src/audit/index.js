@@ -5,9 +5,7 @@
  */
 
 const {
-  normalizeCatalog,
-  buildCourseIndex,
-  buildCrossListIndex,
+  prepareCatalog,
   collectDefs,
 } = require('../resolve');
 const { normalizeTranscript } = require('./transcript');
@@ -42,10 +40,7 @@ function audit(ast, catalog, transcript, options) {
  * @returns {{ run: (transcript: object[], options?: object) => { status, result, warnings } }}
  */
 function prepareAudit(ast, catalog) {
-  const norm = normalizeCatalog(catalog);
-  const catalogIndex = buildCourseIndex(norm.courses);
-  const crossListIndex = buildCrossListIndex(norm.courses);
-  const gradeConfig = norm.gradeConfig || catalog.gradeConfig;
+  const { norm, catalogIndex, crossListIndex, gradeConfig } = prepareCatalog(catalog);
   const defs = collectDefs(ast, '', new Map());
 
   return {

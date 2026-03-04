@@ -481,6 +481,23 @@ function walkNode(node, ctx) {
   }
 }
 
+/**
+ * Prepare catalog structures needed by the auditor.
+ *
+ * Normalizes the catalog, builds lookup indexes, and extracts grade config.
+ * Shared by audit() and auditMulti() to avoid duplication.
+ *
+ * @param {object} catalog - Raw catalog object
+ * @returns {{ norm: object, catalogIndex: Map, crossListIndex: Map, gradeConfig: object }}
+ */
+function prepareCatalog(catalog) {
+  const norm = normalizeCatalog(catalog);
+  const catalogIndex = buildCourseIndex(norm.courses);
+  const crossListIndex = buildCrossListIndex(norm.courses);
+  const gradeConfig = norm.gradeConfig || catalog.gradeConfig;
+  return { norm, catalogIndex, crossListIndex, gradeConfig };
+}
+
 module.exports = {
   resolve,
   normalizeCatalog,
@@ -489,4 +506,5 @@ module.exports = {
   evaluateFilter,
   evaluateFilters,
   collectDefs,
+  prepareCatalog,
 };
