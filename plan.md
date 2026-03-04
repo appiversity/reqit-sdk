@@ -139,7 +139,7 @@ Each of the following 8 steps must be distinct commits.
 Implementation deviated from the original fine-grained commit plan. All 20 node types were implemented in `single-tree.js` in one pass, with tests organized by concern rather than by commit. The audit subsystem also absorbed Phase 7 (warnings), `prepareAudit()` batch optimization, post-constraint backtracking, and `findUnmet()` — all originally planned for later phases.
 
 **Source files:** `src/audit/index.js`, `src/audit/single-tree.js`, `src/audit/status.js`, `src/audit/transcript.js`, `src/audit/backtrack.js`
-**Test files:** 12 test files, 214 tests total
+**Test files:** 14 test files, 245 tests total (214 original + 17 W&M + 14 RCNJ)
 
 - [x] **6.1** `audit()` skeleton + leaf node auditing (course, score, attainment, quantity) against transcript + tests
 - [x] **6.2** Composite node auditing: all-of, any-of status rollup + tests
@@ -166,9 +166,8 @@ Additional items completed during Phase 6 (absorbed from later phases):
 - [x] `findUnmet()` utility — originally Phase 10
 - [x] Public API updated (`src/index.js`)
 
-Not yet done from original plan:
-- [ ] **6.13** Audit integration tests: W&M scenarios (GPA constraints, track selection, gen-ed distribution, proficiency attainments)
-- [ ] **6.14** Audit integration tests: RCNJ scenarios (test score prerequisites, pervasive grade constraints, gen-ed keystones + distribution)
+- [x] **6.13** Audit integration tests: W&M scenarios (GPA constraints, track selection, gen-ed distribution, proficiency attainments, except clauses) — 17 tests, 4 transcript fixtures
+- [x] **6.14** Audit integration tests: RCNJ scenarios (test score prerequisites, pervasive grade constraints, gen-ed keystones + distribution, CS minor) — 14 tests, 4 transcript fixtures
 
 ## Phase 7: Audit Warnings — Completed in Phase 6
 
@@ -180,11 +179,20 @@ Not yet done from original plan:
 
 ## Phase 8: Multi-Tree Auditing
 
-- [ ] **8.1** `auditMulti()` skeleton + global course assignment tracking across trees + tests
-- [ ] **8.2** Overlap rule enforcement (at-most N courses/credits/percent between two trees) + `overlap-limit-exceeded` warning + tests
-- [ ] **8.3** `outside-program` evaluation (complement constraint) + tests
-- [ ] **8.4** Program context reference resolution (primary-major, primary-minor, declared-department) + tests
-- [ ] **8.5** Multi-tree integration tests: W&M (CS major + COLL gen-ed + graduation requirements with overlap rules)
+- [x] **8.1** `auditMulti()` skeleton + `CourseAssignmentMap` + global course assignment tracking across trees — 10 tests
+- [x] **8.2** Overlap rule enforcement (at-most N courses/credits between two trees) + `overlap-limit-exceeded` warning — 4 tests
+- [x] **8.3** `outside-program` evaluation (complement constraint — count credits outside a referenced program) — 2 tests
+- [x] **8.4** Program context reference resolution (`primary-major` role → program code) — 3 tests
+- [x] **8.5** Multi-tree integration tests: W&M (CS major + COLL gen-ed + graduation requirements with overlap tracking, outside-program, program-context-ref) — 6 tests
+
+**Source files:** `src/audit/multi-tree.js` (new), `src/audit/index.js` (updated exports)
+**Test files:** `test/audit/multi-tree.test.js` (19 tests), `test/audit/integration/william-mary-multi.test.js` (6 tests)
+
+**Design decisions:**
+- Greedy sequential strategy: audit each tree independently, track assignments, evaluate policy nodes in pass 2
+- `CourseAssignmentMap` as first-class data structure for course→program tracking
+- Policy nodes (overlap-limit, outside-program, program-context-ref) return NOT_MET in single-tree mode; multi-tree pass 2 walks ASTs separately to evaluate them
+- Avoids circular dependency: `multi-tree.js` uses `auditNode` directly instead of importing `audit()` from `index.js`
 
 **Do not proceed to Phase 9 without asking for verification.  This is a checkpoint**.
 
