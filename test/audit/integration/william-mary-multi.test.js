@@ -88,24 +88,24 @@ const collGenEdAst = {
   ],
 };
 
-// Tree 3: Graduation requirements (references primary-major, outside-program)
+// Tree 3: Graduation requirements (attainments + program-context-ref inline)
 const gradReqAst = {
   type: 'all-of', label: 'Graduation Requirements',
   items: [
     { type: 'attainment', name: 'FOREIGN-LANG' },
     { type: 'attainment', name: 'WRITING-REQ' },
-    {
-      type: 'program-context-ref', role: 'primary-major',
-    },
-    {
-      type: 'outside-program',
-      program: 'BS-CSCI',
-      comparison: 'at-least',
-      value: 30,
-      unit: 'credits',
-    },
+    { type: 'program-context-ref', role: 'primary-major' },
   ],
 };
+
+// Overlap rules — outside-program is a cross-tree policy, not inline
+const overlapRules = [
+  {
+    type: 'outside-program',
+    program: { type: 'program-ref', code: 'BS-CSCI' },
+    constraint: { comparison: 'at-least', value: 30, unit: 'credits' },
+  },
+];
 
 // Helper to build the standard 3-tree setup
 function makeThreeTrees() {
@@ -130,7 +130,7 @@ describe('W&M multi-tree integration', () => {
   test('complete student — all 3 trees audited, assignments consistent', () => {
     const trees = makeThreeTrees();
     const { results, assignments } = auditMulti(
-      trees, wmCatalog, csComplete, { attainments }
+      trees, wmCatalog, csComplete, { attainments, overlapRules }
     );
 
     expect(results.get('BS-CSCI').status).toBe(MET);
@@ -146,7 +146,7 @@ describe('W&M multi-tree integration', () => {
   test('course shared between CS major and gen-ed → overlap tracked', () => {
     const trees = makeThreeTrees();
     const { assignments } = auditMulti(
-      trees, wmCatalog, csComplete, { attainments }
+      trees, wmCatalog, csComplete, { attainments, overlapRules }
     );
 
     // CSCI 141 has NQR attribute → used in both BS-CSCI and COLL (NQR domain)
@@ -159,24 +159,20 @@ describe('W&M multi-tree integration', () => {
 
   test('outside-program: sufficient credits outside BS-CSCI', () => {
     const trees = makeThreeTrees();
-    const { results, assignments, warnings } = auditMulti(
-      trees, wmCatalog, csComplete, { attainments }
+    const { policyResults } = auditMulti(
+      trees, wmCatalog, csComplete, { attainments, overlapRules }
     );
 
-    // Non-CSCI courses in the complete transcript:
-    // MATH 111(4), 112(4), 211(3), ENGL 150(3), HIST 101(3), MUSC 101(3),
-    // PHYS 101(4), SOCL 201(3), GBST 301(3), ANTH 305(3), ECON 350(3),
-    // GOVT 310(3), DATA 441(3)
-    // These are outside BS-CSCI if they weren't matched by BS-CSCI tree
-    // MATH courses ARE matched by BS-CSCI, so outside = non-CSCI, non-MATH courses
-    const outsideKeys = assignments.getCoursesOutsideProgram('BS-CSCI');
-    expect(outsideKeys.length).toBeGreaterThan(0);
+    const outsideResult = policyResults.find(r => r.type === 'outside-program');
+    expect(outsideResult).toBeDefined();
+    expect(outsideResult.status).toBe(MET);
+    expect(outsideResult.actual).toBeGreaterThanOrEqual(30);
   });
 
   test('GPA constraint applies to major courses only', () => {
     const trees = makeThreeTrees();
     const { results } = auditMulti(
-      trees, wmCatalog, csComplete, { attainments }
+      trees, wmCatalog, csComplete, { attainments, overlapRules }
     );
 
     // BS-CSCI has min-gpa 2.0 constraint
@@ -191,8 +187,8 @@ describe('W&M multi-tree integration', () => {
 
   test("program-context-ref resolves 'primary-major' to BS-CSCI", () => {
     const trees = makeThreeTrees();
-    const { results, warnings } = auditMulti(
-      trees, wmCatalog, csComplete, { attainments }
+    const { results, policyResults, warnings } = auditMulti(
+      trees, wmCatalog, csComplete, { attainments, overlapRules }
     );
 
     // The program-context-ref node in GRAD-REQ references 'primary-major'
@@ -202,12 +198,16 @@ describe('W&M multi-tree integration', () => {
 
     // BS-CSCI is met, so the reference should also be met in policyResults
     expect(results.get('BS-CSCI').status).toBe(MET);
+    const refResult = policyResults.find(r => r.type === 'program-context-ref');
+    expect(refResult).toBeDefined();
+    expect(refResult.resolvedProgram).toBe('BS-CSCI');
+    expect(refResult.status).toBe(MET);
   });
 
   test('partial student → mixed statuses across trees', () => {
     const trees = makeThreeTrees();
     const { results } = auditMulti(
-      trees, wmCatalog, csPartial, { attainments }
+      trees, wmCatalog, csPartial, { attainments, overlapRules }
     );
 
     // CS major has in-progress courses → in-progress or partial

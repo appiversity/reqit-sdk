@@ -85,11 +85,19 @@ function auditNode(node, ctx) {
     case 'scope':
       return auditNode(node.body, ctx);
 
-    // --- Policy nodes (multi-tree only, no-op in single-tree) ---
+    // --- Policy nodes (multi-tree only) ---
     case 'overlap-limit':
     case 'outside-program':
+      // These belong in overlapRules, not inline in ASTs (spec rule 13).
+      ctx.warnings.push({
+        type: 'misplaced-policy-node',
+        nodeType: node.type,
+        message: `"${node.type}" found inline in AST — should be in overlapRules`,
+      });
+      return { type: node.type, status: NOT_MET };
     case 'program-context-ref':
     case 'program':
+      // program-context-ref is valid inline (resolved during multi-tree pass 2)
       return { type: node.type, status: NOT_MET };
 
     default:

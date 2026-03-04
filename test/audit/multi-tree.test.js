@@ -180,7 +180,7 @@ describe('auditMulti — basic', () => {
 });
 
 // ============================================================
-// Overlap-limit tests (8.2)
+// Overlap-limit tests (8.2) — using overlapRules option
 // ============================================================
 
 // Transcript with several shared courses between two programs
@@ -215,20 +215,13 @@ const programBAst = {
   ],
 };
 
-// Graduation requirements with overlap-limit policy node
-function gradReqAstWithOverlap(limit) {
+// Spec-shape overlap-limit rule helper
+function overlapRule(limit, unit) {
   return {
-    type: 'all-of', items: [
-      { type: 'course', subject: 'ENGL', number: '101' },
-      {
-        type: 'overlap-limit',
-        programA: 'PROG-A',
-        programB: 'PROG-B',
-        comparison: 'at-most',
-        value: limit,
-        unit: 'courses',
-      },
-    ],
+    type: 'overlap-limit',
+    left: { type: 'program-ref', code: 'PROG-A' },
+    right: { type: 'program-ref', code: 'PROG-B' },
+    constraint: { comparison: 'at-most', value: limit, unit: unit || 'courses' },
   };
 }
 
@@ -237,68 +230,76 @@ describe('auditMulti — overlap-limit', () => {
     const trees = [
       { ast: programAAst, programCode: 'PROG-A', role: 'primary-major' },
       { ast: programBAst, programCode: 'PROG-B', role: 'secondary-major' },
-      { ast: gradReqAstWithOverlap(3), programCode: 'GRAD', role: 'certificate' },
     ];
-    const { warnings } = auditMulti(trees, minimalCatalog, overlapTranscript);
+    const { policyResults, warnings } = auditMulti(
+      trees, minimalCatalog, overlapTranscript,
+      { overlapRules: [overlapRule(3)] }
+    );
     const overlapWarnings = warnings.filter(w => w.type === 'overlap-limit-exceeded');
     expect(overlapWarnings).toHaveLength(0);
+
+    expect(policyResults).toHaveLength(1);
+    expect(policyResults[0].status).toBe(MET);
+    expect(policyResults[0].actual).toBe(2);
+    expect(policyResults[0].limit).toBe(3);
   });
 
   test('2 trees share 2 courses, limit is 1 → overlap-limit-exceeded warning', () => {
     const trees = [
       { ast: programAAst, programCode: 'PROG-A', role: 'primary-major' },
       { ast: programBAst, programCode: 'PROG-B', role: 'secondary-major' },
-      { ast: gradReqAstWithOverlap(1), programCode: 'GRAD', role: 'certificate' },
     ];
-    const { warnings } = auditMulti(trees, minimalCatalog, overlapTranscript);
+    const { policyResults, warnings } = auditMulti(
+      trees, minimalCatalog, overlapTranscript,
+      { overlapRules: [overlapRule(1)] }
+    );
     const overlapWarnings = warnings.filter(w => w.type === 'overlap-limit-exceeded');
     expect(overlapWarnings).toHaveLength(1);
     expect(overlapWarnings[0].actual).toBe(2);
     expect(overlapWarnings[0].limit).toBe(1);
     expect(overlapWarnings[0].sharedCourses).toHaveLength(2);
+
+    expect(policyResults[0].status).toBe(NOT_MET);
   });
 
   test('overlap with credits mode: shared courses = 7 credits, limit = 6 → exceeded', () => {
-    const ast = {
-      type: 'all-of', items: [
-        { type: 'course', subject: 'ENGL', number: '101' },
-        {
-          type: 'overlap-limit',
-          programA: 'PROG-A',
-          programB: 'PROG-B',
-          comparison: 'at-most',
-          value: 6,
-          unit: 'credits',
-        },
-      ],
-    };
     const trees = [
       { ast: programAAst, programCode: 'PROG-A', role: 'primary-major' },
       { ast: programBAst, programCode: 'PROG-B', role: 'secondary-major' },
-      { ast, programCode: 'GRAD', role: 'certificate' },
     ];
-    const { warnings } = auditMulti(trees, minimalCatalog, overlapTranscript);
+    const { policyResults, warnings } = auditMulti(
+      trees, minimalCatalog, overlapTranscript,
+      { overlapRules: [overlapRule(6, 'credits')] }
+    );
     const overlapWarnings = warnings.filter(w => w.type === 'overlap-limit-exceeded');
     // MATH 101 (3 credits) + MATH 151 (4 credits) = 7 credits > 6
     expect(overlapWarnings).toHaveLength(1);
     expect(overlapWarnings[0].actual).toBe(7);
     expect(overlapWarnings[0].unit).toBe('credits');
+
+    expect(policyResults[0].status).toBe(NOT_MET);
+    expect(policyResults[0].actual).toBe(7);
   });
 
   test('overlap limit met exactly → no warning', () => {
     const trees = [
       { ast: programAAst, programCode: 'PROG-A', role: 'primary-major' },
       { ast: programBAst, programCode: 'PROG-B', role: 'secondary-major' },
-      { ast: gradReqAstWithOverlap(2), programCode: 'GRAD', role: 'certificate' },
     ];
-    const { warnings } = auditMulti(trees, minimalCatalog, overlapTranscript);
+    const { policyResults, warnings } = auditMulti(
+      trees, minimalCatalog, overlapTranscript,
+      { overlapRules: [overlapRule(2)] }
+    );
     const overlapWarnings = warnings.filter(w => w.type === 'overlap-limit-exceeded');
     expect(overlapWarnings).toHaveLength(0);
+
+    expect(policyResults[0].status).toBe(MET);
+    expect(policyResults[0].actual).toBe(2);
   });
 });
 
 // ============================================================
-// Outside-program tests (8.3)
+// Outside-program tests (8.3) — using overlapRules option
 // ============================================================
 
 describe('auditMulti — outside-program', () => {
@@ -307,56 +308,51 @@ describe('auditMulti — outside-program', () => {
   // PROG-A uses MATH 101(3), 151(4), CMPS 130(3) = 10 credits
   // Outside PROG-A = 33 - 10 = 23 credits
 
-  test('sufficient credits outside program → met policy', () => {
-    const gradAst = {
-      type: 'all-of', items: [
-        { type: 'course', subject: 'ENGL', number: '101' },
-        {
-          type: 'outside-program',
-          program: 'PROG-A',
-          comparison: 'at-least',
-          value: 20,
-          unit: 'credits',
-        },
-      ],
-    };
+  test('sufficient credits outside program → MET policy result', () => {
     const trees = [
       { ast: programAAst, programCode: 'PROG-A', role: 'primary-major' },
-      { ast: gradAst, programCode: 'GRAD', role: 'certificate' },
     ];
-    const { warnings } = auditMulti(trees, minimalCatalog, overlapTranscript);
+    const outsideRule = {
+      type: 'outside-program',
+      program: { type: 'program-ref', code: 'PROG-A' },
+      constraint: { comparison: 'at-least', value: 20, unit: 'credits' },
+    };
+    const { policyResults, warnings } = auditMulti(
+      trees, minimalCatalog, overlapTranscript,
+      { overlapRules: [outsideRule] }
+    );
     const outsideWarnings = warnings.filter(w => w.type === 'outside-program-unresolved');
     expect(outsideWarnings).toHaveLength(0);
+
+    expect(policyResults).toHaveLength(1);
+    expect(policyResults[0].status).toBe(MET);
+    expect(policyResults[0].actual).toBe(23);
+    expect(policyResults[0].required).toBe(20);
   });
 
-  test('insufficient credits outside program → not-met policy', () => {
-    const gradAst = {
-      type: 'all-of', items: [
-        { type: 'course', subject: 'ENGL', number: '101' },
-        {
-          type: 'outside-program',
-          program: 'PROG-A',
-          comparison: 'at-least',
-          value: 50,
-          unit: 'credits',
-        },
-      ],
-    };
+  test('insufficient credits outside program → NOT_MET policy result', () => {
     const trees = [
       { ast: programAAst, programCode: 'PROG-A', role: 'primary-major' },
-      { ast: gradAst, programCode: 'GRAD', role: 'certificate' },
     ];
-    const { results } = auditMulti(trees, minimalCatalog, overlapTranscript);
-    // The outside-program node is NOT_MET in single-tree pass, but the policy
-    // evaluator runs in pass 2 and records the result
-    // The GRAD tree status is partial-progress because ENGL 101 is met but
-    // the outside-program node returns NOT_MET in single-tree mode
-    expect(results.get('GRAD').status).toBe(PARTIAL_PROGRESS);
+    const outsideRule = {
+      type: 'outside-program',
+      program: { type: 'program-ref', code: 'PROG-A' },
+      constraint: { comparison: 'at-least', value: 50, unit: 'credits' },
+    };
+    const { policyResults } = auditMulti(
+      trees, minimalCatalog, overlapTranscript,
+      { overlapRules: [outsideRule] }
+    );
+
+    expect(policyResults).toHaveLength(1);
+    expect(policyResults[0].status).toBe(NOT_MET);
+    expect(policyResults[0].actual).toBe(23);
+    expect(policyResults[0].required).toBe(50);
   });
 });
 
 // ============================================================
-// Program-context-ref tests (8.4)
+// Program-context-ref tests (8.4) — inline in ASTs (valid)
 // ============================================================
 
 describe('auditMulti — program-context-ref', () => {
@@ -371,13 +367,19 @@ describe('auditMulti — program-context-ref', () => {
       { ast: mathAst, programCode: 'MATH-CERT', role: 'primary-major' },
       { ast: gradAst, programCode: 'GRAD', role: 'certificate' },
     ];
-    const { results } = auditMulti(trees, minimalCatalog, completeTranscript);
+    const { results, policyResults } = auditMulti(trees, minimalCatalog, completeTranscript);
 
     // MATH-CERT is met (all courses present)
     expect(results.get('MATH-CERT').status).toBe(MET);
     // GRAD: ENGL 101 met, program-context-ref returns NOT_MET in single-tree
-    // but the policy evaluator resolves it in pass 2
+    // pass (patching addressed in F2)
     expect(results.get('GRAD').status).toBe(PARTIAL_PROGRESS);
+
+    // Policy results should include the resolved program-context-ref
+    const refResult = policyResults.find(r => r.type === 'program-context-ref');
+    expect(refResult).toBeDefined();
+    expect(refResult.resolvedProgram).toBe('MATH-CERT');
+    expect(refResult.status).toBe(MET);
   });
 
   test('unknown role → warning', () => {
@@ -398,7 +400,6 @@ describe('auditMulti — program-context-ref', () => {
   });
 
   test('resolves role and returns referenced program status', () => {
-    // Use a transcript where the primary-major is NOT_MET
     const gradAst = {
       type: 'all-of', items: [
         { type: 'program-context-ref', role: 'primary-major' },
@@ -409,7 +410,12 @@ describe('auditMulti — program-context-ref', () => {
       { ast: gradAst, programCode: 'GRAD', role: 'certificate' },
     ];
     // Empty transcript — MATH-CERT is NOT_MET
-    const { results } = auditMulti(trees, minimalCatalog, []);
+    const { results, policyResults } = auditMulti(trees, minimalCatalog, []);
     expect(results.get('MATH-CERT').status).toBe(NOT_MET);
+
+    // Policy result reflects that the referenced program is NOT_MET
+    const refResult = policyResults.find(r => r.type === 'program-context-ref');
+    expect(refResult.status).toBe(NOT_MET);
+    expect(refResult.resolvedProgram).toBe('MATH-CERT');
   });
 });

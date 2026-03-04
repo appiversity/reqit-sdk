@@ -136,10 +136,16 @@ class CourseAssignmentMap {
  *   role: 'primary-major' | 'secondary-major' | 'primary-minor' | etc.
  * @param {object} catalog - Shared catalog
  * @param {object[]} transcript - Student transcript entries
- * @param {object} [options] - Options (passed to individual audit() calls)
+ * @param {object} [options] - Options
+ * @param {object[]} [options.overlapRules] - Policy nodes evaluated in pass 2
+ *   (overlap-limit, outside-program). These are cross-tree policies, not
+ *   inline requirements. Per spec validation rule 13.
+ * @param {object} [options.attainments] - Student attainments
+ * @param {boolean} [options.backtrack] - Enable backtracking
  * @returns {{
  *   results: Map<string, object>,  // programCode → audit result
  *   assignments: CourseAssignmentMap,
+ *   policyResults: object[],       // evaluated overlap rules
  *   warnings: object[]
  * }}
  */
@@ -194,55 +200,63 @@ function auditMulti(trees, catalog, transcript, options) {
     }
   }
 
-  // --- Pass 2: Evaluate multi-tree policy nodes ---
-  // (overlap-limit, outside-program, program-context-ref)
-  // Delegated to evaluateMultiTreePolicies when those nodes exist
-  const multiCtx = { results, assignments, roleMap, catalog, transcript, warnings, normTranscript };
-  evaluateMultiTreePolicies(trees, multiCtx);
+  // --- Pass 2: Evaluate multi-tree policies ---
+  const multiCtx = { results, assignments, roleMap, warnings, normTranscript };
+  const policyResults = evaluateMultiTreePolicies(trees, opts.overlapRules || [], multiCtx);
 
-  return { results, assignments, warnings };
+  return { results, assignments, policyResults, warnings };
 }
 
 /**
- * Evaluate multi-tree policy nodes across all trees.
+ * Evaluate multi-tree policy nodes.
  *
- * Walks each tree's AST looking for policy nodes (overlap-limit,
- * outside-program, program-context-ref) and evaluates them using
- * the multi-tree context (assignments, role map, etc.).
+ * 1. Evaluate overlap rules (overlap-limit, outside-program) from the
+ *    overlapRules array — these are cross-tree policies, not inline.
+ * 2. Walk each tree's AST for program-context-ref nodes — these ARE
+ *    valid inline requirements (e.g. "primary major must be met").
  *
- * Updates the policyResults map in ctx with evaluation outcomes.
+ * @returns {object[]} Array of policy evaluation results
  */
-function evaluateMultiTreePolicies(trees, ctx) {
-  ctx.policyResults = [];
+function evaluateMultiTreePolicies(trees, overlapRules, ctx) {
+  const policyResults = [];
 
-  for (const tree of trees) {
-    walkForPolicies(tree.ast, tree.programCode, ctx);
+  // Evaluate overlap rules (provided separately, not inline)
+  for (const rule of overlapRules) {
+    switch (rule.type) {
+      case 'overlap-limit':
+        policyResults.push(evaluateOverlapLimit(rule, ctx));
+        break;
+      case 'outside-program':
+        policyResults.push(evaluateOutsideProgram(rule, ctx));
+        break;
+    }
   }
+
+  // Walk trees for inline program-context-ref nodes
+  for (const tree of trees) {
+    walkForContextRefs(tree.ast, tree.programCode, ctx, policyResults);
+  }
+
+  return policyResults;
 }
 
 /**
- * Walk an AST looking for policy nodes and evaluate them.
+ * Walk an AST looking for program-context-ref nodes and evaluate them.
+ * Only program-context-ref is valid inline — overlap-limit and outside-program
+ * belong in overlapRules.
  */
-function walkForPolicies(node, ownerProgram, ctx) {
+function walkForContextRefs(node, ownerProgram, ctx, policyResults) {
   if (!node || typeof node !== 'object') return;
 
-  switch (node.type) {
-    case 'overlap-limit':
-      ctx.policyResults.push(evaluateOverlapLimit(node, ownerProgram, ctx));
-      break;
-    case 'outside-program':
-      ctx.policyResults.push(evaluateOutsideProgram(node, ownerProgram, ctx));
-      break;
-    case 'program-context-ref':
-      ctx.policyResults.push(evaluateProgramContextRef(node, ownerProgram, ctx));
-      break;
+  if (node.type === 'program-context-ref') {
+    policyResults.push(evaluateProgramContextRef(node, ownerProgram, ctx));
   }
 
   // Recurse into children
-  if (node.items) for (const child of node.items) walkForPolicies(child, ownerProgram, ctx);
-  if (node.source) walkForPolicies(node.source, ownerProgram, ctx);
-  if (node.requirement) walkForPolicies(node.requirement, ownerProgram, ctx);
-  if (node.body) walkForPolicies(node.body, ownerProgram, ctx);
+  if (node.items) for (const child of node.items) walkForContextRefs(child, ownerProgram, ctx, policyResults);
+  if (node.source) walkForContextRefs(node.source, ownerProgram, ctx, policyResults);
+  if (node.requirement) walkForContextRefs(node.requirement, ownerProgram, ctx, policyResults);
+  if (node.body) walkForContextRefs(node.body, ownerProgram, ctx, policyResults);
 }
 
 // ============================================================
@@ -255,52 +269,57 @@ function walkForPolicies(node, ownerProgram, ctx) {
  * Counts shared courses/credits between two programs and checks
  * against the limit.
  *
- * Node shape:
- *   { type: 'overlap-limit', programA, programB, comparison, value, unit }
- *   unit: 'courses' | 'credits' | 'percent'
- *   comparison: 'at-most'
+ * Spec node shape (03-ast.md):
+ *   {
+ *     type: 'overlap-limit',
+ *     left: { type: 'program-context-ref', role: '...' } | { type: 'program-ref', code: '...' },
+ *     right: { type: 'program-context-ref', role: '...' } | { type: 'program-ref', code: '...' },
+ *     constraint: { comparison: 'at-most', value: N, unit: 'courses'|'credits'|'percent' }
+ *   }
  */
-function evaluateOverlapLimit(node, ownerProgram, ctx) {
-  const programA = resolveProgram(node.programA, ctx);
-  const programB = resolveProgram(node.programB, ctx);
+function evaluateOverlapLimit(node, ctx) {
+  const programA = resolveProgramNode(node.left, ctx);
+  const programB = resolveProgramNode(node.right, ctx);
+  const { comparison, value, unit } = node.constraint;
 
   if (!programA || !programB) {
     ctx.warnings.push({
       type: 'overlap-limit-unresolved',
-      programA: node.programA,
-      programB: node.programB,
-      message: `Cannot resolve programs for overlap-limit: ${node.programA} / ${node.programB}`,
+      left: node.left,
+      right: node.right,
+      message: `Cannot resolve programs for overlap-limit`,
     });
     return { type: 'overlap-limit', status: NOT_MET, node };
   }
 
   const shared = ctx.assignments.getSharedCourses(programA, programB);
-  const unit = node.unit || 'courses';
+  const effectiveUnit = unit || 'courses';
   let actual;
 
-  if (unit === 'courses') {
+  if (effectiveUnit === 'courses') {
     actual = shared.length;
-  } else if (unit === 'credits') {
+  } else if (effectiveUnit === 'credits') {
     actual = sumCredits(shared, ctx);
-  } else if (unit === 'percent') {
-    const totalA = ctx.assignments.getCoursesForProgram(programA).length;
-    actual = totalA > 0 ? Math.round((shared.length / totalA) * 100) : 0;
+  } else if (effectiveUnit === 'percent') {
+    const totalCreditsA = sumCredits(ctx.assignments.getCoursesForProgram(programA), ctx);
+    const sharedCredits = sumCredits(shared, ctx);
+    actual = totalCreditsA > 0 ? Math.round((sharedCredits / totalCreditsA) * 100) : 0;
   } else {
     actual = shared.length;
   }
 
-  const met = actual <= node.value;
+  const met = actual <= value;
 
   if (!met) {
     ctx.warnings.push({
       type: 'overlap-limit-exceeded',
       programA,
       programB,
-      limit: node.value,
+      limit: value,
       actual,
-      unit,
+      unit: effectiveUnit,
       sharedCourses: shared,
-      message: `Overlap limit exceeded: ${actual} ${unit} shared between ${programA} and ${programB} (limit: ${node.value})`,
+      message: `Overlap limit exceeded: ${actual} ${effectiveUnit} shared between ${programA} and ${programB} (limit: ${value})`,
     });
   }
 
@@ -309,9 +328,9 @@ function evaluateOverlapLimit(node, ownerProgram, ctx) {
     status: met ? MET : NOT_MET,
     programA,
     programB,
-    limit: node.value,
+    limit: value,
     actual,
-    unit,
+    unit: effectiveUnit,
     sharedCourses: shared,
   };
 }
@@ -321,41 +340,55 @@ function evaluateOverlapLimit(node, ownerProgram, ctx) {
  *
  * Counts courses or credits NOT assigned to a referenced program.
  *
- * Node shape:
- *   { type: 'outside-program', program, comparison, value, unit }
- *   unit: 'credits' | 'courses'
- *   comparison: 'at-least'
+ * Spec node shape (03-ast.md):
+ *   {
+ *     type: 'outside-program',
+ *     program: { type: 'program-context-ref', role: '...' } | { type: 'program-ref', code: '...' },
+ *     constraint: { comparison: 'at-least', value: N, unit: 'credits'|'courses' }
+ *   }
  */
-function evaluateOutsideProgram(node, ownerProgram, ctx) {
-  const program = resolveProgram(node.program, ctx);
+function evaluateOutsideProgram(node, ctx) {
+  const program = resolveProgramNode(node.program, ctx);
+  const { comparison, value, unit } = node.constraint;
 
   if (!program) {
     ctx.warnings.push({
       type: 'outside-program-unresolved',
       program: node.program,
-      message: `Cannot resolve program for outside-program: ${node.program}`,
+      message: `Cannot resolve program for outside-program`,
     });
     return { type: 'outside-program', status: NOT_MET, node };
   }
 
-  const outside = ctx.assignments.getCoursesOutsideProgram(program);
-  const unit = node.unit || 'credits';
+  // Collect ALL transcript courses that are not assigned to the referenced program.
+  // This includes courses not matched by any tree — they are still "outside" the program.
+  const programCourses = new Set(ctx.assignments.getCoursesForProgram(program));
+  const outside = [];
+  if (ctx.normTranscript && ctx.normTranscript.byKey) {
+    for (const key of ctx.normTranscript.byKey.keys()) {
+      if (!programCourses.has(key)) {
+        outside.push(key);
+      }
+    }
+  }
+
+  const effectiveUnit = unit || 'credits';
   let actual;
 
-  if (unit === 'credits') {
+  if (effectiveUnit === 'credits') {
     actual = sumCredits(outside, ctx);
   } else {
     actual = outside.length;
   }
 
-  const comparison = node.comparison || 'at-least';
+  const effectiveComparison = comparison || 'at-least';
   let met;
-  if (comparison === 'at-least') {
-    met = actual >= node.value;
-  } else if (comparison === 'at-most') {
-    met = actual <= node.value;
+  if (effectiveComparison === 'at-least') {
+    met = actual >= value;
+  } else if (effectiveComparison === 'at-most') {
+    met = actual <= value;
   } else {
-    met = actual === node.value;
+    met = actual === value;
   }
 
   return {
@@ -363,9 +396,9 @@ function evaluateOutsideProgram(node, ownerProgram, ctx) {
     status: met ? MET : NOT_MET,
     program,
     actual,
-    required: node.value,
-    unit,
-    comparison,
+    required: value,
+    unit: effectiveUnit,
+    comparison: effectiveComparison,
   };
 }
 
@@ -406,15 +439,30 @@ function evaluateProgramContextRef(node, ownerProgram, ctx) {
 // ============================================================
 
 /**
- * Resolve a program reference — either a direct program code or a role ref.
- * If it looks like a role (contains '-'), try role map first, else direct.
+ * Resolve a program reference node to a program code.
+ *
+ * Handles:
+ * - { type: 'program-context-ref', role: '...' } → resolve via roleMap
+ * - { type: 'program-ref', code: '...' } → direct program code
+ * - string → try as role, then as direct program code (for program-context-ref inline)
  */
-function resolveProgram(ref, ctx) {
+function resolveProgramNode(ref, ctx) {
   if (!ref) return null;
-  // Try as role first
+
+  // AST node references
+  if (typeof ref === 'object') {
+    if (ref.type === 'program-context-ref') {
+      return ctx.roleMap.get(ref.role) || null;
+    }
+    if (ref.type === 'program-ref') {
+      return ctx.results.has(ref.code) ? ref.code : null;
+    }
+    return null;
+  }
+
+  // String reference (used by program-context-ref inline role resolution)
   const fromRole = ctx.roleMap.get(ref);
   if (fromRole) return fromRole;
-  // Try as direct program code — check if it exists in results
   if (ctx.results.has(ref)) return ref;
   return null;
 }
