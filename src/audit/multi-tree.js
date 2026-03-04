@@ -21,7 +21,7 @@ const {
 const { normalizeTranscript } = require('./transcript');
 const { auditNode, collectMatchedEntries } = require('./single-tree');
 const { courseKey } = require('../render/shared');
-const { MET, NOT_MET } = require('./status');
+const { MET, NOT_MET, allOf, anyOf, nOf } = require('./status');
 
 // ============================================================
 // CourseAssignmentMap — tracks which courses are used by which trees
@@ -203,6 +203,25 @@ function auditMulti(trees, catalog, transcript, options) {
   // --- Pass 2: Evaluate multi-tree policies ---
   const multiCtx = { results, assignments, roleMap, warnings, normTranscript };
   const policyResults = evaluateMultiTreePolicies(trees, opts.overlapRules || [], multiCtx);
+
+  // --- Pass 3: Patch inline program-context-ref statuses into result trees ---
+  // Build lookup: role → evaluated status from pass 2
+  const refLookup = new Map();
+  for (const pr of policyResults) {
+    if (pr.type === 'program-context-ref' && pr.role) {
+      refLookup.set(pr.role, pr.status);
+    }
+  }
+  if (refLookup.size > 0) {
+    for (const tree of trees) {
+      const auditResult = results.get(tree.programCode);
+      if (auditResult) {
+        const patched = patchContextRefs(auditResult.result, refLookup);
+        auditResult.result = patched;
+        auditResult.status = patched.status;
+      }
+    }
+  }
 
   return { results, assignments, policyResults, warnings };
 }
@@ -480,6 +499,85 @@ function sumCredits(courseKeys, ctx) {
     }
   }
   return total;
+}
+
+/**
+ * Patch program-context-ref nodes in an audit result tree with their
+ * evaluated statuses from pass 2, then recompute composite statuses.
+ *
+ * Post-order traversal: patch leaves first, then recompute parents.
+ */
+function patchContextRefs(node, refLookup) {
+  if (!node || typeof node !== 'object') return node;
+
+  // Patch program-context-ref leaf nodes
+  if (node.type === 'program-context-ref' && node.role && refLookup.has(node.role)) {
+    return { ...node, status: refLookup.get(node.role) };
+  }
+
+  // Recurse into children and recompute composite statuses
+  let patched = node;
+
+  if (node.items && Array.isArray(node.items)) {
+    const newItems = node.items.map(child => patchContextRefs(child, refLookup));
+    const changed = newItems.some((item, i) => item !== node.items[i]);
+    if (changed) {
+      patched = { ...node, items: newItems };
+      patched.status = recomputeStatus(patched);
+    }
+  }
+
+  if (node.requirement) {
+    const newReq = patchContextRefs(node.requirement, refLookup);
+    if (newReq !== node.requirement) {
+      patched = { ...patched, requirement: newReq };
+      // with-constraint: status depends on both requirement and constraint
+      if (patched.type === 'with-constraint') {
+        patched.status = patched.constraintResult && !patched.constraintResult.met
+          ? NOT_MET : newReq.status;
+      } else {
+        patched.status = newReq.status;
+      }
+    }
+  }
+
+  if (node.body) {
+    const newBody = patchContextRefs(node.body, refLookup);
+    if (newBody !== node.body) {
+      patched = { ...patched, body: newBody, status: newBody.status };
+    }
+  }
+
+  if (node.source) {
+    const newSource = patchContextRefs(node.source, refLookup);
+    if (newSource !== node.source) {
+      patched = { ...patched, source: newSource };
+    }
+  }
+
+  return patched;
+}
+
+/**
+ * Recompute the status of a composite node from its children.
+ */
+function recomputeStatus(node) {
+  if (!node.items || !Array.isArray(node.items)) return node.status;
+
+  const childStatuses = node.items.map(item => item.status);
+
+  switch (node.type) {
+    case 'all-of':
+      return allOf(childStatuses);
+    case 'any-of':
+      return anyOf(childStatuses);
+    case 'n-of':
+      return nOf(childStatuses, node.comparison || 'at-least', node.count || 1);
+    case 'one-from-each':
+      return allOf(childStatuses);
+    default:
+      return node.status;
+  }
 }
 
 module.exports = {

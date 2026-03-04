@@ -371,9 +371,8 @@ describe('auditMulti — program-context-ref', () => {
 
     // MATH-CERT is met (all courses present)
     expect(results.get('MATH-CERT').status).toBe(MET);
-    // GRAD: ENGL 101 met, program-context-ref returns NOT_MET in single-tree
-    // pass (patching addressed in F2)
-    expect(results.get('GRAD').status).toBe(PARTIAL_PROGRESS);
+    // GRAD: ENGL 101 met, program-context-ref patched to MET after pass 2
+    expect(results.get('GRAD').status).toBe(MET);
 
     // Policy results should include the resolved program-context-ref
     const refResult = policyResults.find(r => r.type === 'program-context-ref');
@@ -417,5 +416,8 @@ describe('auditMulti — program-context-ref', () => {
     const refResult = policyResults.find(r => r.type === 'program-context-ref');
     expect(refResult.status).toBe(NOT_MET);
     expect(refResult.resolvedProgram).toBe('MATH-CERT');
+
+    // GRAD tree status is patched: program-context-ref → NOT_MET
+    expect(results.get('GRAD').status).toBe(NOT_MET);
   });
 });

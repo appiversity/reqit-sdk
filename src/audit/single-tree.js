@@ -96,8 +96,10 @@ function auditNode(node, ctx) {
       });
       return { type: node.type, status: NOT_MET };
     case 'program-context-ref':
+      // Valid inline — resolved during multi-tree pass 2.
+      // Preserve role so the patcher can look up the evaluated status.
+      return { type: node.type, status: NOT_MET, role: node.role };
     case 'program':
-      // program-context-ref is valid inline (resolved during multi-tree pass 2)
       return { type: node.type, status: NOT_MET };
 
     default:
