@@ -1,0 +1,32 @@
+[
+  { "subject": "CSCI", "number": "141", "grade": "A",  "credits": 4, "term": "Fall 2022", "status": "completed" },
+  { "subject": "CSCI", "number": "241", "grade": "B+", "credits": 3, "term": "Spring 2023", "status": "completed" },
+  { "subject": "CSCI", "number": "243", "grade": "B",  "credits": 3, "term": "Spring 2023", "status": "completed" },
+  { "subject": "CSCI", "number": "301", "grade": "A-", "credits": 3, "term": "Fall 2023", "status": "completed" },
+  { "subject": "CSCI", "number": "303", "grade": "B+", "credits": 3, "term": "Fall 2023", "status": "completed" },
+  { "subject": "CSCI", "number": "304", "grade": "B",  "credits": 3, "term": "Spring 2024", "status": "completed" },
+  { "subject": "CSCI", "number": "312", "grade": "A-", "credits": 3, "term": "Spring 2024", "status": "completed" },
+  { "subject": "CSCI", "number": "423", "grade": "B+", "credits": 3, "term": "Fall 2024", "status": "completed" },
+  { "subject": "CSCI", "number": "400", "grade": "A",  "credits": 3, "term": "Spring 2025", "status": "completed" },
+
+  { "subject": "MATH", "number": "111", "grade": "B+", "credits": 4, "term": "Fall 2022", "status": "completed" },
+  { "subject": "MATH", "number": "112", "grade": "B",  "credits": 4, "term": "Spring 2023", "status": "completed" },
+  { "subject": "MATH", "number": "211", "grade": "A-", "credits": 3, "term": "Fall 2023", "status": "completed" },
+
+  { "subject": "CSCI", "number": "416", "grade": "B+", "credits": 3, "term": "Fall 2024", "status": "completed" },
+  { "subject": "CSCI", "number": "421", "grade": "A",  "credits": 3, "term": "Fall 2024", "status": "completed" },
+  { "subject": "CSCI", "number": "436", "grade": "B",  "credits": 3, "term": "Spring 2025", "status": "completed" },
+  { "subject": "CSCI", "number": "455", "grade": "A-", "credits": 3, "term": "Spring 2025", "status": "completed" },
+
+  { "subject": "ENGL", "number": "150", "grade": "B+", "credits": 3, "term": "Fall 2022", "status": "completed" },
+  { "subject": "HIST", "number": "101", "grade": "B",  "credits": 3, "term": "Fall 2022", "status": "completed" },
+  { "subject": "MUSC", "number": "101", "grade": "A",  "credits": 3, "term": "Spring 2023", "status": "completed" },
+  { "subject": "PHYS", "number": "101", "grade": "B-", "credits": 4, "term": "Fall 2023", "status": "completed" },
+  { "subject": "SOCL", "number": "201", "grade": "B+", "credits": 3, "term": "Spring 2024", "status": "completed" },
+  { "subject": "GBST", "number": "301", "grade": "A-", "credits": 3, "term": "Fall 2024", "status": "completed" },
+  { "subject": "ANTH", "number": "305", "grade": "B",  "credits": 3, "term": "Fall 2024", "status": "completed" },
+  { "subject": "ECON", "number": "350", "grade": "B+", "credits": 3, "term": "Spring 2025", "status": "completed" },
+  { "subject": "GOVT", "number": "310", "grade": "A",  "credits": 3, "term": "Spring 2025", "status": "completed" },
+
+  { "subject": "DATA", "number": "441", "grade": "A-", "credits": 3, "term": "Spring 2025", "status": "completed" }
+]
