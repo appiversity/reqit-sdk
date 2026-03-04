@@ -116,6 +116,9 @@ Both `test/render/exhaustiveness.test.js` and `test/resolve/exhaustiveness.test.
 ### Don't over-abstract
 Three similar switch cases are better than one premature `forEachChild` abstraction. Centralize only when there's a clear, proven maintenance burden.
 
+### Data model changes and test failures
+Tests that depend on data models exist to surface dependencies — when a model changes, test failures show you what's affected. Never silently support both old and new data model shapes as a fallback to avoid test failures. Always ask before changing tests that fail due to a data model change, and always ask before adding fallback/alternate shape support. The right default is: change the model, let tests fail, confirm the failures align with the plan, then update tests.
+
 ### Remove dead code
 Don't comment out dead code or leave no-op loops. Remove it and add a test proving the correct behaviour. If keeping dead code intentionally, explain why in a comment.
 
