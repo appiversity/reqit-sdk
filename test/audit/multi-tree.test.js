@@ -296,6 +296,59 @@ describe('auditMulti — overlap-limit', () => {
     expect(policyResults[0].status).toBe(MET);
     expect(policyResults[0].actual).toBe(2);
   });
+
+  test('overlap with percent mode: based on credits, not course count', () => {
+    // PROG-A: MATH 101(3) + MATH 151(4) + CMPS 130(3) = 10 credits
+    // Shared: MATH 101(3) + MATH 151(4) = 7 credits
+    // Percent: 7/10 * 100 = 70%
+    const trees = [
+      { ast: programAAst, programCode: 'PROG-A', role: 'primary-major' },
+      { ast: programBAst, programCode: 'PROG-B', role: 'secondary-major' },
+    ];
+
+    // Limit 60% → 70% > 60% → exceeded
+    const { policyResults: pr1, warnings: w1 } = auditMulti(
+      trees, minimalCatalog, overlapTranscript,
+      { overlapRules: [overlapRule(60, 'percent')] }
+    );
+    expect(pr1[0].status).toBe(NOT_MET);
+    expect(pr1[0].actual).toBe(70);
+    expect(w1.filter(w => w.type === 'overlap-limit-exceeded')).toHaveLength(1);
+
+    // Limit 75% → 70% ≤ 75% → met
+    const { policyResults: pr2, warnings: w2 } = auditMulti(
+      trees, minimalCatalog, overlapTranscript,
+      { overlapRules: [overlapRule(75, 'percent')] }
+    );
+    expect(pr2[0].status).toBe(MET);
+    expect(pr2[0].actual).toBe(70);
+    expect(w2.filter(w => w.type === 'overlap-limit-exceeded')).toHaveLength(0);
+  });
+
+  test('overlap-limit with role-based references via program-context-ref', () => {
+    const trees = [
+      { ast: programAAst, programCode: 'PROG-A', role: 'primary-major' },
+      { ast: programBAst, programCode: 'PROG-B', role: 'secondary-major' },
+    ];
+    // Use role references instead of direct program codes
+    const roleOverlapRule = {
+      type: 'overlap-limit',
+      left: { type: 'program-context-ref', role: 'primary-major' },
+      right: { type: 'program-context-ref', role: 'secondary-major' },
+      constraint: { comparison: 'at-most', value: 1, unit: 'courses' },
+    };
+    const { policyResults, warnings } = auditMulti(
+      trees, minimalCatalog, overlapTranscript,
+      { overlapRules: [roleOverlapRule] }
+    );
+
+    // Roles resolve to PROG-A and PROG-B → 2 shared courses > 1 limit
+    expect(policyResults[0].status).toBe(NOT_MET);
+    expect(policyResults[0].programA).toBe('PROG-A');
+    expect(policyResults[0].programB).toBe('PROG-B');
+    expect(policyResults[0].actual).toBe(2);
+    expect(warnings.filter(w => w.type === 'overlap-limit-exceeded')).toHaveLength(1);
+  });
 });
 
 // ============================================================
