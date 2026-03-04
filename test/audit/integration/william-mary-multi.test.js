@@ -166,7 +166,7 @@ describe('W&M multi-tree integration', () => {
     const outsideResult = policyResults.find(r => r.type === 'outside-program');
     expect(outsideResult).toBeDefined();
     expect(outsideResult.status).toBe(MET);
-    expect(outsideResult.actual).toBeGreaterThanOrEqual(30);
+    expect(outsideResult.actual).toBe(31);
   });
 
   test('GPA constraint applies to major courses only', () => {
@@ -210,12 +210,13 @@ describe('W&M multi-tree integration', () => {
       trees, wmCatalog, csPartial, { attainments, overlapRules }
     );
 
-    // CS major has in-progress courses → in-progress or partial
-    const csStatus = results.get('BS-CSCI').status;
-    expect([IN_PROGRESS, PARTIAL_PROGRESS]).toContain(csStatus);
+    // CS major has in-progress courses → in-progress
+    expect(results.get('BS-CSCI').status).toBe(IN_PROGRESS);
 
-    // COLL gen-ed has some courses → partial progress
-    const collStatus = results.get('COLL').status;
-    expect(collStatus).not.toBe(NOT_MET);
+    // COLL gen-ed has some courses but not all → partial progress
+    expect(results.get('COLL').status).toBe(PARTIAL_PROGRESS);
+
+    // GRAD-REQ: attainments met + program-context-ref resolves to in-progress BS-CSCI
+    expect(results.get('GRAD-REQ').status).toBe(IN_PROGRESS);
   });
 });

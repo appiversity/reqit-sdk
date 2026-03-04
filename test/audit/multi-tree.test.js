@@ -61,6 +61,32 @@ describe('CourseAssignmentMap', () => {
     expect(map.getCoursesForProgram('BS-CSCI').sort()).toEqual(['CMPS:130', 'MATH:101']);
     expect(map.getCoursesOutsideProgram('BS-CSCI')).toEqual(['ENGL:101']);
   });
+
+  test('size reflects number of distinct course keys', () => {
+    const map = new CourseAssignmentMap();
+    expect(map.size).toBe(0);
+
+    map.assign('MATH:101', 'BS-CSCI');
+    map.assign('MATH:101', 'GEN-ED'); // same key, different program
+    expect(map.size).toBe(1);
+
+    map.assign('CMPS:130', 'BS-CSCI');
+    map.assign('ENGL:101', 'GEN-ED');
+    expect(map.size).toBe(3);
+  });
+
+  test('entries() iterates over all [courseKey, programCodes] pairs', () => {
+    const map = new CourseAssignmentMap();
+    map.assign('MATH:101', 'BS-CSCI');
+    map.assign('MATH:101', 'GEN-ED');
+    map.assign('CMPS:130', 'BS-CSCI');
+
+    const collected = Object.fromEntries(map.entries());
+    expect(collected).toEqual({
+      'MATH:101': ['BS-CSCI', 'GEN-ED'],
+      'CMPS:130': ['BS-CSCI'],
+    });
+  });
 });
 
 // ============================================================
