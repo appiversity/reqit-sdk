@@ -22,6 +22,7 @@ const { normalizeTranscript } = require('./transcript');
 const { auditNode, collectMatchedEntries } = require('./single-tree');
 const { courseKey } = require('../render/shared');
 const { MET, NOT_MET, allOf, anyOf, nOf } = require('./status');
+const { forEachChild } = require('../ast/children');
 
 // ============================================================
 // CourseAssignmentMap — tracks which courses are used by which trees
@@ -272,10 +273,7 @@ function walkForContextRefs(node, ownerProgram, ctx, policyResults) {
   }
 
   // Recurse into children
-  if (node.items) for (const child of node.items) walkForContextRefs(child, ownerProgram, ctx, policyResults);
-  if (node.source) walkForContextRefs(node.source, ownerProgram, ctx, policyResults);
-  if (node.requirement) walkForContextRefs(node.requirement, ownerProgram, ctx, policyResults);
-  if (node.body) walkForContextRefs(node.body, ownerProgram, ctx, policyResults);
+  forEachChild(node, (child) => walkForContextRefs(child, ownerProgram, ctx, policyResults));
 }
 
 // ============================================================
@@ -517,41 +515,47 @@ function patchContextRefs(node, refLookup) {
 
   // Recurse into children and recompute composite statuses
   let patched = node;
+  const updates = {};
+  let changed = false;
 
-  if (node.items && Array.isArray(node.items)) {
-    const newItems = node.items.map(child => patchContextRefs(child, refLookup));
-    const changed = newItems.some((item, i) => item !== node.items[i]);
-    if (changed) {
-      patched = { ...node, items: newItems };
-      patched.status = recomputeStatus(patched);
-    }
-  }
-
-  if (node.requirement) {
-    const newReq = patchContextRefs(node.requirement, refLookup);
-    if (newReq !== node.requirement) {
-      patched = { ...patched, requirement: newReq };
-      // with-constraint: status depends on both requirement and constraint
-      if (patched.type === 'with-constraint') {
-        patched.status = patched.constraintResult && !patched.constraintResult.met
-          ? NOT_MET : newReq.status;
-      } else {
-        patched.status = newReq.status;
+  forEachChild(node, (child, key) => {
+    const prop = node[key];
+    if (Array.isArray(prop)) {
+      // Array child — build new array if any element changed
+      if (!updates[key]) {
+        const newArr = prop.map(c => patchContextRefs(c, refLookup));
+        if (newArr.some((item, i) => item !== prop[i])) {
+          updates[key] = newArr;
+          changed = true;
+        }
+      }
+    } else {
+      // Single child
+      const newChild = patchContextRefs(child, refLookup);
+      if (newChild !== child) {
+        updates[key] = newChild;
+        changed = true;
       }
     }
-  }
+  });
 
-  if (node.body) {
-    const newBody = patchContextRefs(node.body, refLookup);
-    if (newBody !== node.body) {
-      patched = { ...patched, body: newBody, status: newBody.status };
+  if (changed) {
+    patched = { ...node, ...updates };
+
+    // Recompute status based on what changed
+    if (updates.items) {
+      patched.status = recomputeStatus(patched);
     }
-  }
-
-  if (node.source) {
-    const newSource = patchContextRefs(node.source, refLookup);
-    if (newSource !== node.source) {
-      patched = { ...patched, source: newSource };
+    if (updates.requirement) {
+      if (patched.type === 'with-constraint') {
+        patched.status = patched.constraintResult && !patched.constraintResult.met
+          ? NOT_MET : updates.requirement.status;
+      } else {
+        patched.status = updates.requirement.status;
+      }
+    }
+    if (updates.body) {
+      patched.status = updates.body.status;
     }
   }
 

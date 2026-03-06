@@ -477,6 +477,148 @@ describe('auditMulti — program-context-ref', () => {
     expect(refWarnings[0].role).toBe('tertiary-minor');
   });
 
+  test('unresolved overlap-limit programs → warning and NOT_MET', () => {
+    const trees = [
+      { ast: programAAst, programCode: 'PROG-A', role: 'primary-major' },
+    ];
+    const badRule = {
+      type: 'overlap-limit',
+      left: { type: 'program-ref', code: 'NONEXISTENT-A' },
+      right: { type: 'program-ref', code: 'NONEXISTENT-B' },
+      constraint: { comparison: 'at-most', value: 2, unit: 'courses' },
+    };
+    const { policyResults, warnings } = auditMulti(
+      trees, minimalCatalog, overlapTranscript,
+      { overlapRules: [badRule] }
+    );
+    const unresolvedWarnings = warnings.filter(w => w.type === 'overlap-limit-unresolved');
+    expect(unresolvedWarnings).toHaveLength(1);
+    expect(policyResults[0].status).toBe(NOT_MET);
+  });
+
+  test('overlap-limit with unknown unit → falls back to course count', () => {
+    const trees = [
+      { ast: programAAst, programCode: 'PROG-A', role: 'primary-major' },
+      { ast: programBAst, programCode: 'PROG-B', role: 'secondary-major' },
+    ];
+    const rule = {
+      type: 'overlap-limit',
+      left: { type: 'program-ref', code: 'PROG-A' },
+      right: { type: 'program-ref', code: 'PROG-B' },
+      constraint: { comparison: 'at-most', value: 5, unit: 'bananas' },
+    };
+    const { policyResults } = auditMulti(
+      trees, minimalCatalog, overlapTranscript,
+      { overlapRules: [rule] }
+    );
+    // Falls back to course count: 2 shared courses ≤ 5
+    expect(policyResults[0].status).toBe(MET);
+    expect(policyResults[0].actual).toBe(2);
+  });
+
+  test('unresolved outside-program → warning and NOT_MET', () => {
+    const trees = [
+      { ast: programAAst, programCode: 'PROG-A', role: 'primary-major' },
+    ];
+    const badRule = {
+      type: 'outside-program',
+      program: { type: 'program-ref', code: 'NONEXISTENT' },
+      constraint: { comparison: 'at-least', value: 10, unit: 'credits' },
+    };
+    const { policyResults, warnings } = auditMulti(
+      trees, minimalCatalog, overlapTranscript,
+      { overlapRules: [badRule] }
+    );
+    const unresolvedWarnings = warnings.filter(w => w.type === 'outside-program-unresolved');
+    expect(unresolvedWarnings).toHaveLength(1);
+    expect(policyResults[0].status).toBe(NOT_MET);
+  });
+
+  test('outside-program with courses unit', () => {
+    const trees = [
+      { ast: programAAst, programCode: 'PROG-A', role: 'primary-major' },
+    ];
+    const rule = {
+      type: 'outside-program',
+      program: { type: 'program-ref', code: 'PROG-A' },
+      constraint: { comparison: 'at-least', value: 5, unit: 'courses' },
+    };
+    const { policyResults } = auditMulti(
+      trees, minimalCatalog, overlapTranscript,
+      { overlapRules: [rule] }
+    );
+    // PROG-A uses 3 courses, transcript has 10 → 7 outside
+    expect(policyResults[0].status).toBe(MET);
+    expect(policyResults[0].actual).toBe(7);
+    expect(policyResults[0].unit).toBe('courses');
+  });
+
+  test('outside-program with at-most comparison', () => {
+    const trees = [
+      { ast: programAAst, programCode: 'PROG-A', role: 'primary-major' },
+    ];
+    const rule = {
+      type: 'outside-program',
+      program: { type: 'program-ref', code: 'PROG-A' },
+      constraint: { comparison: 'at-most', value: 5, unit: 'courses' },
+    };
+    const { policyResults } = auditMulti(
+      trees, minimalCatalog, overlapTranscript,
+      { overlapRules: [rule] }
+    );
+    // 7 outside > 5 → NOT_MET
+    expect(policyResults[0].status).toBe(NOT_MET);
+  });
+
+  test('outside-program with exact comparison', () => {
+    const trees = [
+      { ast: programAAst, programCode: 'PROG-A', role: 'primary-major' },
+    ];
+    const rule = {
+      type: 'outside-program',
+      program: { type: 'program-ref', code: 'PROG-A' },
+      constraint: { comparison: 'exactly', value: 7, unit: 'courses' },
+    };
+    const { policyResults } = auditMulti(
+      trees, minimalCatalog, overlapTranscript,
+      { overlapRules: [rule] }
+    );
+    // 7 outside === 7 → MET
+    expect(policyResults[0].status).toBe(MET);
+  });
+
+  test('program-context-ref patches through with-constraint wrapper', () => {
+    const gradAst = {
+      type: 'with-constraint',
+      constraint: { kind: 'min-grade', value: 'C' },
+      requirement: { type: 'program-context-ref', role: 'primary-major' },
+    };
+    const trees = [
+      { ast: mathAst, programCode: 'MATH-CERT', role: 'primary-major' },
+      { ast: gradAst, programCode: 'GRAD', role: 'certificate' },
+    ];
+    const { results, policyResults } = auditMulti(trees, minimalCatalog, completeTranscript);
+    expect(results.get('MATH-CERT').status).toBe(MET);
+    const refResult = policyResults.find(r => r.type === 'program-context-ref');
+    expect(refResult.status).toBe(MET);
+  });
+
+  test('program-context-ref patches through scope body', () => {
+    const gradAst = {
+      type: 'scope', name: 'test',
+      defs: [],
+      body: { type: 'program-context-ref', role: 'primary-major' },
+    };
+    const trees = [
+      { ast: mathAst, programCode: 'MATH-CERT', role: 'primary-major' },
+      { ast: gradAst, programCode: 'GRAD', role: 'certificate' },
+    ];
+    const { results } = auditMulti(trees, minimalCatalog, completeTranscript);
+    expect(results.get('MATH-CERT').status).toBe(MET);
+    // GRAD should be patched to MET since body (program-context-ref) resolves to MET
+    expect(results.get('GRAD').status).toBe(MET);
+  });
+
   test('resolves role and returns referenced program status', () => {
     const gradAst = {
       type: 'all-of', items: [

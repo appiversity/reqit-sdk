@@ -199,12 +199,169 @@ function renderNode(node, catalog) {
 
 /**
  * Render an AST as semantic HTML with reqit- CSS classes.
+ *
+ * When `auditResult` is provided, adds status CSS classes (`reqit-status-met`,
+ * `reqit-status-not-met`, `reqit-status-in-progress`), status indicators,
+ * and grade/term info for met courses.
+ *
  * @param {Object} ast - AST node from parse()
  * @param {Object} [catalog] - Optional catalog for course title lookup
+ * @param {Object} [auditResult] - Optional audit result tree (parallel structure to AST)
  * @returns {string} HTML string
  */
-function toHTML(ast, catalog) {
-  return renderNode(ast, catalog || null);
+function toHTML(ast, catalog, auditResult) {
+  if (!auditResult) {
+    return renderNode(ast, catalog || null);
+  }
+  return renderNodeWithAudit(ast, catalog || null, auditResult);
+}
+
+/**
+ * Status CSS class for an audit status.
+ */
+function statusClass(status) {
+  if (!status) return '';
+  return ` reqit-status-${status}`;
+}
+
+/**
+ * Status indicator HTML.
+ */
+function statusIndicator(status) {
+  if (!status) return '';
+  switch (status) {
+    case 'met': return '<span class="reqit-status-indicator">&#10003;</span> ';
+    case 'in-progress': return '<span class="reqit-status-indicator">&#9711;</span> ';
+    case 'partial-progress': return '<span class="reqit-status-indicator">&#9681;</span> ';
+    case 'not-met': return '<span class="reqit-status-indicator">&#9675;</span> ';
+    default: return '';
+  }
+}
+
+/**
+ * Render a node with audit overlay (parallel walk of AST and audit result).
+ */
+function renderNodeWithAudit(node, catalog, auditNode) {
+  const status = auditNode ? auditNode.status : null;
+  const sc = statusClass(status);
+  const si = statusIndicator(status);
+
+  switch (node.type) {
+    case 'course': {
+      let html = `<span class="reqit-course${sc}">` + si +
+        `<span class="reqit-subject">${esc(node.subject)}</span> ` +
+        `<span class="reqit-number">${esc(node.number)}</span>`;
+      const title = lookupTitle(node, catalog) || '';
+      if (title) {
+        html += ` <span class="reqit-title">${esc(title)}</span>`;
+      }
+      if (node.concurrentAllowed) {
+        html += ' <span class="reqit-concurrent">(concurrent)</span>';
+      }
+      // Add grade/term info from audit
+      if (auditNode && auditNode.satisfiedBy) {
+        const entry = auditNode.satisfiedBy;
+        if (entry.grade) {
+          html += ` <span class="reqit-grade">${esc(entry.grade)}</span>`;
+        }
+        if (entry.term) {
+          html += ` <span class="reqit-term">${esc(entry.term)}</span>`;
+        }
+      }
+      html += '</span>';
+      return html;
+    }
+
+    case 'course-filter':
+      return `<span class="reqit-course-filter${sc}">${si}Any course where ${node.filters.map(f => renderFilter(f, catalog)).join(' and ')}</span>`;
+
+    case 'score':
+      return `<span class="reqit-score${sc}">${si}Score ${esc(node.name)} ${OP_SYMBOLS[node.op]} ${node.value}</span>`;
+
+    case 'attainment':
+      return `<span class="reqit-attainment${sc}">${si}Attainment: ${esc(node.name)}</span>`;
+
+    case 'quantity':
+      return `<span class="reqit-quantity${sc}">${si}Quantity: ${esc(node.name)} ${OP_SYMBOLS[node.op]} ${node.value}</span>`;
+
+    case 'variable-ref': {
+      const ref = node.scope ? `$${esc(node.scope)}.${esc(node.name)}` : `$${esc(node.name)}`;
+      return `<span class="reqit-variable-ref${sc}">${si}${ref}</span>`;
+    }
+
+    case 'all-of':
+    case 'any-of':
+    case 'none-of':
+    case 'n-of':
+    case 'one-from-each':
+    case 'from-n-groups': {
+      const auditItems = auditNode && auditNode.items ? auditNode.items : [];
+      const itemsHtml = '<ul class="reqit-items">' +
+        node.items.map((item, i) =>
+          `<li>${renderNodeWithAudit(item, catalog, auditItems[i] || null)}</li>`
+        ).join('') + '</ul>';
+      return `<div class="reqit-requirement reqit-${node.type}${sc}">` +
+        `<p class="reqit-label">${si}${compositeLabel(node)}</p>` +
+        renderPostConstraints(node, catalog) +
+        itemsHtml +
+        `</div>`;
+    }
+
+    case 'credits-from': {
+      const comp = comparisonPhrase(node.comparison);
+      const sourceItems = unwrapCreditsSource(node);
+      const sourceAudit = auditNode ? auditNode.source : null;
+      // For credits-from, source audit may be an all-of wrapping the items
+      const sourceAuditItems = sourceAudit && sourceAudit.items ? sourceAudit.items : [];
+      const itemsHtml = '<ul class="reqit-items">' +
+        sourceItems.map((item, i) =>
+          `<li>${renderNodeWithAudit(item, catalog, sourceAuditItems[i] || sourceAudit)}</li>`
+        ).join('') + '</ul>';
+      return `<div class="reqit-requirement reqit-credits-from${sc}">` +
+        `<p class="reqit-label">${si}Complete <strong>${comp} ${node.credits} credits</strong> from:</p>` +
+        renderPostConstraints(node, catalog) +
+        itemsHtml +
+        `</div>`;
+    }
+
+    case 'with-constraint': {
+      const innerAudit = auditNode ? auditNode.requirement : null;
+      const inner = renderNodeWithAudit(node.requirement, catalog, innerAudit);
+      const constraint = node.constraint.kind === 'min-grade'
+        ? `minimum grade of ${esc(node.constraint.value)}`
+        : `minimum GPA of ${node.constraint.value}`;
+      return `<div class="reqit-requirement reqit-with-constraint${sc}">` +
+        inner +
+        `<p class="reqit-constraint">${si}With a ${constraint}</p>` +
+        `</div>`;
+    }
+
+    case 'except': {
+      const sourceAudit = auditNode ? auditNode.source : null;
+      const source = renderNodeWithAudit(node.source, catalog, sourceAudit);
+      const excludeAudits = auditNode && auditNode.exclude ? auditNode.exclude : [];
+      const excludeHtml = '<ul class="reqit-items">' +
+        node.exclude.map((item, i) =>
+          `<li>${renderNodeWithAudit(item, catalog, excludeAudits[i] || null)}</li>`
+        ).join('') + '</ul>';
+      return `<div class="reqit-requirement reqit-except${sc}">` +
+        source +
+        `<p class="reqit-label">Except:</p>` +
+        renderPostConstraints(node, catalog) +
+        excludeHtml +
+        `</div>`;
+    }
+
+    case 'variable-def':
+      return renderNodeWithAudit(node.value, catalog, auditNode);
+
+    case 'scope':
+      return renderNodeWithAudit(node.body, catalog, auditNode);
+
+    // Remaining types: fall through to non-audit rendering
+    default:
+      return renderNode(node, catalog);
+  }
 }
 
 module.exports = { toHTML };

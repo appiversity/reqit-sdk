@@ -39,9 +39,9 @@ These design documents define what this package implements:
 - **Render** AST to human-readable formats (description, outline, HTML)
 - **Resolve** course filters against a catalog (match `courses where subject = "CMPS"` to actual courses)
 - **Grade** comparison and GPA calculation with configurable scales
-- **Audit** a requirement tree against a transcript *(not yet implemented)*
-- **Export** requirements to multiple formats *(not yet implemented)*
-- **Utilities:** `walk`, `transform`, `diff`, `findUnmet`, `findNextEligible`, `extractCourses` *(not yet implemented)*
+- **Audit** a requirement tree against a transcript (single-tree and multi-tree with overlap rules)
+- **Export** requirements to CSV and XLSX (prereq matrix, program checklist, audit results, dependency matrix)
+- **Utilities:** `walk`, `transform`, `diff`, `findUnmet`, `findNextEligible`, `extractCourses`, `extractAllReferences`
 
 ## Current Implementation Status
 
@@ -52,9 +52,11 @@ These design documents define what this package implements:
 | Renderers (4 renderers + shared) | Complete | ~330 tests |
 | Resolver (catalog resolution) | Complete | ~270 tests |
 | Grade system | Complete | ~80 tests |
-| Auditor | Not started | — |
-| Exporters (XLSX, CSV, JSON) | Not started | — |
-| Utility functions | Not started | — |
+| Single-tree auditor | Complete | ~245 tests |
+| Multi-tree auditor | Complete | ~25 tests |
+| AST utilities (walk, transform, diff, extract) | Complete | ~66 tests |
+| Audit utilities (findUnmet, findNextEligible) | Complete | ~30 tests |
+| Exporters (CSV + XLSX) | Complete | ~43 tests |
 
 ## Source Organization
 
@@ -62,23 +64,51 @@ These design documents define what this package implements:
 src/
   index.js              — Public API exports
   parser/               — Peggy.js grammar + error rewriting
-  ast/                  — AST validation
+  ast/
+    validate.js         — AST validation
+    children.js         — forEachChild() + CHILD_PROPS — generic child visitor for all 20 NODE_TYPES
+    walk.js             — walk() (pre-order) + transform() (post-order)
+    extract.js          — extractCourses(), extractAllReferences()
+    diff.js             — diff() — structural AST comparison using LCS
   render/
     shared.js           — NODE_TYPES, courseKey(), COMPOSITE_LABELS, lookupTitle, helpers
     to-text.js          — CODE renderer (round-trip guarantee)
     to-description.js   — Display renderer (prose)
     to-outline.js       — Display renderer (tree with box-drawing)
-    to-html.js          — Display renderer (semantic HTML, reqit- CSS classes)
+    to-html.js          — Display renderer (semantic HTML, reqit- CSS classes, optional audit overlay)
   resolve/index.js      — Catalog resolution
   grade/index.js        — Grade comparison, GPA, custom scales
+  audit/
+    index.js            — audit(), findUnmet(), findNextEligible() public API
+    single-tree.js      — Single-tree audit engine (all 20 node types)
+    multi-tree.js       — Multi-tree audit with overlap rules
+    status.js           — 4-state status propagation (MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET)
+    transcript.js       — Transcript normalization and indexing
+    backtrack.js        — Post-constraint backtracking for n-of nodes
+    next-eligible.js    — findNextEligible() implementation
+  export/
+    index.js            — formatResult() dispatcher (CSV or XLSX)
+    serialize.js        — toCSV() (RFC 4180), toXLSX() (exceljs)
+    prereq-graph.js     — buildPrereqGraph() — direct + transitive prereq graph via BFS
+    prereq-matrix.js    — exportPrereqMatrix() — one row per course→prereq pair
+    program-checklist.js — exportProgramChecklist() — one row per leaf requirement
+    audit-export.js     — exportAudit() — one row per leaf with status/grade/term
+    dependency-matrix.js — exportDependencyMatrix() — cross-reference matrix
 test/
   fixtures/catalogs/    — Lehigh, Moravian, W&M, RCNJ, minimal catalogs
+  fixtures/transcripts/ — Transcript fixtures per catalog
   parser/               — Grammar tests by construct
-  render/               — Renderer tests + exhaustiveness guard
+  render/               — Renderer tests + exhaustiveness guard + HTML audit overlay
   resolve/              — Resolution tests + exhaustiveness guard + edge cases
   grade/                — Grade system tests
-  ast/                  — Validation tests
+  ast/                  — Validation, walk, transform, extract, diff tests
+  audit/                — Audit tests (leaf, composite, integration, multi-tree)
+  export/               — Export tests (serialize, prereq-matrix, checklist, audit, dependency-matrix)
 ```
+
+## Runtime Dependencies
+
+- `exceljs` — XLSX export support (sole runtime dependency)
 
 ## Coding Standards
 
@@ -113,8 +143,11 @@ Both `test/render/exhaustiveness.test.js` and `test/resolve/exhaustiveness.test.
 - Document intentional design decisions in test comments when behaviour is non-obvious
 - Cover edge cases: null/undefined inputs, empty catalogs, unknown fields, missing courses
 
+### `forEachChild` is the foundation for AST traversal
+`src/ast/children.js` centralizes child-property knowledge for all 20 NODE_TYPES via the `CHILD_PROPS` Map. All traversal utilities (`walk`, `transform`, `extractCourses`, `diff`) and internal traversals (`validate.js`, `resolve/index.js`, `audit/index.js`, `single-tree.js`, `multi-tree.js`) use `forEachChild`. When adding a new node type, update `CHILD_PROPS` — the exhaustiveness test in `test/ast/children.test.js` will catch missing entries.
+
 ### Don't over-abstract
-Three similar switch cases are better than one premature `forEachChild` abstraction. Centralize only when there's a clear, proven maintenance burden.
+Centralize only when there's a clear, proven maintenance burden. Three similar cases are better than one premature generic.
 
 ### Data model changes and test failures
 Tests that depend on data models exist to surface dependencies — when a model changes, test failures show you what's affected. Never silently support both old and new data model shapes as a fallback to avoid test failures. Always ask before changing tests that fail due to a data model change, and always ask before adding fallback/alternate shape support. The right default is: change the model, let tests fail, confirm the failures align with the plan, then update tests.

@@ -21,6 +21,7 @@ const {
   evaluateFilters,
   collectDefs,
 } = require('../resolve');
+const { forEachChild } = require('../ast/children');
 const { lookupTranscriptEntry } = require('./transcript');
 const {
   MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET,
@@ -554,7 +555,7 @@ function collectMatchedEntries(result) {
   const entries = [];
   const seen = new Set();
 
-  function walk(node) {
+  function walkResult(node) {
     if (!node) return;
 
     // Leaf course with satisfiedBy
@@ -589,18 +590,10 @@ function collectMatchedEntries(result) {
     }
 
     // Recurse into children
-    if (node.items && Array.isArray(node.items)) {
-      for (const child of node.items) walk(child);
-    }
-    if (node.source) walk(node.source);
-    if (node.requirement) walk(node.requirement);
-    if (node.resolved) walk(node.resolved);
-    if (node.exclude && Array.isArray(node.exclude)) {
-      for (const child of node.exclude) walk(child);
-    }
+    forEachChild(node, (child) => walkResult(child));
   }
 
-  walk(result);
+  walkResult(result);
   return entries;
 }
 

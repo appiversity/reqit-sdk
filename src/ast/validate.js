@@ -1,5 +1,7 @@
 'use strict';
 
+const { forEachChild } = require('./children');
+
 /**
  * Validates a Reqit AST for semantic correctness.
  *
@@ -28,11 +30,7 @@ function collectDefs(node, scopeName, defs) {
 
   if (node.type === 'scope') {
     const scope = node.name || '';
-    if (Array.isArray(node.items)) {
-      for (const child of node.items) {
-        collectDefs(child, scope, defs);
-      }
-    }
+    forEachChild(node, (child) => collectDefs(child, scope, defs));
     return defs;
   }
 
@@ -51,35 +49,7 @@ function collectDefs(node, scopeName, defs) {
   }
 
   // Recurse into children
-  if (Array.isArray(node.items)) {
-    for (const child of node.items) {
-      collectDefs(child, scopeName, defs);
-    }
-  }
-  if (node.expression) {
-    collectDefs(node.expression, scopeName, defs);
-  }
-  if (node.value) {
-    collectDefs(node.value, scopeName, defs);
-  }
-  if (node.source) {
-    collectDefs(node.source, scopeName, defs);
-  }
-  if (node.left) {
-    collectDefs(node.left, scopeName, defs);
-  }
-  if (node.right) {
-    collectDefs(node.right, scopeName, defs);
-  }
-  if (node.target) {
-    collectDefs(node.target, scopeName, defs);
-  }
-  if (node.requirement) {
-    collectDefs(node.requirement, scopeName, defs);
-  }
-  if (node.program && typeof node.program === 'object') {
-    collectDefs(node.program, scopeName, defs);
-  }
+  forEachChild(node, (child) => collectDefs(child, scopeName, defs));
 
   return defs;
 }
@@ -280,35 +250,15 @@ function walkNode(node, ctx, path, isTopLevel) {
   }
 
   // Recurse into children
-  if (Array.isArray(node.items)) {
-    for (let i = 0; i < node.items.length; i++) {
-      walkNode(node.items[i], ctx, joinPath(path, `items[${i}]`), false);
+  forEachChild(node, (child, key) => {
+    const childValue = node[key];
+    if (Array.isArray(childValue)) {
+      const idx = childValue.indexOf(child);
+      walkNode(child, ctx, joinPath(path, `${key}[${idx}]`), false);
+    } else {
+      walkNode(child, ctx, joinPath(path, key), false);
     }
-  }
-  if (node.expression) {
-    walkNode(node.expression, ctx, joinPath(path, 'expression'), false);
-  }
-  if (node.value) {
-    walkNode(node.value, ctx, joinPath(path, 'value'), false);
-  }
-  if (node.source) {
-    walkNode(node.source, ctx, joinPath(path, 'source'), false);
-  }
-  if (node.left) {
-    walkNode(node.left, ctx, joinPath(path, 'left'), false);
-  }
-  if (node.right) {
-    walkNode(node.right, ctx, joinPath(path, 'right'), false);
-  }
-  if (node.target) {
-    walkNode(node.target, ctx, joinPath(path, 'target'), false);
-  }
-  if (node.requirement) {
-    walkNode(node.requirement, ctx, joinPath(path, 'requirement'), false);
-  }
-  if (node.program && typeof node.program === 'object') {
-    walkNode(node.program, ctx, joinPath(path, 'program'), false);
-  }
+  });
 }
 
 /**

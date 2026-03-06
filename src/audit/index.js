@@ -11,6 +11,7 @@ const {
 const { normalizeTranscript } = require('./transcript');
 const { auditNode } = require('./single-tree');
 const { MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET, buildSummary } = require('./status');
+const { findUnmet } = require('./find-unmet');
 
 /**
  * Audit a requirement AST against a student transcript.
@@ -73,55 +74,14 @@ function prepareAudit(ast, catalog) {
   };
 }
 
-/**
- * Walk an audit result tree and collect all nodes whose status is not 'met'.
- *
- * Returns a flat array of nodes that need attention, each annotated with
- * its path from the root. Useful for generating "what's missing" reports.
- *
- * @param {object} result - An audit result tree (from audit() or prepareAudit().run())
- * @returns {object[]} Array of { node, path, status }
- */
-function findUnmet(result) {
-  const unmet = [];
-
-  function walk(node, path) {
-    if (!node || typeof node !== 'object') return;
-
-    if (node.status && node.status !== MET) {
-      // Only collect leaf-level unmet nodes or nodes with no children
-      const isLeaf = !node.items && !node.source && !node.requirement && !node.resolved && !node.exclude;
-      if (isLeaf) {
-        unmet.push({ node, path, status: node.status });
-      }
-    }
-
-    // Recurse into children
-    if (node.items && Array.isArray(node.items)) {
-      for (let i = 0; i < node.items.length; i++) {
-        walk(node.items[i], [...path, `items[${i}]`]);
-      }
-    }
-    if (node.source) walk(node.source, [...path, 'source']);
-    if (node.requirement) walk(node.requirement, [...path, 'requirement']);
-    if (node.resolved) walk(node.resolved, [...path, 'resolved']);
-    if (node.exclude && Array.isArray(node.exclude)) {
-      for (let i = 0; i < node.exclude.length; i++) {
-        walk(node.exclude[i], [...path, `exclude[${i}]`]);
-      }
-    }
-  }
-
-  walk(result, []);
-  return unmet;
-}
-
 const { auditMulti, CourseAssignmentMap } = require('./multi-tree');
+const { findNextEligible } = require('./next-eligible');
 
 module.exports = {
   audit,
   prepareAudit,
   findUnmet,
+  findNextEligible,
   auditMulti,
   CourseAssignmentMap,
   MET,

@@ -306,9 +306,10 @@ describe('validate()', () => {
         items: [
           {
             type: 'scope', name: 'cs',
-            items: [
+            defs: [
               { type: 'variable-def', name: 'core', value: course('CMPS', '147') }
-            ]
+            ],
+            body: { type: 'course', subject: 'CMPS', number: '147' }
           },
           { type: 'variable-ref', name: 'core', scope: 'cs' }
         ]
@@ -832,55 +833,56 @@ describe('validate()', () => {
   // --- Edge cases for coverage ---
 
   describe('tree traversal edge cases', () => {
-    test('walks expression property', () => {
-      // A synthetic node with an expression child containing invalid content
+    test('walks source child of credits-from', () => {
+      // credits-from with an invalid source child (missing type)
       const result = validate({
-        type: 'some-custom-node',
-        expression: { subject: 'MATH', number: '151' } // missing type
+        type: 'credits-from', credits: 9, comparison: 'at-least',
+        source: { subject: 'MATH', number: '151' } // missing type
       });
       expect(result.valid).toBe(false);
       expect(result.errors[0].rule).toBe(1);
-      expect(result.errors[0].path).toBe('expression');
+      expect(result.errors[0].path).toBe('source');
     });
 
-    test('walks target property', () => {
+    test('walks requirement child of with-constraint', () => {
       const result = validate({
-        type: 'some-custom-node',
-        target: { subject: 'MATH', number: '151' } // missing type
+        type: 'with-constraint',
+        constraint: { kind: 'min-grade', value: 'C' },
+        requirement: { subject: 'MATH', number: '151' } // missing type
       });
       expect(result.valid).toBe(false);
       expect(result.errors[0].rule).toBe(1);
-      expect(result.errors[0].path).toBe('target');
+      expect(result.errors[0].path).toBe('requirement');
     });
 
-    test('collectDefs finds variable-defs inside expression property', () => {
+    test('collectDefs finds variable-defs inside scope defs', () => {
       const result = validate({
         type: 'all-of',
         items: [
           {
-            type: 'some-wrapper',
-            expression: {
-              type: 'variable-def', name: 'inner', value: course('MATH', '151')
-            }
+            type: 'scope', name: 'wrapper',
+            defs: [
+              { type: 'variable-def', name: 'inner', value: course('MATH', '151') }
+            ],
+            body: { type: 'variable-ref', name: 'inner' }
           },
-          { type: 'variable-ref', name: 'inner' }
+          { type: 'variable-ref', name: 'inner', scope: 'wrapper' }
         ]
       });
       expect(result).toEqual({ valid: true });
     });
 
-    test('collectDefs finds variable-defs inside target property', () => {
+    test('collectDefs finds variable-defs inside variable-def value', () => {
+      // A variable-def whose value contains another variable-def (nested)
       const result = validate({
-        type: 'all-of',
-        items: [
-          {
-            type: 'some-wrapper',
-            target: {
-              type: 'variable-def', name: 'inner', value: course('MATH', '151')
-            }
-          },
-          { type: 'variable-ref', name: 'inner' }
-        ]
+        type: 'variable-def', name: 'outer',
+        value: {
+          type: 'all-of',
+          items: [
+            { type: 'variable-def', name: 'inner', value: course('MATH', '151') },
+            { type: 'variable-ref', name: 'inner' }
+          ]
+        }
       });
       expect(result).toEqual({ valid: true });
     });
@@ -888,10 +890,10 @@ describe('validate()', () => {
     test('scope with missing name defaults to empty string', () => {
       const result = validate({
         type: 'scope',
-        items: [
+        defs: [
           { type: 'variable-def', name: 'x', value: course('MATH', '151') },
-          { type: 'variable-ref', name: 'x' }
-        ]
+        ],
+        body: { type: 'variable-ref', name: 'x' }
       });
       expect(result).toEqual({ valid: true });
     });
@@ -967,9 +969,10 @@ describe('validate()', () => {
         items: [
           {
             type: 'scope', name: 'sc',
-            items: [
+            defs: [
               { type: 'variable-def', name: 'a', value: { type: 'variable-ref', name: 'a', scope: 'sc' } }
-            ]
+            ],
+            body: { type: 'course', subject: 'MATH', number: '101' }
           }
         ]
       });

@@ -19,6 +19,7 @@
  */
 
 const { courseKey } = require('../render/shared');
+const { forEachChild } = require('../ast/children');
 
 /**
  * Normalize a catalog by defaulting optional fields on each course.
@@ -117,14 +118,7 @@ function collectDefs(node, scopeName, defs) {
 
   if (node.type === 'scope') {
     const scope = node.name || '';
-    if (Array.isArray(node.defs)) {
-      for (const def of node.defs) {
-        collectDefs(def, scope, defs);
-      }
-    }
-    if (node.body) {
-      collectDefs(node.body, scope, defs);
-    }
+    forEachChild(node, (child) => collectDefs(child, scope, defs));
     return defs;
   }
 
@@ -143,16 +137,7 @@ function collectDefs(node, scopeName, defs) {
   }
 
   // Recurse into children
-  if (Array.isArray(node.items)) {
-    for (const child of node.items) {
-      collectDefs(child, scopeName, defs);
-    }
-  }
-  if (node.expression) collectDefs(node.expression, scopeName, defs);
-  if (node.value) collectDefs(node.value, scopeName, defs);
-  if (node.source) collectDefs(node.source, scopeName, defs);
-  if (node.requirement) collectDefs(node.requirement, scopeName, defs);
-  if (node.body) collectDefs(node.body, scopeName, defs);
+  forEachChild(node, (child) => collectDefs(child, scopeName, defs));
 
   return defs;
 }
@@ -332,18 +317,11 @@ function astContainsCourse(ast, courseRef) {
     return ast.subject === courseRef.subject && ast.number === courseRef.number;
   }
 
-  // Recurse into children using the same traversal pattern as walkNode
-  if (Array.isArray(ast.items)) {
-    for (const item of ast.items) {
-      if (astContainsCourse(item, courseRef)) return true;
-    }
-  }
-  if (ast.source && astContainsCourse(ast.source, courseRef)) return true;
-  if (ast.value && astContainsCourse(ast.value, courseRef)) return true;
-  if (ast.requirement && astContainsCourse(ast.requirement, courseRef)) return true;
-  if (ast.expression && astContainsCourse(ast.expression, courseRef)) return true;
-
-  return false;
+  let found = false;
+  forEachChild(ast, (child) => {
+    if (!found && astContainsCourse(child, courseRef)) found = true;
+  });
+  return found;
 }
 
 /**

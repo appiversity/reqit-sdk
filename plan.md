@@ -198,25 +198,28 @@ Additional items completed during Phase 6 (absorbed from later phases):
 
 ## Phase 9: AST Utilities
 
-- [ ] **9.1** `walk()` — depth-first traversal with node, path, parent callback + tests
-- [ ] **9.2** `transform()` — immutable AST transformation + tests
-- [ ] **9.3** `extractCourses()` — all explicit course references + tests
-- [ ] **9.4** `extractAllReferences()` — explicit + filter-resolved references (requires catalog) + tests
-- [ ] **9.5** `diff()` — structural comparison of two ASTs, returns list of changes + tests
+- [x] **9.0** `forEachChild()` — generic AST child visitor centralizing child-property knowledge for all 20 NODE_TYPES + exhaustiveness guard + tests (29 tests)
+- [x] **9.1** `walk()` — depth-first pre-order traversal with node, path, parent callback + tests
+- [x] **9.2** `transform()` — immutable post-order AST transformation + tests
+- [x] **9.0b** Internal consolidation — refactored `validate.js`, `resolve/index.js`, `audit/index.js`, `single-tree.js`, `multi-tree.js` to use `forEachChild` (eliminated 8 independent child-property traversal implementations)
+- [x] **9.3** `extractCourses()` — all explicit course references (deduplicated) + tests
+- [x] **9.4** `extractAllReferences()` — explicit + filter-resolved references (requires catalog) + tests
+- [x] **9.5** `diff()` — structural comparison of two ASTs using LCS, returns list of changes (added/removed/changed/moved) + tests
 
 ## Phase 10: Audit Utility Functions
 
 - [x] **10.1** `findUnmet()` — extract unmet leaf requirements from audit result + tests — *completed in Phase 6*
-- [ ] **10.2** `findNextEligible()` — courses whose prerequisites are met but course not yet taken + tests
+- [x] **10.2** `findNextEligible()` — courses whose prerequisites are met but course not yet taken + tests
 - [x] **10.3** `prepareAudit()` — batch optimization, pre-resolve catalog + tests — *completed in Phase 6 (replaced `recomputeStatus()` which is deferred)*
 
 ## Phase 11: Export
 
-- [ ] **11.1** `exportPrereqMatrix()` — prerequisite cross-reference table as XLSX and CSV + tests
-- [ ] **11.2** `exportProgramChecklist()` — program requirements as XLSX and CSV + tests
-- [ ] **11.3** `exportAudit()` — audit result as XLSX and CSV + tests
-- [ ] **11.4** `exportDependencyMatrix()` — course dependency matrix as XLSX and CSV + tests
-- [ ] **11.5** `toHTML()` with audit result overlay (status classes, checkmarks, grade display) + tests
+- [x] **11.0** Export infrastructure — CSV (RFC 4180) + XLSX (`exceljs`) serializers, `formatResult()` dispatcher + tests
+- [x] **11.1** `exportPrereqMatrix()` — prerequisite cross-reference table as XLSX and CSV + tests
+- [x] **11.2** `exportProgramChecklist()` — program requirements as XLSX and CSV + tests
+- [x] **11.3** `exportAudit()` — audit result as XLSX and CSV + tests
+- [x] **11.4** `exportDependencyMatrix()` — course dependency matrix as XLSX and CSV + tests
+- [x] **11.5** `toHTML()` with audit result overlay (status classes, checkmarks, grade display) + tests
 
 ## Phase 12: Public API, Documentation & Packaging
 
