@@ -225,8 +225,8 @@ Additional items completed during Phase 6 (absorbed from later phases):
 
 See [22-sdk-api-design.md](../reqit-specs/design/22-sdk-api-design.md) for the full class-based API design. The public surface is a thin facade over the functional modules built in Phases 1–11.
 
-- [ ] **12.1** `src/index.js` — Implement `Requirement`, `Catalog`, `Transcript`, `ResolutionResult`, `AuditResult`, `MultiAuditResult`, `AuditException` classes as thin wrappers delegating to internal modules. Entity factories: `reqit.parse()`, `reqit.fromAST()`, `reqit.catalog()`, `reqit.transcript()`, `reqit.waiver()`, `reqit.substitution()`. Module-level functions: `reqit.auditMulti()`, `reqit.exportPrereqMatrix()`, `reqit.exportDependencyMatrix()`, grade utilities.
-- [ ] **12.2** Public API integration tests — exercise the full public surface through the class-based API. Every entity factory, every instance method, every module-level function. Tests use `require('reqit')` (not internal module imports). Cover: Requirement construction (parse, fromAST), immutability (frozen AST, transform returns new instance), rendering methods (toText, toDescription, toOutline, toHTML), resolve returns ResolutionResult (not a new Requirement), audit returns AuditResult with methods, Catalog/Transcript accept plain objects, AuditException waivers/substitutions, fluent chaining.
+- [x] **12.1** `src/index.js` — Implement `Requirement`, `Catalog`, `Transcript`, `ResolutionResult`, `AuditResult`, `MultiAuditResult`, `AuditException` classes as thin wrappers delegating to internal modules. Entity factories: `reqit.parse()`, `reqit.fromAST()`, `reqit.catalog()`, `reqit.transcript()`, `reqit.waiver()`, `reqit.substitution()`. Module-level functions: `reqit.auditMulti()`, `reqit.exportPrereqMatrix()`, `reqit.exportDependencyMatrix()`, grade utilities.
+- [x] **12.2** Public API integration tests — exercise the full public surface through the class-based API. Every entity factory, every instance method, every module-level function. Tests use `require('reqit')` (not internal module imports). Cover: Requirement construction (parse, fromAST), immutability (frozen AST, transform returns new instance), rendering methods (toText, toDescription, toOutline, toHTML), resolve returns ResolutionResult (not a new Requirement), audit returns AuditResult with methods, Catalog/Transcript accept plain objects, AuditException waivers/substitutions, fluent chaining.
 - [ ] **12.3** Developer documentation for integration data types — Catalog, Transcript, GradeConfig, AuditResult. These are the integration boundary — consuming applications build these structures to feed into reqit. Documentation must cover every field, its type, whether it's required/optional, and semantic meaning. Key points to document:
   - **Catalog:** `institution` (slug, opaque to reqit), `ay` (academic year string, e.g. "2025-2026"), courses, programs, attainments, gradeConfig
   - **Course:** `id`, `subject`, `number`, `title`, `creditsMin`, `creditsMax`, `attributes` (array of attribute code strings — these are unique identifiers referencing the institution's attribute definitions; at the SDK level reqit matches them as opaque strings; reqit-pg provides the `attribute` table with names/descriptions), `crossListGroup`
@@ -238,6 +238,89 @@ See [22-sdk-api-design.md](../reqit-specs/design/22-sdk-api-design.md) for the f
 - [ ] **12.4** CSS class reference for `toHTML()` — comprehensive documentation of every `reqit-` CSS class emitted by the HTML renderer. Developers using the SDK will customize these styles for their own UIs, so the docs must cover: every class name and which node type / structural role produces it, the HTML structure (nesting of `div`/`span`/`ul`/`li`/`p` elements), which classes appear on leaf vs composite vs wrapper nodes, semantic meaning of each class (e.g. `reqit-post-constraint`, `reqit-concurrent`), and a starter stylesheet example. This is an integration boundary — the CSS class names and DOM structure are the SDK's visual contract with consuming applications.
 - [ ] **12.5** Final coverage audit — verify 95% line, 90% branch, 100% parser rule coverage; add any missing edge case tests
 - [ ] **12.6** Package metadata (`package.json` fields: main, exports, files, engines, keywords, license), README.md with usage examples
+
+## Post-Phase 12: Developer Feedback Fixes
+
+Addressed 9 issues discovered while building `reqit-demo` (interactive CLI exercising the Phase 12 class-based API with 3 RCNJ programs). All fixes implemented in a single commit.
+
+**Commit:** `1a802f7` — Address 9 developer feedback issues from reqit-demo
+
+### Parser Improvements
+
+- [x] **DF.1** Bare variable programs — `TopLevel` rule accepts `VariableDef+ Expression` without `scope` keyword. Produces `{ type: 'scope', name: null, defs, body }`. Enables `$a = MATH 151\n$b = CMPS 130\nall of ($a, $b)` without scope boilerplate.
+- [x] **DF.2** Letter-first course numbers — `Number` rule extended with second alternative for identifiers like `TS1`, `A101` (requires at least one digit via semantic predicate, so `all` won't collide with keywords).
+
+### AST Utilities
+
+- [x] **DF.3** `Requirement.expand()` — inlines all variable references, producing a flat AST with no scope/variable nodes. Composable with all renderers: `req.expand().toOutline(catalog)` shows course titles instead of `$name`. New module: `src/ast/expand.js`.
+
+### Audit Improvements
+
+- [x] **DF.4** `findUnmet()` semantic fix — now skips `MET` and `IN_PROGRESS` composites. Previously descended into all composites regardless of status, causing unchosen alternatives inside satisfied `any-of` nodes to appear as "unmet."
+- [x] **DF.5** `AuditResult.walk(callback)` — depth-first traversal of the audit result tree using `forEachChild`. Calls `callback(node, path)` for each node. New module: `src/audit/walk-result.js`.
+- [x] **DF.6** Summary scope unwrap — `AuditResult.summary` getter now unwraps `scope` and `variable-ref/resolved` nodes before counting children, giving meaningful group-level counts instead of `{ total: 1 }` for scoped programs.
+
+### Entity Convenience
+
+- [x] **DF.7** `Catalog.findCourse(subject, number)` and `Catalog.findProgram(code)` — memoized `Map` indexes for O(1) lookup, replacing verbose `cat.courses.find(...)`.
+- [x] **DF.8** `calculateGPA()` entity wrapping — accepts `Transcript` and `Catalog` entities in addition to plain arrays/objects. Unwraps internally.
+- [x] **DF.9** `isValidGrade(grade, gradeConfig)` — checks scale + passFail + withdrawal + incomplete. Case-insensitive. Exported from `src/grade/index.js` and `src/index.js`.
+
+**Test count after DF fixes:** 2134 tests, 97.28% statement coverage, 90.32% branch coverage.
+
+## Phase 13: Audit Exceptions — Waivers & Substitutions (Spec 23)
+
+First-class exception support in the audit engine. Waivers exempt requirement nodes from evaluation; substitutions map one course to another via virtual transcript entries. Both new statuses (`waived`, `substituted`) propagate as met-equivalent through composite nodes.
+
+**Commit:** `847d90c` — Add audit exceptions: waivers and substitutions (Spec 23)
+
+### Exception Entities
+
+- [x] **13.1** `Waiver` and `Substitution` classes with immutable frozen data, `toJSON()` serialization, `kind` discriminator
+- [x] **13.2** `waiver()` and `substitution()` factory functions with validation (required reason, exactly one target key for waivers, subject+number for substitutions)
+- [x] **13.3** `buildExceptionContext()` — indexes exceptions by type for O(1) lookup during audit (course/score/attainment/quantity/label Maps for waivers, courseKey Map for substitutions)
+
+### Status Values
+
+- [x] **13.4** `WAIVED` and `SUBSTITUTED` constants in `status.js`; `countStatuses()` treats both as met-equivalent; `buildSummary()` reports waived/substituted counts separately
+- [x] **13.5** `findUnmet()` skips WAIVED and SUBSTITUTED nodes
+- [x] **13.6** `AuditStatus` enum updated with WAIVED and SUBSTITUTED values
+
+### Audit-Time Waiver Processing
+
+- [x] **13.7** Waiver interception at top of `auditNode()` — checks label-based group waivers (short-circuits entire subtree) and leaf-node waivers (course, score, attainment, quantity) before normal dispatch
+- [x] **13.8** `buildWaivedResult()` — constructs waived result node with catalog credits lookup (`waivedCredits`) for credit counting
+- [x] **13.9** `buildGroupWaivedResult()` — constructs waived result for labeled composites; `resolveWaivedCredits()` walks AST subtree to sum catalog credits
+- [x] **13.10** Constraint interaction — waived course inside `with-constraint` bypasses grade/GPA checks (status propagates as WAIVED)
+- [x] **13.11** `credits-from` with waivers — `collectWaivedCredits()` sums `waivedCredits` from waived nodes in source subtree, added to earned credits
+
+### Audit-Time Substitution Processing
+
+- [x] **13.12** `applySubstitutions()` — creates virtual transcript entries for each substitution where the replacement course exists on the transcript; does not override existing direct matches
+- [x] **13.13** `auditCourse()` detects virtual entries (via `_substitution` marker) and returns `status: 'substituted'` with substitution metadata
+- [x] **13.14** Evaluation order: waiver > direct transcript match > substitution (virtual entry)
+- [x] **13.15** Constraint interaction — replacement course's grade used for min-grade/min-gpa evaluation
+
+### Multi-Tree Integration
+
+- [x] **13.16** `auditMulti()` builds shared exception context once, applies substitutions to shared normalized transcript, passes waivers/substitutions to each tree's audit context
+
+### Public API
+
+- [x] **13.17** `AuditResult.exceptions` getter — `{ applied, unused }` when exceptions provided, `null` otherwise
+- [x] **13.18** Unused exception warnings — `unused-exception` type with descriptive message
+- [x] **13.19** `reqit.waiver()`, `reqit.substitution()` factory exports; `Waiver`, `Substitution` class exports for `instanceof` checks
+
+### Testing
+
+- [x] **13.20** `test/audit/exceptions.test.js` — 62 unit tests covering entity classes, factory validation, context builder, leaf/group waiver matching, virtual transcript entries, status integration
+- [x] **13.21** `test/audit/waiver-audit.test.js` — 24 integration tests covering course/score/attainment/quantity waivers, labeled group waivers, constraint interaction, credits-from, unused exception warnings, backward compatibility
+- [x] **13.22** `test/audit/substitution-audit.test.js` — 12 integration tests covering basic substitution, evaluation order, composite propagation, constraint interaction, credits-from, in-progress substitution
+- [x] **13.23** `test/api/public-api.test.js` — 14 new tests for exception factory exports, structural guards, audit integration via public API, multi-tree exceptions
+
+**Source files:** `src/audit/exceptions.js` (new), `src/audit/status.js`, `src/audit/single-tree.js`, `src/audit/index.js`, `src/audit/multi-tree.js`, `src/audit/find-unmet.js`, `src/entities.js`, `src/index.js`
+**Test files:** 3 new test files + updated `status.test.js` and `public-api.test.js`
+**Test count after Phase 13:** 2245 tests, 97.34% statement coverage, 90.43% branch coverage.
 
 ---
 
@@ -258,7 +341,8 @@ See [22-sdk-api-design.md](../reqit-specs/design/22-sdk-api-design.md) for the f
 | 10 | 3 | Audit utilities |
 | 11 | 5 | Export |
 | 12 | 6 | API + integration tests + docs + packaging |
-| **Total** | **98** | |
+| 13 | 1 | Audit exceptions (waivers & substitutions) |
+| **Total** | **99** | |
 
 ## Test Fixture Strategy
 
