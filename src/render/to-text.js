@@ -173,8 +173,13 @@ function renderNode(node) {
       return `$${node.name} = ${renderNode(node.value)}`;
 
     case 'scope': {
-      const defs = node.defs.map(d => `$${d.name} = ${renderNode(d.value)}`).join(' ');
       const body = renderNode(node.body);
+      if (node.name === null) {
+        // Bare variable program — render without scope wrapper
+        const defs = node.defs.map(d => `$${d.name} = ${renderNode(d.value)}`).join('\n');
+        return defs ? `${defs}\n${body}` : body;
+      }
+      const defs = node.defs.map(d => `$${d.name} = ${renderNode(d.value)}`).join(' ');
       if (defs) {
         return `scope "${node.name}" { ${defs} ${body} }`;
       }

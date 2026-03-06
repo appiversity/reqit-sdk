@@ -25,7 +25,7 @@ describe('public API — structural guards', () => {
   ];
   const expectedModuleFunctions = [
     'auditMulti', 'exportPrereqMatrix', 'exportDependencyMatrix',
-    'meetsMinGrade', 'isPassingGrade', 'calculateGPA',
+    'meetsMinGrade', 'isPassingGrade', 'calculateGPA', 'isValidGrade',
   ];
   const expectedBackwardCompat = [
     'CourseAssignmentMap', 'prepareAudit', 'isAuditableGrade', 'DEFAULT_GRADE_CONFIG',
@@ -1067,5 +1067,174 @@ describe('Entity construction edge cases', () => {
     const req = api.fromAST(ast);
     expect(req.ast.type).toBe('all-of');
     expect(req.validate().valid).toBe(true);
+  });
+});
+
+// ============================================================
+// 23. AuditResult.walk (Issue 5)
+// ============================================================
+
+describe('AuditResult.walk', () => {
+  test('visits all nodes with correct paths', () => {
+    const req = api.parse('all of (MATH 151, CMPS 130)');
+    const result = req.audit(minimalCatalog, completeTx);
+    const visited = [];
+    result.walk((node, path) => {
+      visited.push({ type: node.type, path });
+    });
+    // Root + 2 children = at least 3 nodes
+    expect(visited.length).toBeGreaterThanOrEqual(3);
+    expect(visited[0].path).toEqual([]);
+    expect(visited[0].type).toBe('all-of');
+  });
+
+  test('walk is a function on AuditResult', () => {
+    const req = api.parse('MATH 151');
+    const result = req.audit(minimalCatalog, completeTx);
+    expect(typeof result.walk).toBe('function');
+  });
+});
+
+// ============================================================
+// 24. Summary unwraps scope/variable-ref (Issue 6)
+// ============================================================
+
+describe('AuditResult.summary scope unwrap', () => {
+  test('scoped program returns group-level counts', () => {
+    const req = api.parse('$a = MATH 151\n$b = CMPS 130\nall of ($a, $b)');
+    const result = req.audit(minimalCatalog, completeTx);
+    const s = result.summary;
+    // Should unwrap scope+variable-refs to see the all-of with 2 items
+    expect(s.total).toBe(2);
+    expect(s.met).toBe(2);
+  });
+
+  test('scope wrapping single body returns body-level summary', () => {
+    const req = api.parse('scope "test" { all of (MATH 151, CMPS 130) }');
+    const result = req.audit(minimalCatalog, completeTx);
+    const s = result.summary;
+    expect(s.total).toBe(2);
+  });
+});
+
+// ============================================================
+// 25. Catalog.findCourse / findProgram (Issue 7)
+// ============================================================
+
+describe('Catalog query methods', () => {
+  const cat = api.catalog(minimalCatalog);
+
+  test('findCourse returns matching course', () => {
+    const course = cat.findCourse('MATH', '151');
+    expect(course).toBeDefined();
+    expect(course.subject).toBe('MATH');
+    expect(course.number).toBe('151');
+    expect(course.title).toBe('Calculus I');
+  });
+
+  test('findCourse returns undefined for unknown course', () => {
+    expect(cat.findCourse('FAKE', '999')).toBeUndefined();
+  });
+
+  test('findProgram returns matching program', () => {
+    const prog = cat.findProgram('CMPS');
+    expect(prog).toBeDefined();
+    expect(prog.name).toBe('Computer Science');
+  });
+
+  test('findProgram returns undefined for unknown code', () => {
+    expect(cat.findProgram('FAKE')).toBeUndefined();
+  });
+
+  test('repeated findCourse uses memoized index', () => {
+    const c1 = cat.findCourse('MATH', '151');
+    const c2 = cat.findCourse('MATH', '151');
+    expect(c1).toBe(c2); // same object reference
+  });
+
+  test('findCourse and findProgram are functions', () => {
+    expect(typeof cat.findCourse).toBe('function');
+    expect(typeof cat.findProgram).toBe('function');
+  });
+});
+
+// ============================================================
+// 26. calculateGPA entity wrapping (Issue 8)
+// ============================================================
+
+describe('calculateGPA entity wrapping', () => {
+  test('accepts Transcript and Catalog entities', () => {
+    const cat = api.catalog(minimalCatalog);
+    const tx = api.transcript([
+      { subject: 'MATH', number: '151', grade: 'A', credits: 4 },
+      { subject: 'CMPS', number: '130', grade: 'B', credits: 3 },
+    ]);
+    const gpa = api.calculateGPA(tx, cat);
+    expect(typeof gpa).toBe('number');
+    expect(gpa).toBeCloseTo((4.0 * 4 + 3.0 * 3) / 7, 2);
+  });
+
+  test('backward compat: plain array + plain config', () => {
+    const entries = [
+      { grade: 'A', credits: 3 },
+      { grade: 'B', credits: 3 },
+    ];
+    const gpa = api.calculateGPA(entries, minimalCatalog.gradeConfig);
+    expect(gpa).toBe(3.5);
+  });
+
+  test('accepts array of TranscriptEntry instances', () => {
+    const entries = [
+      new api.TranscriptEntry({ subject: 'MATH', number: '151', grade: 'A', credits: 4 }),
+    ];
+    const gpa = api.calculateGPA(entries, minimalCatalog.gradeConfig);
+    expect(gpa).toBe(4.0);
+  });
+});
+
+// ============================================================
+// 27. isValidGrade (Issue 9)
+// ============================================================
+
+describe('isValidGrade', () => {
+  const config = minimalCatalog.gradeConfig;
+
+  test('scale grade is valid', () => {
+    expect(api.isValidGrade('A', config)).toBe(true);
+    expect(api.isValidGrade('F', config)).toBe(true);
+  });
+
+  test('pass/fail grade is valid', () => {
+    expect(api.isValidGrade('P', config)).toBe(true);
+    expect(api.isValidGrade('NP', config)).toBe(true);
+  });
+
+  test('withdrawal grade is valid', () => {
+    expect(api.isValidGrade('W', config)).toBe(true);
+    expect(api.isValidGrade('WP', config)).toBe(true);
+  });
+
+  test('incomplete grade is valid', () => {
+    expect(api.isValidGrade('I', config)).toBe(true);
+    expect(api.isValidGrade('IP', config)).toBe(true);
+  });
+
+  test('unrecognized grade is invalid', () => {
+    expect(api.isValidGrade('XYZ', config)).toBe(false);
+    expect(api.isValidGrade('Z', config)).toBe(false);
+  });
+
+  test('case-insensitive', () => {
+    expect(api.isValidGrade('a', config)).toBe(true);
+    expect(api.isValidGrade('w', config)).toBe(true);
+  });
+
+  test('defaults to DEFAULT_GRADE_CONFIG when no config passed', () => {
+    expect(api.isValidGrade('A')).toBe(true);
+    expect(api.isValidGrade('XYZ')).toBe(false);
+  });
+
+  test('isValidGrade is exported', () => {
+    expect(typeof api.isValidGrade).toBe('function');
   });
 });

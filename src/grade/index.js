@@ -210,10 +210,29 @@ function calculateGPA(entries, gradeConfig) {
   return totalPoints / totalCredits;
 }
 
+/**
+ * Check whether a grade string is recognized by the given grade configuration.
+ * Returns true if the grade appears in scale, passFail, withdrawal, or incomplete.
+ *
+ * @param {string} grade - The grade to check
+ * @param {GradeConfig} [gradeConfig] - Grade configuration (defaults to DEFAULT_GRADE_CONFIG)
+ * @returns {boolean} True if the grade is recognized
+ */
+function isValidGrade(grade, gradeConfig) {
+  const config = gradeConfig || DEFAULT_GRADE_CONFIG;
+  const upper = grade.toUpperCase();
+  if (config.scale.some(g => g.grade === upper)) return true;
+  if (config.passFail && config.passFail.some(g => g.grade === upper)) return true;
+  if (config.withdrawal && config.withdrawal.includes(upper)) return true;
+  if (config.incomplete && config.incomplete.includes(upper)) return true;
+  return false;
+}
+
 module.exports = {
   DEFAULT_GRADE_CONFIG,
   isAuditableGrade,
   meetsMinGrade,
   isPassingGrade,
   calculateGPA,
+  isValidGrade,
 };

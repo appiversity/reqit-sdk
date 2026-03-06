@@ -18,9 +18,11 @@ const { toOutline } = require('./render/to-outline');
 const { walk, transform } = require('./ast/walk');
 const { extractCourses, extractAllReferences } = require('./ast/extract');
 const { diff } = require('./ast/diff');
+const { expand } = require('./ast/expand');
 const { exportProgramChecklist } = require('./export/program-checklist');
 const { exportAudit } = require('./export/audit-export');
 const { buildSummary } = require('./audit/status');
+const { walkResult } = require('./audit/walk-result');
 
 // ============================================================
 // Helpers (not exported)
@@ -90,6 +92,8 @@ class Requirement {
     return extractAllReferences(this.#ast, unwrapCatalog(catalog));
   }
 
+  expand() { return new Requirement(expand(this.#ast)); }
+
   diff(other) {
     return diff(this.#ast, other instanceof Requirement ? other.ast : other);
   }
@@ -105,6 +109,8 @@ class Requirement {
 
 class Catalog {
   #data;
+  #courseIndex;
+  #programIndex;
 
   constructor(data) {
     if (!data || !data.courses) throw new Error('Catalog requires courses');
@@ -118,6 +124,26 @@ class Catalog {
   get courses() { return this.#data.courses; }
   get programs() { return this.#data.programs; }
   get gradeConfig() { return this.#data.gradeConfig; }
+
+  findCourse(subject, number) {
+    if (!this.#courseIndex) {
+      this.#courseIndex = new Map();
+      for (const c of this.#data.courses) {
+        this.#courseIndex.set(`${c.subject}:${c.number}`, c);
+      }
+    }
+    return this.#courseIndex.get(`${subject}:${number}`);
+  }
+
+  findProgram(code) {
+    if (!this.#programIndex) {
+      this.#programIndex = new Map();
+      for (const p of (this.#data.programs || [])) {
+        this.#programIndex.set(p.code, p);
+      }
+    }
+    return this.#programIndex.get(code);
+  }
 }
 
 // ============================================================
@@ -205,7 +231,10 @@ class AuditResult {
   get warnings() { return this.#raw.warnings; }
 
   get summary() {
-    const r = this.#raw.result;
+    let r = this.#raw.result;
+    // Unwrap scope/variable-ref to find meaningful composite
+    if (r.type === 'scope' && r.body) r = r.body;
+    if (r.type === 'variable-ref' && r.resolved) r = r.resolved;
     let statuses;
     if (r.items && Array.isArray(r.items)) {
       statuses = r.items.map(i => i.status);
@@ -218,6 +247,8 @@ class AuditResult {
     }
     return buildSummary(statuses);
   }
+
+  walk(callback) { walkResult(this.#raw.result, callback); }
 
   findUnmet() { return findUnmet(this.#raw.result); }
 

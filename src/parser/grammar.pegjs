@@ -2,7 +2,14 @@
 // Built incrementally — each phase adds new constructs
 
 start
-  = _ node:Expression _ !. { return node; }
+  = _ node:TopLevel _ !. { return node; }
+
+TopLevel
+  = ScopeBlock
+  / defs:(VariableDef _)+ body:Expression {
+      return { type: 'scope', name: null, defs: defs.map(d => d[0]), body };
+    }
+  / Expression
 
 Expression
   = expr:PrimaryExpression
@@ -285,6 +292,7 @@ Subject "subject code"
 
 Number "course number"
   = $([0-9] [0-9A-Za-z.]*)
+  / n:$([A-Za-z] [A-Za-z0-9.]*) &{ return /\d/.test(n); } { return n; }
 
 Code "code"
   = $([A-Za-z] [A-Za-z0-9_]*)

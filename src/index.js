@@ -17,7 +17,7 @@ const {
 } = require('./entities');
 const { auditMulti: internalAuditMulti, CourseAssignmentMap } = require('./audit/multi-tree');
 const { prepareAudit } = require('./audit');
-const { isPassingGrade, meetsMinGrade, calculateGPA, isAuditableGrade, DEFAULT_GRADE_CONFIG } = require('./grade');
+const { isPassingGrade, meetsMinGrade, calculateGPA: internalCalculateGPA, isAuditableGrade, DEFAULT_GRADE_CONFIG, isValidGrade } = require('./grade');
 const { exportPrereqMatrix } = require('./export/prereq-matrix');
 const { exportDependencyMatrix } = require('./export/dependency-matrix');
 
@@ -39,6 +39,22 @@ function catalog(data) {
 
 function transcript(entries) {
   return new Transcript(entries);
+}
+
+// ============================================================
+// calculateGPA — entity-aware wrapper
+// ============================================================
+
+function calculateGPA(entriesOrTranscript, configOrCatalog) {
+  const entries = entriesOrTranscript instanceof Transcript
+    ? unwrapTranscript(entriesOrTranscript)
+    : Array.isArray(entriesOrTranscript)
+      ? entriesOrTranscript.map(e => e instanceof TranscriptEntry ? e.toJSON() : e)
+      : entriesOrTranscript;
+  const config = configOrCatalog instanceof Catalog
+    ? configOrCatalog.gradeConfig
+    : configOrCatalog;
+  return internalCalculateGPA(entries, config);
 }
 
 // ============================================================
@@ -97,6 +113,7 @@ module.exports = {
   meetsMinGrade,
   isPassingGrade,
   calculateGPA,
+  isValidGrade,
   // Internal-use exports (backward compat for reqit-pg/reqit-catalog)
   CourseAssignmentMap,
   prepareAudit,

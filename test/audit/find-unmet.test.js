@@ -59,7 +59,7 @@ describe('findUnmet', () => {
     expect(unmet[1].node.number).toBe('401');
   });
 
-  test('in-progress items included', () => {
+  test('in-progress composite skipped (on track, no student action needed)', () => {
     const ast = {
       type: 'all-of',
       items: [
@@ -68,11 +68,9 @@ describe('findUnmet', () => {
       ],
     };
     const { result } = audit(ast, minimalCatalog, inProgress);
+    // Parent all-of is in-progress → children skipped
     const unmet = findUnmet(result);
-    expect(unmet).toHaveLength(1);
-    expect(unmet[0].status).toBe(IN_PROGRESS);
-    expect(unmet[0].node.subject).toBe('MATH');
-    expect(unmet[0].node.number).toBe('152');
+    expect(unmet).toHaveLength(0);
   });
 
   test('path tracks location in the tree', () => {
@@ -139,6 +137,34 @@ describe('findUnmet', () => {
     const unmet = findUnmet(result);
     expect(unmet).toHaveLength(1);
     expect(unmet[0].path).toEqual([]);
+  });
+
+  test('MET any-of returns empty (unchosen alternatives not reported)', () => {
+    const ast = {
+      type: 'any-of',
+      items: [
+        { type: 'course', subject: 'MATH', number: '101' },   // met
+        { type: 'course', subject: 'ART', number: '301' },    // not met
+      ],
+    };
+    const { result } = audit(ast, minimalCatalog, partial);
+    expect(result.status).toBe(MET);
+    const unmet = findUnmet(result);
+    expect(unmet).toHaveLength(0);
+  });
+
+  test('PARTIAL all-of returns only the unmet child', () => {
+    const ast = {
+      type: 'all-of',
+      items: [
+        { type: 'course', subject: 'MATH', number: '101' },   // met
+        { type: 'course', subject: 'ART', number: '301' },    // not met
+      ],
+    };
+    const { result } = audit(ast, minimalCatalog, partial);
+    const unmet = findUnmet(result);
+    expect(unmet).toHaveLength(1);
+    expect(unmet[0].node.subject).toBe('ART');
   });
 
   test('unmet except node recurses into children, not collected as leaf', () => {

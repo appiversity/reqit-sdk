@@ -298,6 +298,53 @@ describe('scope blocks', () => {
   });
 });
 
+describe('bare variable programs (no scope keyword)', () => {
+  test('single variable def + variable ref body', () => {
+    const ast = parse('$a = MATH 151\n$a');
+    expect(ast).toEqual({
+      type: 'scope',
+      name: null,
+      defs: [{
+        type: 'variable-def',
+        name: 'a',
+        value: { type: 'course', subject: 'MATH', number: '151' },
+      }],
+      body: { type: 'variable-ref', name: 'a' },
+    });
+  });
+
+  test('two variable defs + all-of body', () => {
+    const ast = parse('$a = MATH 151\n$b = CMPS 130\nall of ($a, $b)');
+    expect(ast.type).toBe('scope');
+    expect(ast.name).toBeNull();
+    expect(ast.defs).toHaveLength(2);
+    expect(ast.defs[0].name).toBe('a');
+    expect(ast.defs[1].name).toBe('b');
+    expect(ast.body.type).toBe('all-of');
+    expect(ast.body.items).toHaveLength(2);
+  });
+
+  test('bare variable defs have no scope annotation', () => {
+    const ast = parse('$core = MATH 151\n$core');
+    expect(ast.defs[0]).not.toHaveProperty('scope');
+  });
+
+  test('standalone variable def (no body) parses as variable-def', () => {
+    // A single variable def with no following expression is just a variable-def
+    const ast = parse('$core = all of (MATH 151, MATH 152)');
+    expect(ast.type).toBe('variable-def');
+  });
+
+  test('bare variable program round-trips through toText', () => {
+    const input = '$a = MATH 151\n$b = CMPS 130\nall of ($a, $b)';
+    const ast = parse(input);
+    const { toText } = require('../../src/render/to-text');
+    const text = toText(ast);
+    const reparsed = parse(text);
+    expect(reparsed).toEqual(ast);
+  });
+});
+
 describe('variables — edge cases', () => {
   test('variable name starting with underscore', () => {
     expect(parse('$_private')).toEqual({

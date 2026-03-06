@@ -154,6 +154,37 @@ describe('Course references', () => {
     });
   });
 
+  // Letter-first course numbers (Issue 2)
+  test('letter-first number with digit: PATH TS1', () => {
+    expect(parse('PATH TS1')).toEqual({
+      type: 'course',
+      subject: 'PATH',
+      number: 'TS1',
+    });
+  });
+
+  test('letter-first number: MATH A101', () => {
+    expect(parse('MATH A101')).toEqual({
+      type: 'course',
+      subject: 'MATH',
+      number: 'A101',
+    });
+  });
+
+  test('letter-first number normalizes to uppercase', () => {
+    expect(parse('path ts1')).toEqual({
+      type: 'course',
+      subject: 'PATH',
+      number: 'TS1',
+    });
+  });
+
+  test('all-letter number without digit does not parse as course number', () => {
+    // "CMPS all" should not parse as a course with number "all"
+    // because "all" has no digit — it should fail or parse differently
+    expect(() => parse('CMPS all')).toThrow();
+  });
+
   // Concurrent
   test('concurrent', () => {
     expect(parse('CMPS 230 (concurrent)')).toEqual({
