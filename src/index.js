@@ -1,64 +1,105 @@
 'use strict';
 
-// reqit SDK — public API
+// reqit SDK — public API (class-based)
 
-const { audit, prepareAudit, findUnmet, findNextEligible, auditMulti, CourseAssignmentMap, MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET } = require('./audit');
-const { resolve } = require('./resolve');
-const { parse } = require('./parser');
-const { validate } = require('./ast/validate');
-const { toText } = require('./render/to-text');
-const { toDescription } = require('./render/to-description');
-const { toHTML } = require('./render/to-html');
-const { toOutline } = require('./render/to-outline');
+const { parse: internalParse } = require('./parser');
+const {
+  AuditStatus,
+  Requirement,
+  Catalog,
+  TranscriptEntry,
+  Transcript,
+  ResolutionResult,
+  AuditResult,
+  MultiAuditResult,
+  unwrapCatalog,
+  unwrapTranscript,
+} = require('./entities');
+const { auditMulti: internalAuditMulti, CourseAssignmentMap } = require('./audit/multi-tree');
+const { prepareAudit } = require('./audit');
 const { isPassingGrade, meetsMinGrade, calculateGPA, isAuditableGrade, DEFAULT_GRADE_CONFIG } = require('./grade');
-const { walk, transform } = require('./ast/walk');
-const { extractCourses, extractAllReferences } = require('./ast/extract');
-const { diff } = require('./ast/diff');
-// Export
 const { exportPrereqMatrix } = require('./export/prereq-matrix');
-const { exportProgramChecklist } = require('./export/program-checklist');
-const { exportAudit } = require('./export/audit-export');
 const { exportDependencyMatrix } = require('./export/dependency-matrix');
 
+// ============================================================
+// Entity factories
+// ============================================================
+
+function parse(text) {
+  return new Requirement(internalParse(text));
+}
+
+function fromAST(ast) {
+  return new Requirement(ast);
+}
+
+function catalog(data) {
+  return new Catalog(data);
+}
+
+function transcript(entries) {
+  return new Transcript(entries);
+}
+
+// ============================================================
+// Multi-tree audit facade
+// ============================================================
+
+function publicAuditMulti(cat, tx, options) {
+  const { trees, overlapRules, programContext, ...rest } = options || {};
+  const asts = {};
+  const treeArray = Object.entries(trees).map(([name, req]) => {
+    const ast = req instanceof Requirement ? req.ast : req;
+    asts[name] = ast;
+    const entry = { programCode: name, ast };
+    if (programContext) {
+      for (const [role, code] of Object.entries(programContext)) {
+        if (code === name) entry.role = role;
+      }
+    }
+    return entry;
+  });
+  const raw = internalAuditMulti(
+    treeArray,
+    unwrapCatalog(cat),
+    unwrapTranscript(tx),
+    { overlapRules, ...rest },
+  );
+  return new MultiAuditResult(raw, asts);
+}
+
+// ============================================================
+// Exports
+// ============================================================
+
 module.exports = {
-  // Parser
+  // Entity factories
   parse,
-  // Validator
-  validate,
-  // Resolver
-  resolve,
-  // Renderers
-  toText,
-  toDescription,
-  toHTML,
-  toOutline,
-  // Audit
-  audit,
-  prepareAudit,
-  findUnmet,
-  findNextEligible,
-  auditMulti,
-  CourseAssignmentMap,
-  // Audit status constants
-  MET,
-  IN_PROGRESS,
-  PARTIAL_PROGRESS,
-  NOT_MET,
-  // Grade
-  isPassingGrade,
+  fromAST,
+  catalog,
+  transcript,
+  // Entity classes (for instanceof checks)
+  Requirement,
+  Catalog,
+  Transcript,
+  TranscriptEntry,
+  ResolutionResult,
+  AuditResult,
+  MultiAuditResult,
+  // Enum
+  AuditStatus,
+  // Multi-tree
+  auditMulti: publicAuditMulti,
+  // Catalog-level exports
+  exportPrereqMatrix,
+  exportDependencyMatrix,
+  // Grade utilities
   meetsMinGrade,
+  isPassingGrade,
   calculateGPA,
+  // Internal-use exports (backward compat for reqit-pg/reqit-catalog)
+  CourseAssignmentMap,
+  prepareAudit,
   isAuditableGrade,
   DEFAULT_GRADE_CONFIG,
-  // AST utilities
-  walk,
-  transform,
-  extractCourses,
-  extractAllReferences,
-  diff,
-  // Export
-  exportPrereqMatrix,
-  exportProgramChecklist,
-  exportAudit,
-  exportDependencyMatrix,
 };
