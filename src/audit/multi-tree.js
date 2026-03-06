@@ -23,6 +23,7 @@ const { auditNode, collectMatchedEntries } = require('./single-tree');
 const { courseKey } = require('../render/shared');
 const { MET, NOT_MET, allOf, anyOf, nOf } = require('./status');
 const { forEachChild } = require('../ast/children');
+const { buildExceptionContext, applySubstitutions } = require('./exceptions');
 
 // ============================================================
 // CourseAssignmentMap — tracks which courses are used by which trees
@@ -168,6 +169,17 @@ function auditMulti(trees, catalog, transcript, options) {
   const { norm, catalogIndex, crossListIndex, gradeConfig } = prepareCatalog(catalog);
   const normTranscript = normalizeTranscript(transcript, gradeConfig, catalogIndex);
 
+  // Build exception context once, share across all tree audits
+  const exceptions = opts.exceptions || [];
+  const exCtx = exceptions.length > 0
+    ? buildExceptionContext(exceptions)
+    : null;
+
+  // Apply substitutions — create virtual transcript entries (once, shared)
+  if (exCtx && exCtx.substitutions.size > 0) {
+    applySubstitutions(normTranscript, exCtx.substitutions);
+  }
+
   // --- Pass 1: Audit each tree independently ---
   for (const tree of trees) {
     const defs = collectDefs(tree.ast, '', new Map());
@@ -183,6 +195,9 @@ function auditMulti(trees, catalog, transcript, options) {
       attainments: opts.attainments || {},
       backtrack: opts.backtrack || false,
       warnings: [],
+      // Exception context (shared across all trees)
+      waivers: exCtx ? exCtx.waivers : null,
+      substitutions: exCtx ? exCtx.substitutions : null,
     };
 
     const result = auditNode(tree.ast, ctx);

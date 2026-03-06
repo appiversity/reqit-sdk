@@ -8,7 +8,7 @@
  */
 
 const { forEachChild } = require('../ast/children');
-const { MET, IN_PROGRESS } = require('./status');
+const { MET, IN_PROGRESS, WAIVED, SUBSTITUTED } = require('./status');
 
 /**
  * Walk an audit result tree and collect all nodes whose status is not 'met'.
@@ -30,7 +30,8 @@ function findUnmet(result) {
     if (!node || typeof node !== 'object') return;
 
     // Skip satisfied composites — their children don't need action
-    if (node.status === MET || node.status === IN_PROGRESS) return;
+    if (node.status === MET || node.status === IN_PROGRESS ||
+        node.status === WAIVED || node.status === SUBSTITUTED) return;
 
     if (node.status) {
       // Only collect leaf-level unmet nodes (nodes with no children)

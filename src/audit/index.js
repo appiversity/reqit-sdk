@@ -12,6 +12,7 @@ const { normalizeTranscript } = require('./transcript');
 const { auditNode } = require('./single-tree');
 const { MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET, buildSummary } = require('./status');
 const { findUnmet } = require('./find-unmet');
+const { buildExceptionContext, applySubstitutions, partitionExceptions } = require('./exceptions');
 
 /**
  * Audit a requirement AST against a student transcript.
@@ -49,6 +50,17 @@ function prepareAudit(ast, catalog) {
       const opts = options || {};
       const normTranscript = normalizeTranscript(transcript, gradeConfig, catalogIndex);
 
+      // Build exception context if exceptions provided
+      const exceptions = opts.exceptions || [];
+      const exCtx = exceptions.length > 0
+        ? buildExceptionContext(exceptions)
+        : null;
+
+      // Apply substitutions — create virtual transcript entries
+      if (exCtx && exCtx.substitutions.size > 0) {
+        applySubstitutions(normTranscript, exCtx.substitutions);
+      }
+
       const ctx = {
         catalog: norm,
         courses: norm.courses,
@@ -61,17 +73,49 @@ function prepareAudit(ast, catalog) {
         attainments: opts.attainments || {},
         backtrack: opts.backtrack || false,
         warnings: [],
+        // Exception context (null when no exceptions)
+        waivers: exCtx ? exCtx.waivers : null,
+        substitutions: exCtx ? exCtx.substitutions : null,
       };
 
       const result = auditNode(ast, ctx);
 
-      return {
+      // Partition exceptions into applied/unused
+      const auditResult = {
         status: result.status,
         result,
         warnings: ctx.warnings,
       };
+
+      if (exceptions.length > 0) {
+        const { applied, unused } = partitionExceptions(exceptions, result, normTranscript);
+        auditResult.exceptions = { applied, unused };
+        // Warn about unused exceptions
+        for (const ex of unused) {
+          const desc = ex.kind === 'waiver'
+            ? describeWaiverTarget(ex)
+            : `${ex.original.subject} ${ex.original.number} → ${ex.replacement.subject} ${ex.replacement.number}`;
+          ctx.warnings.push({
+            type: 'unused-exception',
+            exception: ex.toJSON(),
+            message: `${ex.kind === 'waiver' ? 'Waiver' : 'Substitution'} for ${desc} did not match any requirement node`,
+          });
+        }
+      }
+
+      return auditResult;
     },
   };
+}
+
+function describeWaiverTarget(w) {
+  const t = w.target;
+  if (t.course) return `${t.course.subject} ${t.course.number}`;
+  if (t.score) return `score ${t.score}`;
+  if (t.attainment) return `attainment ${t.attainment}`;
+  if (t.quantity) return `quantity ${t.quantity}`;
+  if (t.label) return `label "${t.label}"`;
+  return 'unknown target';
 }
 
 const { auditMulti, CourseAssignmentMap } = require('./multi-tree');

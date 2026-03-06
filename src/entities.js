@@ -48,6 +48,8 @@ const AuditStatus = Object.freeze({
   IN_PROGRESS: 'in-progress',
   PARTIAL_PROGRESS: 'partial-progress',
   NOT_MET: 'not-met',
+  WAIVED: 'waived',
+  SUBSTITUTED: 'substituted',
 });
 
 // ============================================================
@@ -229,6 +231,8 @@ class AuditResult {
   get items() { return this.#raw.result; }
 
   get warnings() { return this.#raw.warnings; }
+
+  get exceptions() { return this.#raw.exceptions || null; }
 
   get summary() {
     let r = this.#raw.result;

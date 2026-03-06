@@ -18,10 +18,11 @@ const inProgressTx = require('../fixtures/transcripts/minimal/in-progress.json')
 // ============================================================
 
 describe('public API — structural guards', () => {
-  const expectedFactories = ['parse', 'fromAST', 'catalog', 'transcript'];
+  const expectedFactories = ['parse', 'fromAST', 'catalog', 'transcript', 'waiver', 'substitution'];
   const expectedClasses = [
     'Requirement', 'Catalog', 'Transcript', 'TranscriptEntry',
     'ResolutionResult', 'AuditResult', 'MultiAuditResult',
+    'Waiver', 'Substitution',
   ];
   const expectedModuleFunctions = [
     'auditMulti', 'exportPrereqMatrix', 'exportDependencyMatrix',
@@ -47,12 +48,14 @@ describe('public API — structural guards', () => {
     expect(api[name]).toBeDefined();
   });
 
-  test('AuditStatus is exported with all four values', () => {
+  test('AuditStatus is exported with all six values', () => {
     expect(api.AuditStatus).toBeDefined();
     expect(api.AuditStatus.MET).toBe('met');
     expect(api.AuditStatus.IN_PROGRESS).toBe('in-progress');
     expect(api.AuditStatus.PARTIAL_PROGRESS).toBe('partial-progress');
     expect(api.AuditStatus.NOT_MET).toBe('not-met');
+    expect(api.AuditStatus.WAIVED).toBe('waived');
+    expect(api.AuditStatus.SUBSTITUTED).toBe('substituted');
   });
 
   test('no unexpected undefined exports', () => {
@@ -977,7 +980,7 @@ describe('AuditResult.summary correctness', () => {
     const req = api.parse('all of (MATH 151, CMPS 130)');
     const result = req.audit(minimalCatalog, completeTx);
     expect(result.summary).toEqual({
-      met: 2, inProgress: 0, partialProgress: 0, notMet: 0, total: 2,
+      met: 2, waived: 0, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 0, total: 2,
     });
   });
 
@@ -985,7 +988,7 @@ describe('AuditResult.summary correctness', () => {
     const req = api.parse('all of (MATH 151, CMPS 310)');
     const result = req.audit(minimalCatalog, partialTx);
     expect(result.summary).toEqual({
-      met: 1, inProgress: 0, partialProgress: 0, notMet: 1, total: 2,
+      met: 1, waived: 0, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 1, total: 2,
     });
   });
 
@@ -993,7 +996,7 @@ describe('AuditResult.summary correctness', () => {
     const req = api.parse('all of (CMPS 310, CMPS 320)');
     const result = req.audit(minimalCatalog, inProgressTx);
     expect(result.summary).toEqual({
-      met: 0, inProgress: 2, partialProgress: 0, notMet: 0, total: 2,
+      met: 0, waived: 0, substituted: 0, inProgress: 2, partialProgress: 0, notMet: 0, total: 2,
     });
   });
 
@@ -1001,7 +1004,7 @@ describe('AuditResult.summary correctness', () => {
     const req = api.parse('at least 6 credits from (MATH 151, CMPS 130)');
     const result = req.audit(minimalCatalog, completeTx);
     expect(result.summary).toEqual({
-      met: 2, inProgress: 0, partialProgress: 0, notMet: 0, total: 2,
+      met: 2, waived: 0, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 0, total: 2,
     });
   });
 
@@ -1009,7 +1012,7 @@ describe('AuditResult.summary correctness', () => {
     const req = api.parse('MATH 151');
     const result = req.audit(minimalCatalog, completeTx);
     expect(result.summary).toEqual({
-      met: 1, inProgress: 0, partialProgress: 0, notMet: 0, total: 1,
+      met: 1, waived: 0, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 0, total: 1,
     });
   });
 });
@@ -1236,5 +1239,124 @@ describe('isValidGrade', () => {
 
   test('isValidGrade is exported', () => {
     expect(typeof api.isValidGrade).toBe('function');
+  });
+});
+
+// ============================================================
+// 28. Exception factories and audit integration
+// ============================================================
+
+describe('Exception factories', () => {
+  test('waiver() creates Waiver instance', () => {
+    const w = api.waiver({
+      course: { subject: 'MATH', number: '151' },
+      reason: 'AP credit',
+    });
+    expect(w).toBeInstanceOf(api.Waiver);
+    expect(w.kind).toBe('waiver');
+    expect(w.reason).toBe('AP credit');
+  });
+
+  test('substitution() creates Substitution instance', () => {
+    const s = api.substitution({
+      original: { subject: 'MATH', number: '151' },
+      replacement: { subject: 'PHYS', number: '201' },
+      reason: 'Department approval',
+    });
+    expect(s).toBeInstanceOf(api.Substitution);
+    expect(s.kind).toBe('substitution');
+    expect(s.reason).toBe('Department approval');
+  });
+
+  test('waiver validation — missing reason throws', () => {
+    expect(() => api.waiver({ course: { subject: 'MATH', number: '151' } }))
+      .toThrow('reason');
+  });
+
+  test('substitution validation — missing original throws', () => {
+    expect(() => api.substitution({
+      replacement: { subject: 'PHYS', number: '201' },
+      reason: 'test',
+    })).toThrow('original');
+  });
+});
+
+describe('Audit with exceptions (public API)', () => {
+  test('Requirement.audit with waiver returns waived status', () => {
+    const req = api.parse('MATH 151');
+    const w = api.waiver({
+      course: { subject: 'MATH', number: '151' },
+      reason: 'AP credit',
+    });
+    const result = req.audit(minimalCatalog, [], { exceptions: [w] });
+    expect(result.status).toBe(api.AuditStatus.WAIVED);
+  });
+
+  test('Requirement.audit with substitution returns substituted status', () => {
+    const req = api.parse('MATH 151');
+    const s = api.substitution({
+      original: { subject: 'MATH', number: '151' },
+      replacement: { subject: 'CMPS', number: '130' },
+      reason: 'approved',
+    });
+    const tx = [{ subject: 'CMPS', number: '130', grade: 'A', credits: 3, status: 'completed' }];
+    const result = req.audit(minimalCatalog, tx, { exceptions: [s] });
+    expect(result.status).toBe(api.AuditStatus.SUBSTITUTED);
+  });
+
+  test('result.exceptions reports applied/unused', () => {
+    const req = api.parse('MATH 151');
+    const w = api.waiver({
+      course: { subject: 'MATH', number: '151' },
+      reason: 'AP credit',
+    });
+    const unusedW = api.waiver({
+      course: { subject: 'ENGL', number: '101' },
+      reason: 'transfer',
+    });
+    const result = req.audit(minimalCatalog, [], { exceptions: [w, unusedW] });
+    expect(result.exceptions).toBeDefined();
+    expect(result.exceptions.applied).toHaveLength(1);
+    expect(result.exceptions.unused).toHaveLength(1);
+    expect(result.exceptions.applied[0].reason).toBe('AP credit');
+    expect(result.exceptions.unused[0].reason).toBe('transfer');
+  });
+
+  test('unused exception generates warning', () => {
+    const req = api.parse('MATH 151');
+    const unusedW = api.waiver({
+      course: { subject: 'ENGL', number: '101' },
+      reason: 'transfer',
+    });
+    const result = req.audit(minimalCatalog, completeTx, { exceptions: [unusedW] });
+    const unusedWarnings = result.warnings.filter(w => w.type === 'unused-exception');
+    expect(unusedWarnings).toHaveLength(1);
+    expect(unusedWarnings[0].message).toContain('ENGL 101');
+  });
+
+  test('audit without exceptions has no exceptions property', () => {
+    const req = api.parse('MATH 151');
+    const result = req.audit(minimalCatalog, completeTx);
+    expect(result.exceptions).toBeNull();
+  });
+});
+
+describe('Multi-tree audit with exceptions', () => {
+  test('exceptions apply to all trees', () => {
+    const majorReq = api.parse('all of (MATH 151, CMPS 130)');
+    const minorReq = api.parse('MATH 151');
+    const w = api.waiver({
+      course: { subject: 'MATH', number: '151' },
+      reason: 'AP credit',
+    });
+    const tx = [{ subject: 'CMPS', number: '130', grade: 'A', credits: 3, status: 'completed' }];
+    const result = api.auditMulti(minimalCatalog, tx, {
+      trees: { major: majorReq, minor: minorReq },
+      exceptions: [w],
+    });
+    // Major: MATH waived + CMPS met → met
+    expect(result.trees.major.status).toBe(api.AuditStatus.MET);
+    // Minor: MATH waived → waived
+    expect(result.trees.minor.status).toBe(api.AuditStatus.WAIVED);
   });
 });

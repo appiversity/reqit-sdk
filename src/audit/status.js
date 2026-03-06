@@ -17,8 +17,10 @@ const MET = 'met';
 const IN_PROGRESS = 'in-progress';
 const PARTIAL_PROGRESS = 'partial-progress';
 const NOT_MET = 'not-met';
+const WAIVED = 'waived';
+const SUBSTITUTED = 'substituted';
 
-const STATUSES = Object.freeze([MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET]);
+const STATUSES = Object.freeze([MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET, WAIVED, SUBSTITUTED]);
 
 /**
  * Count statuses in an array.
@@ -29,7 +31,10 @@ function countStatuses(statuses) {
   let met = 0, ip = 0, pp = 0, nm = 0;
   for (const s of statuses) {
     switch (s) {
-      case MET: met++; break;
+      case MET:
+      case WAIVED:
+      case SUBSTITUTED:
+        met++; break;
       case IN_PROGRESS: ip++; break;
       case PARTIAL_PROGRESS: pp++; break;
       default: nm++; break;
@@ -200,8 +205,19 @@ function creditsFrom(earned, inProg, required, comparison) {
  * @returns {{ met: number, inProgress: number, partialProgress: number, notMet: number, total: number }}
  */
 function buildSummary(statuses) {
-  const { met, ip, pp, nm, total } = countStatuses(statuses);
-  return { met, inProgress: ip, partialProgress: pp, notMet: nm, total };
+  let met = 0, waived = 0, substituted = 0, ip = 0, pp = 0, nm = 0;
+  for (const s of statuses) {
+    switch (s) {
+      case MET: met++; break;
+      case WAIVED: waived++; break;
+      case SUBSTITUTED: substituted++; break;
+      case IN_PROGRESS: ip++; break;
+      case PARTIAL_PROGRESS: pp++; break;
+      default: nm++; break;
+    }
+  }
+  const total = met + waived + substituted + ip + pp + nm;
+  return { met, waived, substituted, inProgress: ip, partialProgress: pp, notMet: nm, total };
 }
 
 module.exports = {
@@ -209,6 +225,8 @@ module.exports = {
   IN_PROGRESS,
   PARTIAL_PROGRESS,
   NOT_MET,
+  WAIVED,
+  SUBSTITUTED,
   STATUSES,
   allOf,
   anyOf,

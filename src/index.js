@@ -20,6 +20,7 @@ const { prepareAudit } = require('./audit');
 const { isPassingGrade, meetsMinGrade, calculateGPA: internalCalculateGPA, isAuditableGrade, DEFAULT_GRADE_CONFIG, isValidGrade } = require('./grade');
 const { exportPrereqMatrix } = require('./export/prereq-matrix');
 const { exportDependencyMatrix } = require('./export/dependency-matrix');
+const { Waiver, Substitution, waiver: waiverFactory, substitution: substitutionFactory } = require('./audit/exceptions');
 
 // ============================================================
 // Entity factories
@@ -94,6 +95,9 @@ module.exports = {
   fromAST,
   catalog,
   transcript,
+  // Exception factories
+  waiver: waiverFactory,
+  substitution: substitutionFactory,
   // Entity classes (for instanceof checks)
   Requirement,
   Catalog,
@@ -102,6 +106,9 @@ module.exports = {
   ResolutionResult,
   AuditResult,
   MultiAuditResult,
+  // Exception classes (for instanceof checks)
+  Waiver,
+  Substitution,
   // Enum
   AuditStatus,
   // Multi-tree

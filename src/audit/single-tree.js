@@ -24,10 +24,11 @@ const {
 const { forEachChild } = require('../ast/children');
 const { lookupTranscriptEntry } = require('./transcript');
 const {
-  MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET,
+  MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET, WAIVED, SUBSTITUTED,
   allOf, anyOf, nOf, noneOf, creditsFrom, buildSummary,
 } = require('./status');
 const { evaluatePostConstraints } = require('./post-constraints');
+const { findLeafWaiver, buildWaivedResult, buildGroupWaivedResult } = require('./exceptions');
 
 /**
  * Audit a single AST node against the transcript.
@@ -39,6 +40,21 @@ const { evaluatePostConstraints } = require('./post-constraints');
 function auditNode(node, ctx) {
   if (!node || typeof node !== 'object') {
     return { type: 'unknown', status: NOT_MET };
+  }
+
+  // --- Waiver interception (before normal dispatch) ---
+  if (ctx.waivers) {
+    // Check for label-based group waiver (composites with label)
+    if (node.label && ctx.waivers.labels.has(node.label)) {
+      const waiverObj = ctx.waivers.labels.get(node.label);
+      return buildGroupWaivedResult(node, waiverObj, ctx);
+    }
+
+    // Check for leaf-node waivers (course, score, attainment, quantity)
+    const leafWaiver = findLeafWaiver(node, ctx);
+    if (leafWaiver) {
+      return buildWaivedResult(node, leafWaiver, ctx);
+    }
   }
 
   switch (node.type) {
@@ -140,20 +156,31 @@ function auditCourse(node, ctx) {
 
   // In-progress: enrolled but no grade yet
   if (entry.status === 'in-progress') {
-    return {
+    const result = {
       type: 'course', subject: node.subject, number: node.number,
       status: IN_PROGRESS,
       satisfiedBy: { ...entry },
     };
+    if (entry._substitution) {
+      result.status = IN_PROGRESS; // substitution in-progress — keep as IP
+      result.substitution = entry._substitution.toJSON();
+    }
+    return result;
   }
 
   // Check if grade is passing
   if (entry.grade != null && isPassingGrade(entry.grade, ctx.gradeConfig)) {
-    return {
+    const result = {
       type: 'course', subject: node.subject, number: node.number,
       status: MET,
       satisfiedBy: { ...entry },
     };
+    // If matched via virtual substitution entry, status is 'substituted'
+    if (entry._substitution) {
+      result.status = SUBSTITUTED;
+      result.substitution = entry._substitution.toJSON();
+    }
+    return result;
   }
 
   // Course taken but grade is not passing
@@ -401,6 +428,10 @@ function auditCreditsFrom(node, ctx) {
     }
   }
 
+  // Add waived credits from waived nodes in the source subtree
+  const waivedCr = collectWaivedCredits(sourceResult);
+  earned += waivedCr;
+
   const status = creditsFrom(earned, inProg, node.credits, node.comparison);
 
   return {
@@ -432,6 +463,12 @@ function auditWithConstraint(node, ctx) {
   // If inner requirement isn't met, the constraint is also not met
   if (innerResult.status === NOT_MET) {
     result.status = NOT_MET;
+    return result;
+  }
+
+  // If inner requirement is waived, the constraint is also waived (skip grade checks)
+  if (innerResult.status === WAIVED) {
+    result.status = WAIVED;
     return result;
   }
 
@@ -661,6 +698,26 @@ function evaluateMinGpaConstraint(minGpa, entries, ctx) {
 
   const gpa = calculateGPA(gradedEntries, ctx.gradeConfig);
   return { met: gpa >= minGpa, actual: gpa, minGpa, gradedCount: gradedEntries.length };
+}
+
+/**
+ * Recursively collect waived credits from audit result nodes.
+ * Returns the sum of all waivedCredits properties in the tree.
+ */
+function collectWaivedCredits(result) {
+  let total = 0;
+
+  function walk(node) {
+    if (!node || typeof node !== 'object') return;
+    if (node.waivedCredits) {
+      total += node.waivedCredits;
+      return; // Don't recurse into waived subtrees (credits already summed)
+    }
+    forEachChild(node, (child) => walk(child));
+  }
+
+  walk(result);
+  return total;
 }
 
 module.exports = {
