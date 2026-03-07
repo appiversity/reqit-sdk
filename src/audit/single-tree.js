@@ -118,6 +118,10 @@ function auditNode(node, ctx) {
       return { type: node.type, status: NOT_MET, role: node.role };
     case 'program':
       return { type: node.type, status: NOT_MET };
+    case 'program-ref':
+      return auditProgramRef(node, ctx);
+    case 'program-filter':
+      return auditProgramFilter(node, ctx);
 
     default:
       ctx.warnings.push({
@@ -719,6 +723,164 @@ function collectWaivedCredits(result) {
 
   walk(result);
   return total;
+}
+
+// ============================================================
+// Program reference auditors
+// ============================================================
+
+function auditProgramRef(node, ctx) {
+  const code = node.code;
+
+  // Check if program is declared
+  const declaredPrograms = ctx.declaredPrograms || [];
+  const declared = declaredPrograms.find(dp => dp.code === code);
+  if (!declared) {
+    return { type: 'program-ref', code, status: NOT_MET, notDeclared: true };
+  }
+
+  // Check cache
+  if (ctx.programCache && ctx.programCache.has(code)) {
+    return ctx.programCache.get(code);
+  }
+
+  // Look up program in catalog
+  const catalogPrograms = (ctx.catalog && ctx.catalog.programs) || [];
+  const program = catalogPrograms.find(p => p.code === code);
+
+  if (!program || !program.requirements) {
+    ctx.warnings.push({
+      type: 'program-ref-no-requirements',
+      code,
+      message: `Program "${code}" has no requirements in the catalog`,
+    });
+    return { type: 'program-ref', code, status: NOT_MET };
+  }
+
+  // Circular reference guard
+  const visitedPrograms = ctx.visitedPrograms || new Set();
+  if (visitedPrograms.has(code)) {
+    ctx.warnings.push({
+      type: 'circular-program-ref',
+      code,
+      message: `Circular program reference detected: "${code}"`,
+    });
+    return { type: 'program-ref', code, status: NOT_MET };
+  }
+
+  // Run sub-audit
+  visitedPrograms.add(code);
+  const subDefs = collectDefs(program.requirements, '', new Map());
+  const subCtx = {
+    ...ctx,
+    defs: subDefs,
+    expanding: new Set(),
+  };
+
+  const subResult = auditNode(program.requirements, subCtx);
+  visitedPrograms.delete(code);
+
+  const result = {
+    type: 'program-ref',
+    code,
+    status: subResult.status,
+    result: subResult,
+  };
+
+  // Cache for reuse
+  if (ctx.programCache) {
+    ctx.programCache.set(code, result);
+  }
+
+  return result;
+}
+
+function auditProgramFilter(node, ctx) {
+  const declaredPrograms = ctx.declaredPrograms || [];
+
+  // Filter declared programs against node.filters
+  const matching = filterDeclaredPrograms(declaredPrograms, node.filters, ctx);
+
+  if (matching.length === 0) {
+    return {
+      type: 'program-filter',
+      quantifier: node.quantifier,
+      filters: node.filters,
+      status: NOT_MET,
+      items: [],
+    };
+  }
+
+  // Audit each matching program
+  const items = [];
+  for (const dp of matching) {
+    const refResult = auditProgramRef({ type: 'program-ref', code: dp.code }, ctx);
+    items.push(refResult);
+
+    // Short-circuit: for 'any', stop after first MET
+    if (node.quantifier === 'any' && refResult.status === MET) break;
+  }
+
+  // Apply quantifier
+  const statuses = items.map(r => r.status);
+  let status;
+  if (node.quantifier === 'any') {
+    status = anyOf(statuses);
+  } else if (node.quantifier === 'all') {
+    status = allOf(statuses);
+  } else {
+    // n-of
+    status = nOf(statuses, node.comparison, node.count);
+  }
+
+  return {
+    type: 'program-filter',
+    quantifier: node.quantifier,
+    filters: node.filters,
+    status,
+    items,
+    summary: buildSummary(statuses),
+    ...(node.comparison ? { comparison: node.comparison, count: node.count } : {}),
+  };
+}
+
+/**
+ * Filter declared programs against program-filter filters.
+ * Merges catalog metadata for declared programs that don't carry all fields.
+ */
+function filterDeclaredPrograms(declaredPrograms, filters, ctx) {
+  const catalogPrograms = (ctx.catalog && ctx.catalog.programs) || [];
+  const catalogIndex = new Map();
+  for (const p of catalogPrograms) {
+    catalogIndex.set(p.code, p);
+  }
+
+  return declaredPrograms.filter(dp => {
+    // Merge catalog metadata for missing fields
+    const catalogEntry = catalogIndex.get(dp.code);
+    const merged = { ...catalogEntry, ...dp };
+
+    for (const f of filters) {
+      if (!evaluateProgramFilter(merged[f.field], f.op, f.value)) {
+        return false;
+      }
+    }
+    return true;
+  });
+}
+
+/**
+ * Evaluate a single program filter field against a value.
+ */
+function evaluateProgramFilter(fieldValue, op, filterValue) {
+  if (fieldValue === undefined || fieldValue === null) return false;
+  switch (op) {
+    case 'eq': return fieldValue === filterValue;
+    case 'ne': return fieldValue !== filterValue;
+    case 'in': return Array.isArray(filterValue) && filterValue.includes(fieldValue);
+    case 'not-in': return Array.isArray(filterValue) && !filterValue.includes(fieldValue);
+    default: return false;
+  }
 }
 
 module.exports = {

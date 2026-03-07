@@ -97,6 +97,31 @@ function exportAudit(auditResult, catalog, options) {
           Credits: '',
         });
         break;
+      case 'program-ref':
+        rows.push({
+          Group: group,
+          Requirement: `Program: "${node.code}"`,
+          Status: node.status,
+          'Satisfied By': node.notDeclared ? 'Not declared' : '',
+          Term: '',
+          Grade: '',
+          Credits: '',
+        });
+        break;
+      case 'program-filter': {
+        const pfItems = node.items || [];
+        const pfCodes = pfItems.map(i => i.code).join('; ');
+        rows.push({
+          Group: group,
+          Requirement: `Program filter (${node.quantifier})`,
+          Status: node.status,
+          'Satisfied By': pfCodes,
+          Term: '',
+          Grade: '',
+          Credits: '',
+        });
+        break;
+      }
     }
   });
 

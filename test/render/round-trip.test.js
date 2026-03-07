@@ -499,6 +499,34 @@ describe('round-trip — W&M BS CS', () => {
   });
 });
 
+describe('round-trip — program references', () => {
+  test.each([
+    'program "MATH-MINOR"',
+    'program "BS-DATA"',
+    'program "CSCI_MAJOR"',
+  ])('%s', (text) => roundTrip(text));
+
+  test.each([
+    'any program where type = "minor"',
+    'all programs where type = "minor"',
+    'at least 2 programs where type = "minor"',
+    'at most 1 programs where type = "minor"',
+    'exactly 2 programs where level = "undergraduate"',
+    'any program where type = "minor" and level = "undergraduate"',
+    'any program where code = "MATH-MINOR"',
+    'any program where type in ("minor", "certificate")',
+    'all programs where type != "major"',
+  ])('%s', (text) => roundTrip(text));
+
+  test('program-ref inside composite', () => {
+    roundTrip('all of (program "MATH-MINOR", MATH 151)');
+  });
+
+  test('program-filter inside composite', () => {
+    roundTrip('all of (any program where type = "minor", MATH 151)');
+  });
+});
+
 describe('round-trip — RCNJ BS CS', () => {
   test('CMPS 147 prerequisite with scores', () => {
     roundTrip(`any of (

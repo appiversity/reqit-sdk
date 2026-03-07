@@ -60,6 +60,11 @@ describe('exhaustiveness guard', () => {
     'program-context-ref': { type: 'program-context-ref', name: 'X' },
     'overlap-limit': { type: 'overlap-limit', max: 0 },
     'outside-program': { type: 'outside-program' },
+    'program-ref': { type: 'program-ref', code: 'MATH-MINOR' },
+    'program-filter': {
+      type: 'program-filter', quantifier: 'any',
+      filters: [{ field: 'type', op: 'eq', value: 'minor' }],
+    },
   };
 
   test('every NODE_TYPE has a minimal test node', () => {

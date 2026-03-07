@@ -66,9 +66,11 @@ PrimaryExpression
   / CreditsFrom
   / OneFromEach
   / FromNGroups
+  / ProgramFilter
   / CourseFilter
   / OverlapLimit
   / OutsideProgram
+  / ProgramReference
   / ProgramRef
   / ProgramContextRef
   / Score
@@ -106,6 +108,43 @@ VarName "variable name"
 
 ScopeName "scope name"
   = $([a-zA-Z] [a-zA-Z0-9_-]*)
+
+ProgramReference
+  = PROGRAM __ code:StringLiteral {
+      return { type: 'program-ref', code };
+    }
+
+ProgramFilter
+  = ALL __ PROGRAMS __ WHERE __ filters:ProgramFilterList {
+      return { type: 'program-filter', quantifier: 'all', filters };
+    }
+  / ANY __ PROGRAM __ WHERE __ filters:ProgramFilterList {
+      return { type: 'program-filter', quantifier: 'any', filters };
+    }
+  / AT __ LEAST __ n:Integer __ PROGRAMS __ WHERE __ filters:ProgramFilterList {
+      return { type: 'program-filter', quantifier: 'n-of', comparison: 'at-least', count: n, filters };
+    }
+  / AT __ MOST __ n:Integer __ PROGRAMS __ WHERE __ filters:ProgramFilterList {
+      return { type: 'program-filter', quantifier: 'n-of', comparison: 'at-most', count: n, filters };
+    }
+  / EXACTLY __ n:Integer __ PROGRAMS __ WHERE __ filters:ProgramFilterList {
+      return { type: 'program-filter', quantifier: 'n-of', comparison: 'exactly', count: n, filters };
+    }
+
+ProgramFilterList
+  = head:ProgramFilterField tail:(__ AND __ ProgramFilterField)* {
+      return [head, ...tail.map(t => t[3])];
+    }
+
+ProgramFilterField
+  = field:ProgramFilterFieldName _ op:ComparisonOp _ value:FilterValue {
+      return { field, op, value };
+    }
+
+ProgramFilterFieldName
+  = "type"i   !IdentChar { return 'type'; }
+  / "level"i  !IdentChar { return 'level'; }
+  / "code"i   !IdentChar { return 'code'; }
 
 ProgramRef
   = PROGRAM __ code:Code __ progType:ProgramType __ level:ProgramLevel {
@@ -339,6 +378,7 @@ PREREQUISITE = "prerequisite"i !IdentChar
 COREQUISITE  = "corequisite"i  !IdentChar
 INCLUDES     = "includes"i     !IdentChar
 PROGRAM      = "program"i      !IdentChar
+PROGRAMS     = "programs"i     !IdentChar
 PRIMARY      = "primary"i      !IdentChar
 MAJOR        = "major"i        !IdentChar
 MINOR        = "minor"i        !IdentChar

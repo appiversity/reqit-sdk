@@ -34,6 +34,7 @@ function diff(oldAst, newAst) {
 function nodeIdentity(node) {
   if (!node || typeof node !== 'object') return null;
   if (node.type === 'course') return 'course:' + courseKey(node);
+  if (node.type === 'program-ref') return 'program-ref:' + node.code;
   if (node.label) return node.type + ':' + node.label;
   return null;
 }

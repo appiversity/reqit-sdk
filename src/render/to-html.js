@@ -201,6 +201,17 @@ function renderNode(node, catalog) {
         `</div>`;
     }
 
+    case 'program-ref':
+      return `<span class="reqit-program-ref">Program &quot;${esc(node.code)}&quot;</span>`;
+
+    case 'program-filter': {
+      const pfx = node.quantifier === 'any' ? 'Any program'
+        : node.quantifier === 'all' ? 'All programs'
+        : `${comparisonPhrase(node.comparison).charAt(0).toUpperCase() + comparisonPhrase(node.comparison).slice(1)} ${node.count} programs`;
+      const fDescs = node.filters.map(f => `${esc(f.field)} ${OP_SYMBOLS[f.op] || esc(f.op)} &quot;${esc(String(f.value))}&quot;`).join(' and ');
+      return `<span class="reqit-program-filter">${pfx} where ${fDescs}</span>`;
+    }
+
     default:
       throw new Error(`Unknown node type: ${node.type}`);
   }
@@ -370,6 +381,23 @@ function renderNodeWithAudit(node, catalog, auditNode) {
 
     case 'scope':
       return renderNodeWithAudit(node.body, catalog, auditNode);
+
+    case 'program-ref': {
+      let html = `<span class="reqit-program-ref${sc}">${si}Program &quot;${esc(node.code)}&quot;`;
+      if (auditNode && auditNode.notDeclared) {
+        html += ' <em>(not declared)</em>';
+      }
+      html += '</span>';
+      return html;
+    }
+
+    case 'program-filter': {
+      const pfx = node.quantifier === 'any' ? 'Any program'
+        : node.quantifier === 'all' ? 'All programs'
+        : `${comparisonPhrase(node.comparison).charAt(0).toUpperCase() + comparisonPhrase(node.comparison).slice(1)} ${node.count} programs`;
+      const fDescs = node.filters.map(f => `${esc(f.field)} ${OP_SYMBOLS[f.op] || esc(f.op)} &quot;${esc(String(f.value))}&quot;`).join(' and ');
+      return `<span class="reqit-program-filter${sc}">${si}${pfx} where ${fDescs}</span>`;
+    }
 
     // Remaining types: fall through to non-audit rendering
     default:

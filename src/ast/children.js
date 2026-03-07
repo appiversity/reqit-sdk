@@ -55,6 +55,10 @@ const CHILD_PROPS = new Map([
   ['program-context-ref', []],
   ['overlap-limit', [{ key: 'left', array: false }, { key: 'right', array: false }]],
   ['outside-program', [{ key: 'program', array: false }]],
+
+  // Program references
+  ['program-ref', [{ key: 'result', array: false }]],
+  ['program-filter', [{ key: 'items', array: true }]],
 ]);
 
 /**

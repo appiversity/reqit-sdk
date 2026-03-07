@@ -63,6 +63,15 @@ function renderLeaf(node, catalog) {
         : `Any program (${node['program-type']}, ${node.level})`;
     case 'program-context-ref':
       return node.role === 'primary-major' ? 'primary major' : 'primary minor';
+    case 'program-ref':
+      return `Program: "${node.code}"`;
+    case 'program-filter': {
+      const pfx = node.quantifier === 'any' ? 'Any program'
+        : node.quantifier === 'all' ? 'All programs'
+        : `${comparisonPhrase(node.comparison).charAt(0).toUpperCase() + comparisonPhrase(node.comparison).slice(1)} ${node.count} programs`;
+      const fDescs = node.filters.map(f => `${f.field} ${OP_PHRASES[f.op] || f.op} "${f.value}"`).join(' and ');
+      return `${pfx} where ${fDescs}`;
+    }
     default:
       return null; // not a leaf
   }

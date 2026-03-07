@@ -7,7 +7,7 @@
  * (e.g. academic advisors, students) who should not need to understand the DSL.
  */
 
-const { comparisonPhrase, renderFilterPhrase, unwrapCreditsSource } = require('./shared');
+const { OP_PHRASES, comparisonPhrase, renderFilterPhrase, unwrapCreditsSource } = require('./shared');
 
 /**
  * Generate a human-readable label for composite node types.
@@ -185,6 +185,17 @@ function renderNode(node, indent) {
     case 'outside-program': {
       const prog = renderNode(node.program, indent);
       return `At least ${node.constraint.value} credits must come from outside ${prog}`;
+    }
+
+    case 'program-ref':
+      return `Program "${node.code}"`;
+
+    case 'program-filter': {
+      const pfxDesc = node.quantifier === 'any' ? 'Any declared program'
+        : node.quantifier === 'all' ? 'All declared programs'
+        : `${comparisonPhrase(node.comparison).charAt(0).toUpperCase() + comparisonPhrase(node.comparison).slice(1)} ${node.count} declared programs`;
+      const filterDescs = node.filters.map(f => `${f.field} ${OP_PHRASES[f.op] || f.op} "${f.value}"`).join(' and ');
+      return `${pfxDesc} where ${filterDescs}`;
     }
 
     default:

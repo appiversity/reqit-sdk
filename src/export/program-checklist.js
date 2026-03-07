@@ -121,6 +121,29 @@ function exportProgramChecklist(ast, catalog, options) {
         });
         break;
       }
+      case 'program-ref':
+        rows.push({
+          Group: group,
+          Requirement: `Program: "${node.code}"`,
+          Type: 'program-ref',
+          Courses: '',
+          Credits: '',
+        });
+        break;
+      case 'program-filter': {
+        const pfComp = node.quantifier === 'any' ? 'Any program'
+          : node.quantifier === 'all' ? 'All programs'
+          : `${comparisonPhrase(node.comparison)} ${node.count} programs`;
+        const filterDesc = node.filters.map(f => `${f.field} ${f.op} ${JSON.stringify(f.value)}`).join(' and ');
+        rows.push({
+          Group: group,
+          Requirement: `${pfComp} where ${filterDesc}`,
+          Type: 'program-filter',
+          Courses: '',
+          Credits: '',
+        });
+        break;
+      }
     }
   });
 

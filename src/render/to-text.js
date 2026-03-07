@@ -215,6 +215,16 @@ function renderNode(node) {
       return `outside (${prog}) at least ${node.constraint.value} ${node.constraint.unit}`;
     }
 
+    case 'program-ref':
+      return `program "${node.code}"`;
+
+    case 'program-filter': {
+      const prefix = node.quantifier === 'any' ? 'any program'
+        : node.quantifier === 'all' ? 'all programs'
+        : `${comparisonPhrase(node.comparison)} ${node.count} programs`;
+      return `${prefix} where ${node.filters.map(renderFilter).join(' and ')}`;
+    }
+
     default:
       throw new Error(`Unknown node type: ${node.type}`);
   }

@@ -76,6 +76,10 @@ function prepareAudit(ast, catalog) {
         // Exception context (null when no exceptions)
         waivers: exCtx ? exCtx.waivers : null,
         substitutions: exCtx ? exCtx.substitutions : null,
+        // Program reference context
+        declaredPrograms: opts.declaredPrograms || [],
+        visitedPrograms: new Set(),
+        programCache: new Map(),
       };
 
       const result = auditNode(ast, ctx);

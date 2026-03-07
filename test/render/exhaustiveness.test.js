@@ -75,6 +75,12 @@ const minimalNodes = {
     program: { type: 'program', code: 'CS-BS', 'program-type': 'major', level: 'undergraduate' },
     constraint: { value: 30, unit: 'credits' },
   },
+  'program-ref': { type: 'program-ref', code: 'MATH-MINOR' },
+  'program-filter': {
+    type: 'program-filter',
+    quantifier: 'any',
+    filters: [{ field: 'type', op: 'eq', value: 'minor' }],
+  },
 };
 
 // Sanity check: our fixture covers every NODE_TYPE

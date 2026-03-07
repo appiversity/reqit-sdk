@@ -198,6 +198,10 @@ function auditMulti(trees, catalog, transcript, options) {
       // Exception context (shared across all trees)
       waivers: exCtx ? exCtx.waivers : null,
       substitutions: exCtx ? exCtx.substitutions : null,
+      // Program reference context
+      declaredPrograms: opts.declaredPrograms || [],
+      visitedPrograms: new Set(),
+      programCache: new Map(),
     };
 
     const result = auditNode(tree.ast, ctx);
@@ -209,6 +213,9 @@ function auditMulti(trees, catalog, transcript, options) {
     for (const entry of matchedEntries) {
       assignments.assign(courseKey(entry), tree.programCode);
     }
+
+    // Track sub-program assignments from program-ref results
+    collectSubProgramAssignments(result, assignments);
 
     // Collect warnings
     for (const w of ctx.warnings) {
@@ -597,6 +604,24 @@ function recomputeStatus(node) {
     default:
       return node.status;
   }
+}
+
+/**
+ * Walk an audit result tree, find program-ref nodes with sub-audit results,
+ * and assign matched courses to the sub-program code in the assignment map.
+ */
+function collectSubProgramAssignments(result, assignments) {
+  if (!result || typeof result !== 'object') return;
+
+  if (result.type === 'program-ref' && result.code && result.result) {
+    const subEntries = collectMatchedEntries(result.result);
+    for (const entry of subEntries) {
+      assignments.assign(courseKey(entry), result.code);
+    }
+  }
+
+  // Recurse into children
+  forEachChild(result, (child) => collectSubProgramAssignments(child, assignments));
 }
 
 module.exports = {

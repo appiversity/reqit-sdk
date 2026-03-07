@@ -147,6 +147,17 @@ class Catalog {
     }
     return this.#programIndex.get(code);
   }
+
+  findPrograms(filter) {
+    const programs = this.#data.programs || [];
+    if (!filter || Object.keys(filter).length === 0) return [...programs];
+    return programs.filter(p => {
+      if (filter.type && p.type !== filter.type) return false;
+      if (filter.level && p.level !== filter.level) return false;
+      if (filter.code && p.code !== filter.code) return false;
+      return true;
+    });
+  }
 }
 
 // ============================================================

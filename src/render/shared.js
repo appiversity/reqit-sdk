@@ -71,6 +71,8 @@ const NODE_TYPES = Object.freeze([
   'with-constraint', 'except', 'variable-def', 'scope',
   // Policy
   'program', 'program-context-ref', 'overlap-limit', 'outside-program',
+  // Program references
+  'program-ref', 'program-filter',
 ]);
 
 /**

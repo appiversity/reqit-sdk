@@ -455,6 +455,8 @@ function walkNode(node, ctx) {
     case 'program-context-ref':
     case 'overlap-limit':
     case 'outside-program':
+    case 'program-ref':
+    case 'program-filter':
       break;
   }
 }

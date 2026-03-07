@@ -195,7 +195,7 @@ function walkNode(node, ctx, path, isTopLevel) {
 
   // Rule 10: with-constraint target must not be non-course types
   if (node.type === 'with-constraint' && node.requirement) {
-    const forbidden = ['score', 'attainment', 'quantity', 'program', 'program-context-ref', 'overlap-limit', 'outside-program'];
+    const forbidden = ['score', 'attainment', 'quantity', 'program', 'program-context-ref', 'overlap-limit', 'outside-program', 'program-ref', 'program-filter'];
     if (forbidden.includes(node.requirement.type)) {
       ctx.errors.push({
         rule: 10,
@@ -246,6 +246,65 @@ function walkNode(node, ctx, path, isTopLevel) {
         message: `Invalid program context role "${node.role}" — must be "primary-major" or "primary-minor"`,
         path
       });
+    }
+  }
+
+  // Rule 16: program-ref must have non-empty string code
+  if (node.type === 'program-ref') {
+    if (typeof node.code !== 'string' || node.code.length === 0) {
+      ctx.errors.push({
+        rule: 16,
+        message: '"program-ref" node must have a non-empty string "code" property',
+        path
+      });
+    }
+  }
+
+  // Rule 17: program-filter validation
+  if (node.type === 'program-filter') {
+    const validQuantifiers = ['any', 'all', 'n-of'];
+    if (!validQuantifiers.includes(node.quantifier)) {
+      ctx.errors.push({
+        rule: 17,
+        message: `"program-filter" has invalid quantifier "${node.quantifier}" — must be one of: ${validQuantifiers.join(', ')}`,
+        path
+      });
+    }
+    if (!Array.isArray(node.filters) || node.filters.length === 0) {
+      ctx.errors.push({
+        rule: 17,
+        message: '"program-filter" must have a non-empty "filters" array',
+        path
+      });
+    } else {
+      const validFields = ['type', 'level', 'code'];
+      for (let i = 0; i < node.filters.length; i++) {
+        const f = node.filters[i];
+        if (!validFields.includes(f.field)) {
+          ctx.errors.push({
+            rule: 17,
+            message: `"program-filter" filter field must be one of ${validFields.join(', ')}, got "${f.field}"`,
+            path: joinPath(path, `filters[${i}]`)
+          });
+        }
+      }
+    }
+    if (node.quantifier === 'n-of') {
+      if (!Number.isInteger(node.count) || node.count < 1) {
+        ctx.errors.push({
+          rule: 17,
+          message: `"program-filter" with quantifier "n-of" must have a positive integer count, got ${node.count}`,
+          path
+        });
+      }
+      const validComparisons = ['at-least', 'at-most', 'exactly'];
+      if (!validComparisons.includes(node.comparison)) {
+        ctx.errors.push({
+          rule: 17,
+          message: `"program-filter" with quantifier "n-of" must have a valid comparison (${validComparisons.join(', ')}), got "${node.comparison}"`,
+          path
+        });
+      }
     }
   }
 
