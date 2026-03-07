@@ -128,4 +128,34 @@ describe('exportAudit', () => {
     expect(csv).toContain('met');
     expect(csv).toContain('650');
   });
+
+  test('program-ref with sub-audit produces rows for summary and inner courses', () => {
+    const catalog = {
+      ...minimalCatalog,
+      programs: [{
+        code: 'MATH-MINOR',
+        type: 'minor',
+        requirements: {
+          type: 'all-of',
+          items: [
+            { type: 'course', subject: 'MATH', number: '101' },
+            { type: 'course', subject: 'MATH', number: '152' },
+          ],
+        },
+      }],
+    };
+    const { result } = audit(
+      { type: 'program-ref', code: 'MATH-MINOR' },
+      catalog,
+      partial,
+      { declaredPrograms: [{ code: 'MATH-MINOR', type: 'minor' }] },
+    );
+    const csv = exportAudit(result, catalog);
+    const lines = csv.trim().split('\r\n');
+    // header + program-ref row + 2 inner course rows
+    expect(lines).toHaveLength(4);
+    expect(lines[1]).toContain('MATH-MINOR');
+    expect(lines[2]).toContain('MATH 101');
+    expect(lines[3]).toContain('MATH 152');
+  });
 });

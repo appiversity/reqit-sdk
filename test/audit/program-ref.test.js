@@ -6,7 +6,14 @@ const { MET, NOT_MET, IN_PROGRESS } = require('../../src/audit/status');
 /**
  * Helper: build a minimal audit context for program-ref tests.
  */
+function makeProgramIndex(programs) {
+  const idx = new Map();
+  for (const p of programs) idx.set(p.code, p);
+  return idx;
+}
+
 function makeCtx(overrides = {}) {
+  const programs = (overrides.catalog && overrides.catalog.programs) || [];
   return {
     catalog: {
       courses: [
@@ -19,6 +26,7 @@ function makeCtx(overrides = {}) {
     courses: [],
     catalogIndex: new Map(),
     crossListIndex: new Map(),
+    programIndex: makeProgramIndex(programs),
     transcript: { byKey: new Map(), byCrossListGroup: new Map(), entries: [] },
     gradeConfig: { scale: [{ grade: 'A', points: 4 }, { grade: 'B', points: 3 }, { grade: 'C', points: 2 }, { grade: 'D', points: 1 }, { grade: 'F', points: 0 }], passFail: [], withdrawal: ['W'], incomplete: ['I'] },
     defs: new Map(),

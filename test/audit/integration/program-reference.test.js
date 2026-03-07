@@ -3,6 +3,8 @@
 const { parse } = require('../../../src/parser');
 const { audit } = require('../../../src/audit');
 const { Catalog } = require('../../../src/entities');
+const { waiver } = require('../../../src/audit/exceptions');
+const { WAIVED } = require('../../../src/audit/status');
 
 /**
  * Integration test: BS-DATA program that requires a MATH-MINOR.
@@ -117,6 +119,66 @@ describe('program-reference integration — BS-DATA with MATH-MINOR', () => {
     expect(pf.items).toHaveLength(1);
     expect(pf.items[0].code).toBe('MATH-MINOR');
     expect(pf.items[0].status).toBe('met');
+  });
+});
+
+describe('waivers in program-ref sub-audits', () => {
+  // Waivers are institution-level decisions that apply regardless of which
+  // program tree is being evaluated. A waiver for MATH 152 applies inside
+  // a MATH-MINOR sub-audit just as it does in the parent program.
+  const catalog = new Catalog({
+    institution: 'TEST',
+    ay: '2025-2026',
+    courses: [
+      { subject: 'DATA', number: '101', title: 'Intro', creditsMin: 3, creditsMax: 3 },
+      { subject: 'MATH', number: '151', title: 'Calc I', creditsMin: 4, creditsMax: 4 },
+      { subject: 'MATH', number: '152', title: 'Calc II', creditsMin: 4, creditsMax: 4 },
+    ],
+    programs: [
+      {
+        code: 'MATH-MINOR',
+        type: 'minor',
+        level: 'undergraduate',
+        requirements: parse('all of (MATH 151, MATH 152)'),
+      },
+    ],
+    gradeConfig: {
+      scale: [
+        { grade: 'A', points: 4 },
+        { grade: 'B', points: 3 },
+        { grade: 'C', points: 2 },
+        { grade: 'D', points: 1 },
+        { grade: 'F', points: 0 },
+      ],
+      passFail: [],
+      withdrawal: ['W'],
+      incomplete: ['I'],
+    },
+  });
+
+  test('waiver for sub-audit course applies inside program-ref', () => {
+    const ast = parse('all of (DATA 101, program "MATH-MINOR")');
+    const transcript = [
+      { subject: 'DATA', number: '101', grade: 'A', credits: 3, status: 'completed' },
+      { subject: 'MATH', number: '151', grade: 'A', credits: 4, status: 'completed' },
+      // MATH 152 not taken — but waived
+    ];
+
+    const w = waiver({ course: { subject: 'MATH', number: '152' }, reason: 'Transfer credit' });
+    const result = audit(ast, catalog.data, transcript, {
+      declaredPrograms: [{ code: 'MATH-MINOR', type: 'minor' }],
+      exceptions: [w],
+    });
+
+    expect(result.status).toBe('met');
+    // The program-ref sub-audit should show MATH 152 as waived
+    const programRef = result.result.items[1];
+    expect(programRef.type).toBe('program-ref');
+    expect(programRef.status).toBe('met');
+    const math152 = programRef.result.items[1];
+    expect(math152.subject).toBe('MATH');
+    expect(math152.number).toBe('152');
+    expect(math152.status).toBe(WAIVED);
   });
 });
 

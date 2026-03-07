@@ -739,14 +739,15 @@ function auditProgramRef(node, ctx) {
     return { type: 'program-ref', code, status: NOT_MET, notDeclared: true };
   }
 
-  // Check cache
+  // Check cache — returns the same object by reference (intentional aliasing).
+  // Callers must not mutate cached results; the multi-tree pass 2 rebuilds
+  // status via recomputeStatus() rather than mutating.
   if (ctx.programCache && ctx.programCache.has(code)) {
     return ctx.programCache.get(code);
   }
 
-  // Look up program in catalog
-  const catalogPrograms = (ctx.catalog && ctx.catalog.programs) || [];
-  const program = catalogPrograms.find(p => p.code === code);
+  // Look up program in catalog via pre-built index
+  const program = ctx.programIndex ? ctx.programIndex.get(code) : undefined;
 
   if (!program || !program.requirements) {
     ctx.warnings.push({
@@ -757,7 +758,10 @@ function auditProgramRef(node, ctx) {
     return { type: 'program-ref', code, status: NOT_MET };
   }
 
-  // Circular reference guard
+  // Circular reference guard — detects cycles (A → B → A).
+  // Complements programCache which prevents redundant work for non-circular
+  // re-use. The cache check above runs first, so visitedPrograms only fires
+  // on the first evaluation of a program within a single call chain.
   const visitedPrograms = ctx.visitedPrograms || new Set();
   if (visitedPrograms.has(code)) {
     ctx.warnings.push({
@@ -817,7 +821,8 @@ function auditProgramFilter(node, ctx) {
     const refResult = auditProgramRef({ type: 'program-ref', code: dp.code }, ctx);
     items.push(refResult);
 
-    // Short-circuit: for 'any', stop after first MET
+    // Short-circuit: for 'any', stop after first MET.
+    // This means `items` may contain only a subset of matching programs.
     if (node.quantifier === 'any' && refResult.status === MET) break;
   }
 
@@ -849,15 +854,11 @@ function auditProgramFilter(node, ctx) {
  * Merges catalog metadata for declared programs that don't carry all fields.
  */
 function filterDeclaredPrograms(declaredPrograms, filters, ctx) {
-  const catalogPrograms = (ctx.catalog && ctx.catalog.programs) || [];
-  const catalogIndex = new Map();
-  for (const p of catalogPrograms) {
-    catalogIndex.set(p.code, p);
-  }
+  const pIndex = ctx.programIndex || new Map();
 
   return declaredPrograms.filter(dp => {
     // Merge catalog metadata for missing fields
-    const catalogEntry = catalogIndex.get(dp.code);
+    const catalogEntry = pIndex.get(dp.code);
     const merged = { ...catalogEntry, ...dp };
 
     for (const f of filters) {

@@ -176,4 +176,30 @@ describe('findNextEligible', () => {
     const eligible = findNextEligible(result, minimalCatalog, empty);
     expect(eligible[0].credits).toBe(3);
   });
+
+  test('unmet courses inside program-ref sub-audit appear as eligible', () => {
+    const catalog = {
+      ...minimalCatalog,
+      programs: [{
+        code: 'ART-MINOR',
+        type: 'minor',
+        requirements: {
+          type: 'all-of',
+          items: [
+            { type: 'course', subject: 'ART', number: '101' },
+            { type: 'course', subject: 'ART', number: '201' },
+          ],
+        },
+      }],
+    };
+    // ART 101 and ART 201 have no prereqs, both unmet with empty transcript
+    const ast = { type: 'program-ref', code: 'ART-MINOR' };
+    const { result } = audit(ast, catalog, empty, {
+      declaredPrograms: [{ code: 'ART-MINOR', type: 'minor' }],
+    });
+    const eligible = findNextEligible(result, catalog, empty);
+    const keys = eligible.map(c => c.subject + ':' + c.number);
+    expect(keys).toContain('ART:101');
+    expect(keys).toContain('ART:201');
+  });
 });

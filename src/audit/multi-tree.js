@@ -167,6 +167,10 @@ function auditMulti(trees, catalog, transcript, options) {
 
   // Pre-build shared catalog structures
   const { norm, catalogIndex, crossListIndex, gradeConfig } = prepareCatalog(catalog);
+  const programIndex = new Map();
+  for (const p of norm.programs || []) {
+    programIndex.set(p.code, p);
+  }
   const normTranscript = normalizeTranscript(transcript, gradeConfig, catalogIndex);
 
   // Build exception context once, share across all tree audits
@@ -199,8 +203,12 @@ function auditMulti(trees, catalog, transcript, options) {
       waivers: exCtx ? exCtx.waivers : null,
       substitutions: exCtx ? exCtx.substitutions : null,
       // Program reference context
+      programIndex,
       declaredPrograms: opts.declaredPrograms || [],
       visitedPrograms: new Set(),
+      // Per-tree cache: not shared across trees because different trees have
+      // independent visitedPrograms sets and course availability may differ
+      // after overlap assignment.
       programCache: new Map(),
     };
 

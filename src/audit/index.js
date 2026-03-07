@@ -43,6 +43,10 @@ function audit(ast, catalog, transcript, options) {
  */
 function prepareAudit(ast, catalog) {
   const { norm, catalogIndex, crossListIndex, gradeConfig } = prepareCatalog(catalog);
+  const programIndex = new Map();
+  for (const p of norm.programs || []) {
+    programIndex.set(p.code, p);
+  }
   const defs = collectDefs(ast, '', new Map());
 
   return {
@@ -77,6 +81,7 @@ function prepareAudit(ast, catalog) {
         waivers: exCtx ? exCtx.waivers : null,
         substitutions: exCtx ? exCtx.substitutions : null,
         // Program reference context
+        programIndex,
         declaredPrograms: opts.declaredPrograms || [],
         visitedPrograms: new Set(),
         programCache: new Map(),

@@ -193,4 +193,47 @@ describe('findUnmet', () => {
     const courseNodes = unmet.filter(u => u.node.type === 'course');
     expect(courseNodes.length).toBeGreaterThan(0);
   });
+
+  test('unmet courses inside program-ref sub-audit are surfaced', () => {
+    const catalog = {
+      ...minimalCatalog,
+      programs: [{
+        code: 'MATH-MINOR',
+        type: 'minor',
+        requirements: {
+          type: 'all-of',
+          items: [
+            { type: 'course', subject: 'MATH', number: '101' },
+            { type: 'course', subject: 'MATH', number: '152' },
+          ],
+        },
+      }],
+    };
+    // partial has MATH 101 but not MATH 152
+    const ast = {
+      type: 'all-of',
+      items: [
+        { type: 'course', subject: 'CMPS', number: '130' },
+        { type: 'program-ref', code: 'MATH-MINOR' },
+      ],
+    };
+    const { result } = audit(ast, catalog, partial, {
+      declaredPrograms: [{ code: 'MATH-MINOR', type: 'minor' }],
+    });
+    const unmet = findUnmet(result);
+    // MATH 152 is unmet inside the program-ref sub-audit
+    const mathUnmet = unmet.filter(u => u.node.subject === 'MATH' && u.node.number === '152');
+    expect(mathUnmet).toHaveLength(1);
+    // Path should traverse through 'result' (the sub-audit tree)
+    expect(mathUnmet[0].path.some(p => p === 'result' || p.startsWith('result'))).toBe(true);
+  });
+
+  test('program-ref with notDeclared is surfaced as unmet leaf', () => {
+    const ast = { type: 'program-ref', code: 'MISSING' };
+    const { result } = audit(ast, minimalCatalog, empty);
+    const unmet = findUnmet(result);
+    expect(unmet).toHaveLength(1);
+    expect(unmet[0].node.type).toBe('program-ref');
+    expect(unmet[0].node.notDeclared).toBe(true);
+  });
 });

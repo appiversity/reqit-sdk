@@ -3,12 +3,20 @@
 const { auditNode } = require('../../src/audit/single-tree');
 const { MET, NOT_MET } = require('../../src/audit/status');
 
+function makeProgramIndex(programs) {
+  const idx = new Map();
+  for (const p of programs) idx.set(p.code, p);
+  return idx;
+}
+
 function makeCtx(overrides = {}) {
+  const programs = (overrides.catalog && overrides.catalog.programs) || [];
   return {
     catalog: { courses: [], programs: [] },
     courses: [],
     catalogIndex: new Map(),
     crossListIndex: new Map(),
+    programIndex: makeProgramIndex(programs),
     transcript: { byKey: new Map(), byCrossListGroup: new Map(), entries: [] },
     gradeConfig: { scale: [{ grade: 'A', points: 4 }, { grade: 'B', points: 3 }, { grade: 'C', points: 2 }, { grade: 'D', points: 1 }, { grade: 'F', points: 0 }], passFail: [], withdrawal: ['W'], incomplete: ['I'] },
     defs: new Map(),
@@ -182,7 +190,7 @@ describe('auditProgramFilter', () => {
     const result = auditNode(node, ctx);
     // Both MATH-MINOR and CS-CERT match the filter, but neither has catalog requirements
     // so they'll be NOT_MET. But items should have length 2.
-    expect(result.items.length).toBeGreaterThanOrEqual(1);
+    expect(result.items).toHaveLength(2);
   });
 
   test('metadata fallback from catalog', () => {
