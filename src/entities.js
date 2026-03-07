@@ -224,6 +224,7 @@ class Catalog {
   #data;
   #courseIndex;
   #programIndex;
+  #attributeIndex;
 
   constructor(data) {
     if (!data || !data.courses) throw new Error('Catalog requires courses');
@@ -236,6 +237,7 @@ class Catalog {
   get ay() { return this.#data.ay; }
   get courses() { return this.#data.courses; }
   get programs() { return this.#data.programs; }
+  get attributes() { return this.#data.attributes || []; }
   get gradeConfig() { return this.#data.gradeConfig; }
 
   findCourse(subject, number) {
@@ -267,6 +269,20 @@ class Catalog {
       if (filter.code && p.code !== filter.code) return false;
       return true;
     });
+  }
+
+  findAttribute(code) {
+    if (!this.#attributeIndex) {
+      this.#attributeIndex = new Map();
+      for (const a of (this.#data.attributes || [])) {
+        this.#attributeIndex.set(a.code, a);
+      }
+    }
+    return this.#attributeIndex.get(code) || null;
+  }
+
+  getAttributes() {
+    return [...(this.#data.attributes || [])].sort((a, b) => a.code.localeCompare(b.code));
   }
 
   withPrograms(programMap) {

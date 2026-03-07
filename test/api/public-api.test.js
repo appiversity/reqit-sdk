@@ -1504,6 +1504,117 @@ describe('Catalog query methods', () => {
 });
 
 // ============================================================
+// 25b. Catalog.attributes (Issue 12)
+// ============================================================
+
+describe('Catalog attribute methods', () => {
+  const cat = api.catalog(minimalCatalog);
+
+  test('attributes getter returns attributes array', () => {
+    expect(cat.attributes).toHaveLength(5);
+    expect(cat.attributes[0]).toHaveProperty('code');
+    expect(cat.attributes[0]).toHaveProperty('name');
+  });
+
+  test('findAttribute returns matching attribute', () => {
+    const attr = cat.findAttribute('WI');
+    expect(attr).toBeDefined();
+    expect(attr.code).toBe('WI');
+    expect(attr.name).toBe('Writing Intensive');
+  });
+
+  test('findAttribute returns null for unknown code', () => {
+    expect(cat.findAttribute('FAKE')).toBeNull();
+  });
+
+  test('findAttribute uses memoized index', () => {
+    const a1 = cat.findAttribute('QR');
+    const a2 = cat.findAttribute('QR');
+    expect(a1).toBe(a2); // same object reference
+  });
+
+  test('getAttributes returns sorted copy', () => {
+    const sorted = cat.getAttributes();
+    expect(sorted).toHaveLength(5);
+    // Verify sorted by code
+    const codes = sorted.map(a => a.code);
+    expect(codes).toEqual(['FA', 'HUM', 'QR', 'SCI', 'WI']);
+  });
+
+  test('getAttributes returns a new array each time', () => {
+    const a1 = cat.getAttributes();
+    const a2 = cat.getAttributes();
+    expect(a1).not.toBe(a2);
+    expect(a1).toEqual(a2);
+  });
+
+  test('attributes defaults to empty array when catalog has none', () => {
+    const cat2 = api.catalog({
+      institution: 'test',
+      ay: '2025-2026',
+      courses: [{ id: 1, subject: 'X', number: '1', title: 'X', creditsMin: 1, creditsMax: 1 }],
+    });
+    expect(cat2.attributes).toEqual([]);
+    expect(cat2.getAttributes()).toEqual([]);
+    expect(cat2.findAttribute('QR')).toBeNull();
+  });
+});
+
+// ============================================================
+// 25c. Attribute name resolution in renderers (Issue 12)
+// ============================================================
+
+describe('Attribute name resolution in renderers', () => {
+  test('toOutline resolves attribute codes to display names', () => {
+    const req = api.parse('courses where attribute = "WI"');
+    const outline = req.toOutline(minimalCatalog);
+    expect(outline).toContain('Writing Intensive');
+  });
+
+  test('toHTML resolves attribute codes to display names', () => {
+    const req = api.parse('courses where attribute = "WI"');
+    const html = req.toHTML(minimalCatalog);
+    expect(html).toContain('Writing Intensive');
+  });
+
+  test('toOutline falls back to raw code when no attributes registry', () => {
+    const plainCatalog = {
+      institution: 'test',
+      ay: '2025-2026',
+      courses: [{ id: 1, subject: 'X', number: '1', title: 'X', creditsMin: 1, creditsMax: 1 }],
+    };
+    const req = api.parse('courses where attribute = "WI"');
+    const outline = req.toOutline(plainCatalog);
+    expect(outline).toContain('"WI"');
+    expect(outline).not.toContain('Writing Intensive');
+  });
+
+  test('toHTML falls back to raw code when no attributes registry', () => {
+    const plainCatalog = {
+      institution: 'test',
+      ay: '2025-2026',
+      courses: [{ id: 1, subject: 'X', number: '1', title: 'X', creditsMin: 1, creditsMax: 1 }],
+    };
+    const req = api.parse('courses where attribute = "WI"');
+    const html = req.toHTML(plainCatalog);
+    expect(html).toContain('&quot;WI&quot;');
+    expect(html).not.toContain('Writing Intensive');
+  });
+
+  test('toOutline resolves attribute in post-constraint filters', () => {
+    const req = api.parse('at least 2 of (MATH 151, CMPS 130, CMPS 230) where at least 1 match (attribute = "QR")');
+    const outline = req.toOutline(minimalCatalog);
+    expect(outline).toContain('Quantitative Reasoning');
+  });
+
+  test('toDescription does not resolve attributes (no catalog param)', () => {
+    const req = api.parse('courses where attribute = "WI"');
+    const desc = req.description;
+    expect(desc).toContain('"WI"');
+  });
+});
+
+// ============================================================
 // 26. calculateGPA entity wrapping (Issue 8)
 // ============================================================
 

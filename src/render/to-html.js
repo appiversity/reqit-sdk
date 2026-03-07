@@ -7,7 +7,7 @@
  * CSS class prefix: `reqit-` (e.g. `.reqit-course`, `.reqit-label`).
  */
 
-const { OP_SYMBOLS, comparisonPhrase, lookupTitle, renderFilterPhrase, unwrapCreditsSource } = require('./shared');
+const { OP_SYMBOLS, comparisonPhrase, lookupTitle, renderFilterPhrase, unwrapCreditsSource, lookupAttributeName } = require('./shared');
 
 /**
  * HTML-escape a string (guards against XSS in user-supplied values).
@@ -30,6 +30,12 @@ function esc(str) {
  * @returns {string} HTML fragment
  */
 function renderFilter(f, catalog) {
+  if (f.field === 'attribute' && catalog && typeof f.value === 'string') {
+    const name = lookupAttributeName(f.value, catalog);
+    if (name !== f.value) {
+      return `${esc(f.field)} ${OP_SYMBOLS[f.op]} &quot;${esc(name)}&quot;`;
+    }
+  }
   return renderFilterPhrase(f, v => renderNode(v, catalog), esc, v => '&quot;' + esc(v) + '&quot;');
 }
 

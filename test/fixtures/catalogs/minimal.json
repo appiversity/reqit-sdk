@@ -53,6 +53,13 @@
     { "id": 2, "code": "CMPS-MINOR", "name": "Computer Science", "type": "minor", "level": "undergraduate" },
     { "id": 3, "code": "MATH", "name": "Mathematics", "type": "major", "level": "undergraduate" }
   ],
+  "attributes": [
+    { "code": "QR", "name": "Quantitative Reasoning" },
+    { "code": "WI", "name": "Writing Intensive" },
+    { "code": "HUM", "name": "Humanities" },
+    { "code": "SCI", "name": "Natural Science" },
+    { "code": "FA", "name": "Fine Arts" }
+  ],
   "attainments": [
     { "id": 1, "code": "SAT", "name": "SAT", "kind": "score" },
     { "id": 2, "code": "PRAXIS", "name": "Praxis Certification", "kind": "boolean" }

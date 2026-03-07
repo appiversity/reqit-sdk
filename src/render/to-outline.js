@@ -10,7 +10,7 @@
  * and propagating indentation.
  */
 
-const { OP_PHRASES, comparisonPhrase, lookupTitle, renderFilterPhrase, unwrapCreditsSource, courseKey } = require('./shared');
+const { OP_PHRASES, comparisonPhrase, lookupTitle, renderFilterPhrase, unwrapCreditsSource, courseKey, lookupAttributeName } = require('./shared');
 
 /**
  * Generate a label for composite node types in outline format.
@@ -32,6 +32,21 @@ function compositeLabel(node) {
 }
 
 /**
+ * Render a filter phrase with attribute name resolution.
+ * When the filter field is 'attribute' and the catalog has an attribute registry,
+ * the display name is shown instead of the raw code.
+ */
+function renderFilterWithAttrName(f, catalog) {
+  if (f.field === 'attribute' && catalog && typeof f.value === 'string') {
+    const name = lookupAttributeName(f.value, catalog);
+    if (name !== f.value) {
+      return `${f.field} ${OP_PHRASES[f.op]} "${name}"`;
+    }
+  }
+  return renderFilterPhrase(f, v => renderLeaf(v, catalog));
+}
+
+/**
  * Render a leaf (terminal) node as a single line of text.
  * Returns `null` for non-leaf nodes so `renderTree` can handle them.
  * @param {Object} node - AST node
@@ -48,7 +63,7 @@ function renderLeaf(node, catalog) {
       return text;
     }
     case 'course-filter':
-      return `Any course where ${node.filters.map(f => renderFilterPhrase(f, v => renderLeaf(v, catalog))).join(' and ')}`;
+      return `Any course where ${node.filters.map(f => renderFilterWithAttrName(f, catalog)).join(' and ')}`;
     case 'score':
       return `Score ${node.name} ${OP_PHRASES[node.op]} ${node.value}`;
     case 'attainment':
@@ -87,7 +102,7 @@ function renderPostConstraints(node, catalog) {
   if (!node.post_constraints) return '';
   return node.post_constraints.map(pc => {
     const comp = comparisonPhrase(pc.comparison) + ' ' + pc.count;
-    return ` (where ${comp} have ${renderFilterPhrase(pc.filter, v => renderLeaf(v, catalog))})`;
+    return ` (where ${comp} have ${renderFilterWithAttrName(pc.filter, catalog)})`;
   }).join('');
 }
 
@@ -304,7 +319,7 @@ function renderLeafWithAudit(node, catalog, auditNode, options) {
       return `${icon} ${text}`;
     }
     case 'course-filter':
-      return `${icon} Any course where ${node.filters.map(f => renderFilterPhrase(f, v => renderLeaf(v, catalog))).join(' and ')}`;
+      return `${icon} Any course where ${node.filters.map(f => renderFilterWithAttrName(f, catalog)).join(' and ')}`;
     case 'score': {
       let text = `Score ${node.name} ${OP_PHRASES[node.op]} ${node.value}`;
       if (auditNode && auditNode.actual != null) text += ` (actual: ${auditNode.actual})`;

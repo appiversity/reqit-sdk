@@ -152,6 +152,14 @@ Both `test/render/exhaustiveness.test.js` and `test/resolve/exhaustiveness.test.
 ### Don't over-abstract
 Centralize only when there's a clear, proven maintenance burden. Three similar cases are better than one premature generic.
 
+### No backward compatibility — we are designing v1
+This SDK is pre-1.0. When changing the public API surface (renaming classes, changing method signatures, restructuring entity shapes), make a clean break:
+- **Do not** add aliases, deprecation shims, or fallback support for old shapes
+- **Do not** silently accept both old and new signatures to avoid test failures
+- **Do** rename/remove/restructure cleanly and let tests fail
+- **Do** update all failing tests to use the new API — test failures confirm coverage is working
+- **Do** update all downstream consumers (reqit-pg, reqit-catalog, reqit-demo) in the same pass
+
 ### Data model changes and test failures
 Tests that depend on data models exist to surface dependencies — when a model changes, test failures show you what's affected. Never silently support both old and new data model shapes as a fallback to avoid test failures. Always ask before changing tests that fail due to a data model change, and always ask before adding fallback/alternate shape support. The right default is: change the model, let tests fail, confirm the failures align with the plan, then update tests.
 

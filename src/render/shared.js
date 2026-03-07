@@ -158,6 +158,19 @@ function unwrapCreditsSource(node) {
   return node.source.type === 'all-of' ? node.source.items : [node.source];
 }
 
+/**
+ * Look up an attribute's display name from the catalog.
+ * Returns the human-readable name if defined, otherwise the raw code.
+ * @param {string} code - Attribute code (e.g. "WI")
+ * @param {Object|null} catalog - Catalog with optional attributes array
+ * @returns {string} Attribute display name or raw code
+ */
+function lookupAttributeName(code, catalog) {
+  if (!catalog || !catalog.attributes) return code;
+  const attr = catalog.attributes.find(a => a.code === code);
+  return attr ? attr.name : code;
+}
+
 module.exports = {
   courseKey,
   OP_SYMBOLS,
@@ -167,4 +180,5 @@ module.exports = {
   lookupTitle,
   renderFilterPhrase,
   unwrapCreditsSource,
+  lookupAttributeName,
 };
