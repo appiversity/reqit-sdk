@@ -45,25 +45,14 @@ function renderFilter(f, catalog) {
  * @param {Object|null} catalog - Catalog for title lookup inside filter values
  * @returns {string} HTML string (empty if no constraints)
  */
-function renderPostConstraints(node, catalog) {
+function renderPostConstraints(node, catalog, pfx) {
   if (!node.post_constraints) return '';
+  const p = pfx || 'reqit-';
   return node.post_constraints.map(pc => {
     const comp = comparisonPhrase(pc.comparison);
     const fv = renderFilter(pc.filter, catalog);
-    return ` <span class="reqit-post-constraint">where ${comp} ${pc.count} have ${fv}</span>`;
+    return ` <span class="${p}post-constraint">where ${comp} ${pc.count} have ${fv}</span>`;
   }).join('');
-}
-
-/**
- * Render a list of child items as an HTML `<ul>`.
- * @param {Array<Object>} items
- * @param {Object|null} catalog
- * @returns {string}
- */
-function renderItemList(items, catalog) {
-  return '<ul class="reqit-items">' +
-    items.map(item => `<li>${renderNode(item, catalog)}</li>`).join('') +
-    '</ul>';
 }
 
 /**
@@ -71,7 +60,8 @@ function renderItemList(items, catalog) {
  * @param {Object} node - AST node
  * @returns {string} HTML string
  */
-function compositeLabel(node) {
+function compositeLabel(node, pfx) {
+  const p = pfx || 'reqit-';
   let base;
   switch (node.type) {
     case 'all-of': base = 'Complete <strong>all</strong> of the following:'; break;
@@ -83,7 +73,7 @@ function compositeLabel(node) {
     default: base = node.type;
   }
   if (node.label) {
-    return `<span class="reqit-named-label">${esc(node.label)}</span> \u2014 ${base.charAt(0).toLowerCase()}${base.slice(1)}`;
+    return `<span class="${p}named-label">${esc(node.label)}</span> \u2014 ${base.charAt(0).toLowerCase()}${base.slice(1)}`;
   }
   return base;
 }
@@ -94,38 +84,52 @@ function compositeLabel(node) {
  * @param {Object|null} catalog - Optional catalog for course title lookup
  * @returns {string} HTML string
  */
-function renderNode(node, catalog) {
+function renderNode(node, catalog, pfx, opts) {
+  if (!pfx) pfx = 'reqit-';
+  if (!opts) opts = {};
+
+  function renderItemList(items) {
+    return `<ul class="${pfx}items">` +
+      items.map(item => `<li>${renderNode(item, catalog, pfx, opts)}</li>`).join('') +
+      '</ul>';
+  }
+
+  function applyLabel(defaultLabel) {
+    if (opts.labelFormat) return opts.labelFormat(defaultLabel, node, catalog);
+    return defaultLabel;
+  }
+
   switch (node.type) {
     case 'course': {
-      let html = `<span class="reqit-course">` +
-        `<span class="reqit-subject">${esc(node.subject)}</span> ` +
-        `<span class="reqit-number">${esc(node.number)}</span>`;
+      let html = `<span class="${pfx}course">` +
+        `<span class="${pfx}subject">${esc(node.subject)}</span> ` +
+        `<span class="${pfx}number">${esc(node.number)}</span>`;
       const title = lookupTitle(node, catalog) || '';
       if (title) {
-        html += ` <span class="reqit-title">${esc(title)}</span>`;
+        html += ` <span class="${pfx}title">${esc(title)}</span>`;
       }
       if (node.concurrentAllowed) {
-        html += ' <span class="reqit-concurrent">(concurrent)</span>';
+        html += ` <span class="${pfx}concurrent">(concurrent)</span>`;
       }
       html += '</span>';
       return html;
     }
 
     case 'course-filter':
-      return `<span class="reqit-course-filter">Any course where ${node.filters.map(f => renderFilter(f, catalog)).join(' and ')}</span>`;
+      return `<span class="${pfx}course-filter">Any course where ${node.filters.map(f => renderFilter(f, catalog)).join(' and ')}</span>`;
 
     case 'score':
-      return `<span class="reqit-score">Score ${esc(node.name)} ${OP_SYMBOLS[node.op]} ${node.value}</span>`;
+      return `<span class="${pfx}score">Score ${esc(node.name)} ${OP_SYMBOLS[node.op]} ${node.value}</span>`;
 
     case 'attainment':
-      return `<span class="reqit-attainment">Attainment: ${esc(node.name)}</span>`;
+      return `<span class="${pfx}attainment">Attainment: ${esc(node.name)}</span>`;
 
     case 'quantity':
-      return `<span class="reqit-quantity">Quantity: ${esc(node.name)} ${OP_SYMBOLS[node.op]} ${node.value}</span>`;
+      return `<span class="${pfx}quantity">Quantity: ${esc(node.name)} ${OP_SYMBOLS[node.op]} ${node.value}</span>`;
 
     case 'variable-ref': {
       const ref = node.scope ? `$${esc(node.scope)}.${esc(node.name)}` : `$${esc(node.name)}`;
-      return `<span class="reqit-variable-ref">${ref}</span>`;
+      return `<span class="${pfx}variable-ref">${ref}</span>`;
     }
 
     case 'all-of':
@@ -134,10 +138,10 @@ function renderNode(node, catalog) {
     case 'n-of':
     case 'one-from-each':
     case 'from-n-groups':
-      return `<div class="reqit-requirement reqit-${node.type}">` +
-        `<p class="reqit-label">${compositeLabel(node)}</p>` +
-        renderPostConstraints(node, catalog) +
-        renderItemList(node.items, catalog) +
+      return `<div class="${pfx}requirement ${pfx}${node.type}">` +
+        `<p class="${pfx}label">${applyLabel(compositeLabel(node, pfx))}</p>` +
+        renderPostConstraints(node, catalog, pfx) +
+        renderItemList(node.items) +
         `</div>`;
 
     case 'credits-from': {
@@ -145,77 +149,77 @@ function renderNode(node, catalog) {
       const sourceItems = unwrapCreditsSource(node);
       const creditsBase = `Complete <strong>${comp} ${node.credits} credits</strong> from:`;
       const creditsHeading = node.label
-        ? `<span class="reqit-named-label">${esc(node.label)}</span> \u2014 ${creditsBase.charAt(0).toLowerCase()}${creditsBase.slice(1)}`
+        ? `<span class="${pfx}named-label">${esc(node.label)}</span> \u2014 ${creditsBase.charAt(0).toLowerCase()}${creditsBase.slice(1)}`
         : creditsBase;
-      return `<div class="reqit-requirement reqit-credits-from">` +
-        `<p class="reqit-label">${creditsHeading}</p>` +
-        renderPostConstraints(node, catalog) +
-        renderItemList(sourceItems, catalog) +
+      return `<div class="${pfx}requirement ${pfx}credits-from">` +
+        `<p class="${pfx}label">${applyLabel(creditsHeading)}</p>` +
+        renderPostConstraints(node, catalog, pfx) +
+        renderItemList(sourceItems) +
         `</div>`;
     }
 
     case 'with-constraint': {
-      const inner = renderNode(node.requirement, catalog);
+      const inner = renderNode(node.requirement, catalog, pfx, opts);
       const constraint = node.constraint.kind === 'min-grade'
         ? `minimum grade of ${esc(node.constraint.value)}`
         : `minimum GPA of ${node.constraint.value}`;
-      return `<div class="reqit-requirement reqit-with-constraint">` +
+      return `<div class="${pfx}requirement ${pfx}with-constraint">` +
         inner +
-        `<p class="reqit-constraint">With a ${constraint}</p>` +
+        `<p class="${pfx}constraint">With a ${constraint}</p>` +
         `</div>`;
     }
 
     case 'except': {
-      const source = renderNode(node.source, catalog);
-      return `<div class="reqit-requirement reqit-except">` +
+      const source = renderNode(node.source, catalog, pfx, opts);
+      return `<div class="${pfx}requirement ${pfx}except">` +
         source +
-        `<p class="reqit-label">Except:</p>` +
-        renderPostConstraints(node, catalog) +
-        renderItemList(node.exclude, catalog) +
+        `<p class="${pfx}label">Except:</p>` +
+        renderPostConstraints(node, catalog, pfx) +
+        renderItemList(node.exclude) +
         `</div>`;
     }
 
     case 'variable-def':
-      return renderNode(node.value, catalog);
+      return renderNode(node.value, catalog, pfx, opts);
 
     case 'scope':
-      return renderNode(node.body, catalog);
+      return renderNode(node.body, catalog, pfx, opts);
 
     case 'program': {
       if (node.code) {
-        return `<span class="reqit-program">Program ${esc(node.code)} (${esc(node['program-type'])}, ${esc(node.level)})</span>`;
+        return `<span class="${pfx}program">Program ${esc(node.code)} (${esc(node['program-type'])}, ${esc(node.level)})</span>`;
       }
-      return `<span class="reqit-program">Any program (${esc(node['program-type'])}, ${esc(node.level)})</span>`;
+      return `<span class="${pfx}program">Any program (${esc(node['program-type'])}, ${esc(node.level)})</span>`;
     }
 
     case 'program-context-ref':
-      return `<span class="reqit-program-context-ref">${node.role === 'primary-major' ? 'primary major' : 'primary minor'}</span>`;
+      return `<span class="${pfx}program-context-ref">${node.role === 'primary-major' ? 'primary major' : 'primary minor'}</span>`;
 
     case 'overlap-limit': {
-      const left = renderNode(node.left, catalog);
-      const right = renderNode(node.right, catalog);
+      const left = renderNode(node.left, catalog, pfx, opts);
+      const right = renderNode(node.right, catalog, pfx, opts);
       const unit = node.constraint.unit === 'percent' ? '%' : ` ${node.constraint.unit}`;
-      return `<div class="reqit-requirement reqit-overlap-limit">` +
-        `<p class="reqit-label">Overlap between ${left} and ${right}: at most ${node.constraint.value}${unit}</p>` +
+      return `<div class="${pfx}requirement ${pfx}overlap-limit">` +
+        `<p class="${pfx}label">Overlap between ${left} and ${right}: at most ${node.constraint.value}${unit}</p>` +
         `</div>`;
     }
 
     case 'outside-program': {
-      const prog = renderNode(node.program, catalog);
-      return `<div class="reqit-requirement reqit-outside-program">` +
-        `<p class="reqit-label">At least ${node.constraint.value} credits from outside ${prog}</p>` +
+      const prog = renderNode(node.program, catalog, pfx, opts);
+      return `<div class="${pfx}requirement ${pfx}outside-program">` +
+        `<p class="${pfx}label">At least ${node.constraint.value} credits from outside ${prog}</p>` +
         `</div>`;
     }
 
     case 'program-ref':
-      return `<span class="reqit-program-ref">Program &quot;${esc(node.code)}&quot;</span>`;
+      return `<span class="${pfx}program-ref">Program &quot;${esc(node.code)}&quot;</span>`;
 
     case 'program-filter': {
-      const pfx = node.quantifier === 'any' ? 'Any program'
+      const quantPfx = node.quantifier === 'any' ? 'Any program'
         : node.quantifier === 'all' ? 'All programs'
         : `${comparisonPhrase(node.comparison).charAt(0).toUpperCase() + comparisonPhrase(node.comparison).slice(1)} ${node.count} programs`;
       const fDescs = node.filters.map(f => `${esc(f.field)} ${OP_SYMBOLS[f.op] || esc(f.op)} &quot;${esc(String(f.value))}&quot;`).join(' and ');
-      return `<span class="reqit-program-filter">${pfx} where ${fDescs}</span>`;
+      return `<span class="${pfx}program-filter">${quantPfx} where ${fDescs}</span>`;
     }
 
     default:
@@ -235,31 +239,33 @@ function renderNode(node, catalog) {
  * @param {Object} [auditResult] - Optional audit result tree (parallel structure to AST)
  * @returns {string} HTML string
  */
-function toHTML(ast, catalog, auditResult) {
+function toHTML(ast, catalog, auditResult, options) {
+  const opts = options || {};
+  const pfx = opts.classPrefix || 'reqit-';
   if (!auditResult) {
-    return renderNode(ast, catalog || null);
+    return renderNode(ast, catalog || null, pfx, opts);
   }
-  return renderNodeWithAudit(ast, catalog || null, auditResult);
+  return renderNodeWithAudit(ast, catalog || null, auditResult, pfx, opts);
 }
 
 /**
  * Status CSS class for an audit status.
  */
-function statusClass(status) {
+function statusClass(status, pfx) {
   if (!status) return '';
-  return ` reqit-status-${status}`;
+  return ` ${pfx}status-${status}`;
 }
 
 /**
  * Status indicator HTML.
  */
-function statusIndicator(status) {
+function statusIndicator(status, pfx) {
   if (!status) return '';
   switch (status) {
-    case 'met': return '<span class="reqit-status-indicator">&#10003;</span> ';
-    case 'in-progress': return '<span class="reqit-status-indicator">&#9711;</span> ';
-    case 'partial-progress': return '<span class="reqit-status-indicator">&#9681;</span> ';
-    case 'not-met': return '<span class="reqit-status-indicator">&#9675;</span> ';
+    case 'met': return `<span class="${pfx}status-indicator">&#10003;</span> `;
+    case 'in-progress': return `<span class="${pfx}status-indicator">&#9711;</span> `;
+    case 'partial-progress': return `<span class="${pfx}status-indicator">&#9681;</span> `;
+    case 'not-met': return `<span class="${pfx}status-indicator">&#9675;</span> `;
     default: return '';
   }
 }
@@ -267,31 +273,46 @@ function statusIndicator(status) {
 /**
  * Render a node with audit overlay (parallel walk of AST and audit result).
  */
-function renderNodeWithAudit(node, catalog, auditNode) {
+function renderNodeWithAudit(node, catalog, auditNode, pfx, opts) {
+  if (!pfx) pfx = 'reqit-';
+  if (!opts) opts = {};
+
   const status = auditNode ? auditNode.status : null;
-  const sc = statusClass(status);
-  const si = statusIndicator(status);
+  const sc = statusClass(status, pfx);
+  const si = statusIndicator(status, pfx);
+
+  function auditItemList(items, audits) {
+    return `<ul class="${pfx}items">` +
+      items.map((item, i) =>
+        `<li>${renderNodeWithAudit(item, catalog, audits[i] || null, pfx, opts)}</li>`
+      ).join('') + '</ul>';
+  }
+
+  function applyLabel(defaultLabel) {
+    if (opts.labelFormat) return opts.labelFormat(defaultLabel, node, catalog);
+    return defaultLabel;
+  }
 
   switch (node.type) {
     case 'course': {
-      let html = `<span class="reqit-course${sc}">` + si +
-        `<span class="reqit-subject">${esc(node.subject)}</span> ` +
-        `<span class="reqit-number">${esc(node.number)}</span>`;
+      let html = `<span class="${pfx}course${sc}">` + si +
+        `<span class="${pfx}subject">${esc(node.subject)}</span> ` +
+        `<span class="${pfx}number">${esc(node.number)}</span>`;
       const title = lookupTitle(node, catalog) || '';
       if (title) {
-        html += ` <span class="reqit-title">${esc(title)}</span>`;
+        html += ` <span class="${pfx}title">${esc(title)}</span>`;
       }
       if (node.concurrentAllowed) {
-        html += ' <span class="reqit-concurrent">(concurrent)</span>';
+        html += ` <span class="${pfx}concurrent">(concurrent)</span>`;
       }
       // Add grade/term info from audit
       if (auditNode && auditNode.satisfiedBy) {
         const entry = auditNode.satisfiedBy;
         if (entry.grade) {
-          html += ` <span class="reqit-grade">${esc(entry.grade)}</span>`;
+          html += ` <span class="${pfx}grade">${esc(entry.grade)}</span>`;
         }
         if (entry.term) {
-          html += ` <span class="reqit-term">${esc(entry.term)}</span>`;
+          html += ` <span class="${pfx}term">${esc(entry.term)}</span>`;
         }
       }
       html += '</span>';
@@ -299,20 +320,20 @@ function renderNodeWithAudit(node, catalog, auditNode) {
     }
 
     case 'course-filter':
-      return `<span class="reqit-course-filter${sc}">${si}Any course where ${node.filters.map(f => renderFilter(f, catalog)).join(' and ')}</span>`;
+      return `<span class="${pfx}course-filter${sc}">${si}Any course where ${node.filters.map(f => renderFilter(f, catalog)).join(' and ')}</span>`;
 
     case 'score':
-      return `<span class="reqit-score${sc}">${si}Score ${esc(node.name)} ${OP_SYMBOLS[node.op]} ${node.value}</span>`;
+      return `<span class="${pfx}score${sc}">${si}Score ${esc(node.name)} ${OP_SYMBOLS[node.op]} ${node.value}</span>`;
 
     case 'attainment':
-      return `<span class="reqit-attainment${sc}">${si}Attainment: ${esc(node.name)}</span>`;
+      return `<span class="${pfx}attainment${sc}">${si}Attainment: ${esc(node.name)}</span>`;
 
     case 'quantity':
-      return `<span class="reqit-quantity${sc}">${si}Quantity: ${esc(node.name)} ${OP_SYMBOLS[node.op]} ${node.value}</span>`;
+      return `<span class="${pfx}quantity${sc}">${si}Quantity: ${esc(node.name)} ${OP_SYMBOLS[node.op]} ${node.value}</span>`;
 
     case 'variable-ref': {
       const ref = node.scope ? `$${esc(node.scope)}.${esc(node.name)}` : `$${esc(node.name)}`;
-      return `<span class="reqit-variable-ref${sc}">${si}${ref}</span>`;
+      return `<span class="${pfx}variable-ref${sc}">${si}${ref}</span>`;
     }
 
     case 'all-of':
@@ -322,14 +343,10 @@ function renderNodeWithAudit(node, catalog, auditNode) {
     case 'one-from-each':
     case 'from-n-groups': {
       const auditItems = auditNode && auditNode.items ? auditNode.items : [];
-      const itemsHtml = '<ul class="reqit-items">' +
-        node.items.map((item, i) =>
-          `<li>${renderNodeWithAudit(item, catalog, auditItems[i] || null)}</li>`
-        ).join('') + '</ul>';
-      return `<div class="reqit-requirement reqit-${node.type}${sc}">` +
-        `<p class="reqit-label">${si}${compositeLabel(node)}</p>` +
-        renderPostConstraints(node, catalog) +
-        itemsHtml +
+      return `<div class="${pfx}requirement ${pfx}${node.type}${sc}">` +
+        `<p class="${pfx}label">${si}${applyLabel(compositeLabel(node, pfx))}</p>` +
+        renderPostConstraints(node, catalog, pfx) +
+        auditItemList(node.items, auditItems) +
         `</div>`;
     }
 
@@ -339,57 +356,49 @@ function renderNodeWithAudit(node, catalog, auditNode) {
       const sourceAudit = auditNode ? auditNode.source : null;
       // For credits-from, source audit may be an all-of wrapping the items
       const sourceAuditItems = sourceAudit && sourceAudit.items ? sourceAudit.items : [];
-      const itemsHtml = '<ul class="reqit-items">' +
-        sourceItems.map((item, i) =>
-          `<li>${renderNodeWithAudit(item, catalog, sourceAuditItems[i] || sourceAudit)}</li>`
-        ).join('') + '</ul>';
       const creditsBaseAudit = `Complete <strong>${comp} ${node.credits} credits</strong> from:`;
       const creditsHeadingAudit = node.label
-        ? `<span class="reqit-named-label">${esc(node.label)}</span> \u2014 ${creditsBaseAudit.charAt(0).toLowerCase()}${creditsBaseAudit.slice(1)}`
+        ? `<span class="${pfx}named-label">${esc(node.label)}</span> \u2014 ${creditsBaseAudit.charAt(0).toLowerCase()}${creditsBaseAudit.slice(1)}`
         : creditsBaseAudit;
-      return `<div class="reqit-requirement reqit-credits-from${sc}">` +
-        `<p class="reqit-label">${si}${creditsHeadingAudit}</p>` +
-        renderPostConstraints(node, catalog) +
-        itemsHtml +
+      return `<div class="${pfx}requirement ${pfx}credits-from${sc}">` +
+        `<p class="${pfx}label">${si}${applyLabel(creditsHeadingAudit)}</p>` +
+        renderPostConstraints(node, catalog, pfx) +
+        auditItemList(sourceItems, sourceAuditItems.length > 0 ? sourceAuditItems : sourceItems.map(() => sourceAudit)) +
         `</div>`;
     }
 
     case 'with-constraint': {
       const innerAudit = auditNode ? auditNode.requirement : null;
-      const inner = renderNodeWithAudit(node.requirement, catalog, innerAudit);
+      const inner = renderNodeWithAudit(node.requirement, catalog, innerAudit, pfx, opts);
       const constraint = node.constraint.kind === 'min-grade'
         ? `minimum grade of ${esc(node.constraint.value)}`
         : `minimum GPA of ${node.constraint.value}`;
-      return `<div class="reqit-requirement reqit-with-constraint${sc}">` +
+      return `<div class="${pfx}requirement ${pfx}with-constraint${sc}">` +
         inner +
-        `<p class="reqit-constraint">${si}With a ${constraint}</p>` +
+        `<p class="${pfx}constraint">${si}With a ${constraint}</p>` +
         `</div>`;
     }
 
     case 'except': {
       const sourceAudit = auditNode ? auditNode.source : null;
-      const source = renderNodeWithAudit(node.source, catalog, sourceAudit);
+      const source = renderNodeWithAudit(node.source, catalog, sourceAudit, pfx, opts);
       const excludeAudits = auditNode && auditNode.exclude ? auditNode.exclude : [];
-      const excludeHtml = '<ul class="reqit-items">' +
-        node.exclude.map((item, i) =>
-          `<li>${renderNodeWithAudit(item, catalog, excludeAudits[i] || null)}</li>`
-        ).join('') + '</ul>';
-      return `<div class="reqit-requirement reqit-except${sc}">` +
+      return `<div class="${pfx}requirement ${pfx}except${sc}">` +
         source +
-        `<p class="reqit-label">Except:</p>` +
-        renderPostConstraints(node, catalog) +
-        excludeHtml +
+        `<p class="${pfx}label">Except:</p>` +
+        renderPostConstraints(node, catalog, pfx) +
+        auditItemList(node.exclude, excludeAudits) +
         `</div>`;
     }
 
     case 'variable-def':
-      return renderNodeWithAudit(node.value, catalog, auditNode);
+      return renderNodeWithAudit(node.value, catalog, auditNode, pfx, opts);
 
     case 'scope':
-      return renderNodeWithAudit(node.body, catalog, auditNode);
+      return renderNodeWithAudit(node.body, catalog, auditNode, pfx, opts);
 
     case 'program-ref': {
-      let html = `<span class="reqit-program-ref${sc}">${si}Program &quot;${esc(node.code)}&quot;`;
+      let html = `<span class="${pfx}program-ref${sc}">${si}Program &quot;${esc(node.code)}&quot;`;
       if (auditNode && auditNode.notDeclared) {
         html += ' <em>(not declared)</em>';
       }
@@ -398,16 +407,16 @@ function renderNodeWithAudit(node, catalog, auditNode) {
     }
 
     case 'program-filter': {
-      const pfx = node.quantifier === 'any' ? 'Any program'
+      const quantPfx = node.quantifier === 'any' ? 'Any program'
         : node.quantifier === 'all' ? 'All programs'
         : `${comparisonPhrase(node.comparison).charAt(0).toUpperCase() + comparisonPhrase(node.comparison).slice(1)} ${node.count} programs`;
       const fDescs = node.filters.map(f => `${esc(f.field)} ${OP_SYMBOLS[f.op] || esc(f.op)} &quot;${esc(String(f.value))}&quot;`).join(' and ');
-      return `<span class="reqit-program-filter${sc}">${si}${pfx} where ${fDescs}</span>`;
+      return `<span class="${pfx}program-filter${sc}">${si}${quantPfx} where ${fDescs}</span>`;
     }
 
     // Remaining types: fall through to non-audit rendering
     default:
-      return renderNode(node, catalog);
+      return renderNode(node, catalog, pfx, opts);
   }
 }
 

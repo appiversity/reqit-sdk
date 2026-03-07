@@ -242,9 +242,9 @@ class Requirement {
 
   validate() { return validate(this.#ast); }
 
-  toOutline(catalog) { return toOutline(this.#ast, unwrapCatalog(catalog)); }
+  toOutline(catalog, options) { return toOutline(this.#ast, unwrapCatalog(catalog), null, options); }
 
-  toHTML(catalog) { return toHTML(this.#ast, unwrapCatalog(catalog)); }
+  toHTML(catalog, options) { return toHTML(this.#ast, unwrapCatalog(catalog), null, options); }
 
   resolve(catalog) {
     return new ResolutionResult(resolve(this.#ast, unwrapCatalog(catalog)));
@@ -893,8 +893,8 @@ class AuditResult {
     return findNextEligible(this.#raw.result, unwrapCatalog(catalog), unwrapTranscript(transcript));
   }
 
-  toHTML(catalog) {
-    return toHTML(this.#ast, unwrapCatalog(catalog), this.#raw.result);
+  toHTML(catalog, options) {
+    return toHTML(this.#ast, unwrapCatalog(catalog), this.#raw.result, options);
   }
 
   toOutline(catalog, options) {
