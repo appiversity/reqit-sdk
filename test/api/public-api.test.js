@@ -409,6 +409,41 @@ describe('ResolutionResult enrichment', () => {
     const result = req.resolve(minimalCatalog);
     expect(result.subjects).toContain('ART');
   });
+
+  test('warnings is empty array when no issues', () => {
+    const req = api.parse('courses where attribute = "WI"');
+    const result = req.resolve(minimalCatalog);
+    expect(result.warnings).toEqual([]);
+  });
+
+  test('warnings includes unknown attribute code', () => {
+    const req = api.parse('courses where attribute = "FAKE"');
+    const result = req.resolve(minimalCatalog);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toContain('FAKE');
+    expect(result.warnings[0]).toContain('Unknown attribute code');
+  });
+
+  test('warnings for multiple unknown attributes in separate filters', () => {
+    const req = api.parse('all of (courses where attribute = "NOPE", courses where attribute = "ALSO_FAKE")');
+    const result = req.resolve(minimalCatalog);
+    expect(result.warnings).toHaveLength(2);
+    expect(result.warnings[0]).toContain('NOPE');
+    expect(result.warnings[1]).toContain('ALSO_FAKE');
+  });
+
+  test('no warning when catalog has no attributes registry', () => {
+    const catNoAttrs = { ...minimalCatalog, attributes: undefined };
+    const req = api.parse('courses where attribute = "FAKE"');
+    const result = req.resolve(catNoAttrs);
+    expect(result.warnings).toEqual([]);
+  });
+
+  test('known attribute code produces no warning', () => {
+    const req = api.parse('all of (courses where attribute = "QR", courses where attribute = "WI")');
+    const result = req.resolve(minimalCatalog);
+    expect(result.warnings).toEqual([]);
+  });
 });
 
 // ============================================================

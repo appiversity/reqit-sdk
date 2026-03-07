@@ -93,6 +93,7 @@ function resolve(ast, catalog) {
     filters: [],           // { node, matched: Course[] }
     defs,                  // variable name → variable-def node
     expanding: new Set(),  // guards against circular variable refs
+    warnings: [],          // resolver warnings (e.g. unknown attribute codes)
   };
 
   walkNode(ast, ctx);
@@ -100,6 +101,7 @@ function resolve(ast, catalog) {
   return {
     courses: Array.from(ctx.collected.values()),
     filters: ctx.filters,
+    warnings: ctx.warnings,
   };
 }
 
@@ -380,6 +382,19 @@ function walkNode(node, ctx) {
     }
 
     case 'course-filter': {
+      // Warn on unknown attribute codes
+      if (ctx.catalog.attributes && ctx.catalog.attributes.length > 0) {
+        for (const f of node.filters) {
+          if (f.field === 'attribute') {
+            const codes = Array.isArray(f.value) ? f.value : [f.value];
+            for (const code of codes) {
+              if (!ctx.catalog.attributes.some(a => a.code === code)) {
+                ctx.warnings.push(`Unknown attribute code "${code}" in filter; not defined in catalog attributes`);
+              }
+            }
+          }
+        }
+      }
       const directMatches = evaluateFilters(node.filters, ctx.catalog.courses);
       // Expand matches with cross-listed equivalents
       const matched = expandCrossListed(directMatches, ctx.crossListIndex);

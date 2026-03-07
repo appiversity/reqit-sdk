@@ -783,6 +783,9 @@ class ResolutionResult {
   /** Filter nodes and their matched courses. */
   get filters() { return this.#raw.filters; }
 
+  /** Resolver warnings (e.g. unknown attribute codes). */
+  get warnings() { return this.#raw.warnings || []; }
+
   /**
    * All unique courses across explicit references and filter matches.
    * Deduplicated by courseKey.
