@@ -158,6 +158,20 @@ class Catalog {
       return true;
     });
   }
+
+  withPrograms(programMap) {
+    const programs = (this.#data.programs || []).map(p => {
+      const req = programMap[p.code];
+      if (!req) return p;
+      return { ...p, requirements: req instanceof Requirement ? req.ast : req };
+    });
+    for (const [code, req] of Object.entries(programMap)) {
+      if (!programs.some(p => p.code === code)) {
+        programs.push({ code, requirements: req instanceof Requirement ? req.ast : req });
+      }
+    }
+    return new Catalog({ ...this.#data, programs });
+  }
 }
 
 // ============================================================

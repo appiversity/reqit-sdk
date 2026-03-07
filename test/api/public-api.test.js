@@ -447,6 +447,79 @@ describe('Catalog entity', () => {
 });
 
 // ============================================================
+// 9b. Catalog.withPrograms()
+// ============================================================
+
+describe('Catalog.withPrograms()', () => {
+  const cat = api.catalog(minimalCatalog);
+
+  test('returns a new Catalog instance', () => {
+    const enriched = cat.withPrograms({});
+    expect(enriched).toBeInstanceOf(api.Catalog);
+    expect(enriched).not.toBe(cat);
+  });
+
+  test('original catalog is not mutated', () => {
+    const mathReq = api.parse('all of (MATH 151, MATH 152)');
+    cat.withPrograms({ 'CMPS': mathReq });
+    // Original should not have requirements on any program
+    const original = cat.findProgram('CMPS');
+    expect(original).toBeDefined();
+    expect(original.requirements).toBeUndefined();
+  });
+
+  test('attaches requirements to matching programs', () => {
+    const mathReq = api.parse('all of (MATH 151, MATH 152)');
+    const enriched = cat.withPrograms({ 'CMPS': mathReq });
+    const prog = enriched.findProgram('CMPS');
+    expect(prog).toBeDefined();
+    expect(prog.requirements).toBeDefined();
+    expect(prog.requirements.type).toBe('all-of');
+  });
+
+  test('programs not in map are unchanged', () => {
+    const enriched = cat.withPrograms({ 'CMPS': api.parse('MATH 151') });
+    const minor = enriched.findProgram('CMPS-MINOR');
+    expect(minor).toBeDefined();
+    expect(minor.requirements).toBeUndefined();
+  });
+
+  test('adds programs not already in the catalog', () => {
+    const newReq = api.parse('MATH 151');
+    const enriched = cat.withPrograms({ 'NEW-PROG': newReq });
+    const prog = enriched.findProgram('NEW-PROG');
+    expect(prog).toBeDefined();
+    expect(prog.code).toBe('NEW-PROG');
+    expect(prog.requirements).toBeDefined();
+    expect(prog.requirements.type).toBe('course');
+  });
+
+  test('accepts raw ASTs as well as Requirement instances', () => {
+    const rawAst = { type: 'course', subject: 'MATH', number: '151' };
+    const enriched = cat.withPrograms({ 'CMPS': rawAst });
+    const prog = enriched.findProgram('CMPS');
+    expect(prog.requirements).toEqual(rawAst);
+  });
+
+  test('enriched catalog enables program-ref sub-audits', () => {
+    const minorReq = api.parse('all of (MATH 151, MATH 152)');
+    const enriched = cat.withPrograms({ 'CMPS-MINOR': minorReq });
+
+    const mainReq = api.parse('all of (CMPS 130, program "CMPS-MINOR")');
+    const transcript = [
+      { subject: 'CMPS', number: '130', grade: 'A', credits: 3, status: 'completed' },
+      { subject: 'MATH', number: '151', grade: 'A', credits: 4, status: 'completed' },
+      { subject: 'MATH', number: '152', grade: 'B', credits: 4, status: 'completed' },
+    ];
+
+    const result = mainReq.audit(enriched, transcript, {
+      declaredPrograms: [{ code: 'CMPS-MINOR', type: 'minor', level: 'undergraduate' }],
+    });
+    expect(result.status).toBe('met');
+  });
+});
+
+// ============================================================
 // 10. TranscriptEntry entity
 // ============================================================
 
