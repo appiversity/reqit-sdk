@@ -1,6 +1,8 @@
 # Data Types Reference
 
-This document covers every data structure you pass into or receive from the reqit SDK. These are your integration boundaries — get these right and everything else falls into place.
+This document covers every data structure you pass into or receive from the reqit SDK. These are your integration boundaries — get these right and everything else falls into place. For database schema patterns and loading data into these types, see the [Database Integration Guide](database-guide.md).
+
+> **A note on `id` fields:** Every entity type accepts an optional `id` field. The SDK never generates, validates, or interprets these values — they exist so you can round-trip your own database primary keys or application identifiers through SDK objects. Set them when loading from a database; omit them when you don't need them.
 
 ## Catalog
 
@@ -51,21 +53,21 @@ const cat = reqit.catalog({
 
 ## Course
 
-A plain object inside `catalog.courses`. The SDK reads these fields but never modifies them.
+Created via `reqit.course()` or automatically when passed as a plain object inside `catalog.courses`. The Catalog constructor auto-wraps plain course objects into Course instances.
 
 ```javascript
-{
+const c = reqit.course({
   id: 1,                           // any — application-defined, passed through unchanged
-  subject: 'CMPS',                 // string — 2-6 uppercase letters/digits
-  number: '310',                   // string — starts with a digit, e.g. '101', '220.2', '101A'
+  subject: 'CMPS',                 // string — 2-6 uppercase letters/digits (required)
+  number: '310',                   // string — starts with a digit (required)
   title: 'Algorithms',             // string — human-readable title
   creditsMin: 3,                   // number — minimum credits
   creditsMax: 3,                   // number — maximum credits (same as min for fixed-credit)
   attributes: ['WI', 'QR'],       // string[] — attribute codes (optional, defaults to [])
   crossListGroup: 'CMPS-MATH-310', // string — shared ID linking cross-listed courses (optional)
-  prerequisites: { ... },          // AST — parsed prerequisite tree (optional, null = none)
-  corequisites: { ... },           // AST — parsed corequisite tree (optional, null = none)
-}
+  prerequisites: 'CMPS 230',       // string | Requirement | AST | null — auto-parsed if string
+  corequisites: 'CMPS 360',        // string | Requirement | AST | null — auto-parsed if string
+});
 ```
 
 | Field | Type | Required | Description |
@@ -78,24 +80,38 @@ A plain object inside `catalog.courses`. The SDK reads these fields but never mo
 | `creditsMax` | `number` | No | Maximum credits. Used for filter matching (`credits >= N` uses creditsMax). |
 | `attributes` | `string[]` | No | Attribute codes this course carries. Matched as opaque strings. Defaults to `[]`. |
 | `crossListGroup` | `string` | No | Identifier shared by cross-listed courses. When a student takes any course in the group, it satisfies requirements for all courses in the group. |
-| `prerequisites` | `object\|null` | No | Prerequisite AST (output of `reqit.parse()`). Used by `prerequisite includes` filters and the prereq graph. |
-| `corequisites` | `object\|null` | No | Corequisite AST. Used by `corequisite includes` filters. |
+| `prerequisites` | `string\|Requirement\|object\|null` | No | Prerequisite tree. Strings are auto-parsed, Requirement instances are unwrapped to AST, objects pass through as raw AST. Defaults to `null`. |
+| `corequisites` | `string\|Requirement\|object\|null` | No | Corequisite tree. Same normalization as prerequisites. Defaults to `null`. |
+
+| Getter | Returns | Description |
+|--------|---------|-------------|
+| `c.id` | `any\|null` | Application-defined ID. |
+| `c.subject` | `string` | Subject code. |
+| `c.number` | `string` | Course number. |
+| `c.title` | `string\|null` | Course title. |
+| `c.creditsMin` | `number\|null` | Minimum credits. |
+| `c.creditsMax` | `number\|null` | Maximum credits. |
+| `c.attributes` | `string[]` | Attribute codes (defaults to `[]`). |
+| `c.crossListGroup` | `string\|null` | Cross-list group identifier. |
+| `c.prerequisites` | `object\|null` | Prerequisite AST (always normalized). |
+| `c.corequisites` | `object\|null` | Corequisite AST (always normalized). |
+| `c.toJSON()` | `object` | Serializable copy. |
 
 ---
 
 ## Program
 
-A plain object inside `catalog.programs`.
+Created via `reqit.program()` or automatically when passed as a plain object inside `catalog.programs`. The Catalog constructor auto-wraps plain program objects into Program instances.
 
 ```javascript
-{
+const p = reqit.program({
   id: 1,
-  code: 'CMPS',                    // string — unique identifier
+  code: 'CMPS',                    // string — unique identifier (required)
   name: 'Computer Science',        // string — display name
-  type: 'major',                   // string — major, minor, certificate, concentration, track, cluster
-  level: 'undergraduate',          // string — undergraduate, graduate, doctoral, etc.
+  type: 'major',                   // string — major, minor, certificate, etc. (required)
+  level: 'undergraduate',          // string — undergraduate, graduate, doctoral, etc. (required)
   requirements: { ... },           // AST — parsed requirement tree (optional, attached via withPrograms)
-}
+});
 ```
 
 | Field | Type | Required | Description |
@@ -107,20 +123,37 @@ A plain object inside `catalog.programs`.
 | `level` | `string` | **Yes** | One of: `undergraduate`, `graduate`, `doctoral`, `professional`, `post-graduate`, `post-doctoral`. |
 | `requirements` | `object` | No | Requirement AST. Usually attached later via `catalog.withPrograms()`. |
 
+| Getter | Returns | Description |
+|--------|---------|-------------|
+| `p.id` | `any\|null` | Application-defined ID. |
+| `p.code` | `string` | Program code. |
+| `p.name` | `string\|null` | Display name. |
+| `p.type` | `string` | Program type. |
+| `p.level` | `string` | Program level. |
+| `p.requirements` | `object\|undefined` | Requirement AST if attached. |
+| `p.toJSON()` | `object` | Serializable copy. |
+
 ---
 
 ## Attribute
 
-A plain object inside `catalog.attributes`.
+Created via `reqit.attribute()` or automatically when passed as a plain object inside `catalog.attributes`. The Catalog constructor auto-wraps plain attribute objects into Attribute instances.
 
 ```javascript
-{
-  code: 'WI',                       // string — unique code used in course.attributes
+const a = reqit.attribute({
+  code: 'WI',                       // string — unique code used in course.attributes (required)
   name: 'Writing Intensive',        // string — display name
-}
+});
 ```
 
 When a requirement says `courses where attribute = "WI"`, the SDK matches against `course.attributes` arrays. The `name` field is used by renderers to show human-readable labels.
+
+| Getter | Returns | Description |
+|--------|---------|-------------|
+| `a.id` | `any\|null` | Application-defined ID. |
+| `a.code` | `string` | Attribute code. |
+| `a.name` | `string\|null` | Display name. |
+| `a.toJSON()` | `object` | Serializable copy. |
 
 ---
 
@@ -149,38 +182,9 @@ const deg = reqit.degree({
 
 ---
 
-## TranscriptCourse
-
-Created automatically when you add courses to a Transcript, or directly via `new reqit.TranscriptCourse(data)`.
-
-```javascript
-{
-  id: 'tc-001',                     // string — application-defined (optional)
-  subject: 'MATH',                  // string — must match catalog subject codes
-  number: '151',                    // string — must match catalog course numbers
-  grade: 'A',                       // string — raw letter grade (optional)
-  credits: 4,                       // number — credits earned (optional, defaults to 0)
-  term: 'Fall 2023',                // string — term label (optional, defaults to '')
-  status: 'completed',              // string — 'completed' or 'in-progress' (optional, defaults to 'completed')
-}
-```
-
-| Getter | Returns | Description |
-|--------|---------|-------------|
-| `tc.id` | `string\|null` | Application-defined ID. |
-| `tc.subject` | `string` | Subject code. |
-| `tc.number` | `string` | Course number. |
-| `tc.grade` | `string\|null` | Raw grade string. |
-| `tc.credits` | `number` | Credits earned (0 if not provided). |
-| `tc.term` | `string` | Term label (empty string if not provided). |
-| `tc.status` | `string` | `'completed'` or `'in-progress'`. |
-| `tc.toJSON()` | `object` | Serializable copy. |
-
----
-
 ## Transcript
 
-Created via `reqit.transcript()`. Represents a complete student record. All mutations return a new Transcript (immutable).
+Created via `reqit.transcript()`. Represents a complete student record. All mutations return a new Transcript (immutable). Described before its component types (TranscriptCourse, DeclaredProgram) so you see the container shape first.
 
 ```javascript
 const tx = reqit.transcript({
@@ -189,14 +193,15 @@ const tx = reqit.transcript({
     { subject: 'CMPS', number: '130', grade: 'B+', credits: 3, term: 'Fall 2023' },
   ],
   attainments: {                    // object — keyed by code (optional)
-    'SAT-MATH': 620,
+    'SAT-MATH': 620,                //   number for scores
+    'JUNIOR_STANDING': true,        //   boolean for milestones
   },
-  declaredPrograms: [               // array of program declarations (optional)
+  declaredPrograms: [               // array of DeclaredProgram objects (optional)
     { code: 'CMPS', type: 'major', level: 'undergraduate', role: 'primary' },
   ],
   waivers: [ waiver1, waiver2 ],    // array of Waiver instances (optional)
   substitutions: [ sub1 ],          // array of Substitution instances (optional)
-  level: 'undergraduate',           // string (optional)
+  level: 'undergraduate',           // string — use ProgramLevel values (optional)
   duplicatePolicy: 'last',          // string — 'first' or 'last' (optional)
 });
 ```
@@ -204,11 +209,11 @@ const tx = reqit.transcript({
 | Field | Type | Required | Description |
 |-------|------|:--------:|-------------|
 | `courses` | `object[]` | **Yes** | Array of course records. Each is wrapped in a TranscriptCourse. |
-| `attainments` | `object` | No | Key-value pairs: code → value (number or boolean). Matched against `score` and `attainment` nodes. |
-| `declaredPrograms` | `object[]` | No | Program declarations with `code`, `type`, `level`, and optional `role`. |
+| `attainments` | `object` | No | Key-value pairs: code → value. Values are numbers (for `score` nodes, e.g. `'SAT-MATH': 620`) or booleans (for `attainment` nodes, e.g. `'JUNIOR_STANDING': true`). |
+| `declaredPrograms` | `object[]` | No | Program declarations. Each is wrapped in a DeclaredProgram (see below). |
 | `waivers` | `Waiver[]` | No | Waiver exception instances (must use `reqit.waiver()` to create). |
 | `substitutions` | `Substitution[]` | No | Substitution exception instances (must use `reqit.substitution()` to create). |
-| `level` | `string` | No | Student's academic level. |
+| `level` | `string` | No | Student's academic level. Should use `ProgramLevel` values (`'undergraduate'`, `'graduate'`, etc.). |
 | `duplicatePolicy` | `string` | No | When a course appears multiple times: `'last'` (default) uses the most recent; `'first'` uses the earliest. |
 
 ### Transcript Methods
@@ -221,12 +226,112 @@ All mutation methods return a **new** Transcript — the original is never modif
 | `removeCourse(subject, number)` | `Transcript` | Remove a course by subject and number. |
 | `addAttainment(code, value)` | `Transcript` | Add or update an attainment. |
 | `removeAttainment(code)` | `Transcript` | Remove an attainment by code. |
-| `declareProgram(declaration)` | `Transcript` | Add a program declaration. |
+| `declareProgram(declaration)` | `Transcript` | Add a program declaration (plain object or DeclaredProgram). |
 | `undeclareProgram(code)` | `Transcript` | Remove a program declaration by code. |
 | `addWaiver(waiver)` | `Transcript` | Add a Waiver instance. |
 | `removeWaiver(target)` | `Transcript` | Remove by course `{ subject, number }`, by string target name, or by ID string. |
 | `addSubstitution(sub)` | `Transcript` | Add a Substitution instance. |
 | `removeSubstitution(target)` | `Transcript` | Remove by original course `{ subject, number }` or by ID string. |
+
+---
+
+## TranscriptCourse
+
+Created automatically when you add courses to a Transcript, or directly via `new reqit.TranscriptCourse(data)`.
+
+```javascript
+{
+  id: 'tc-001',                     // any — application-defined (optional)
+  subject: 'MATH',                  // string — must match catalog subject codes (required)
+  number: '151',                    // string — must match catalog course numbers (required)
+  grade: 'A',                       // string — raw letter grade (optional)
+  credits: 4,                       // number — credits earned (optional, defaults to 0)
+  term: 'Fall 2023',                // string — term label (optional, defaults to '')
+  status: 'completed',              // string — 'completed' or 'in-progress' (optional, defaults to 'completed')
+}
+```
+
+| Getter | Returns | Description |
+|--------|---------|-------------|
+| `tc.id` | `any\|null` | Application-defined ID. |
+| `tc.subject` | `string` | Subject code. |
+| `tc.number` | `string` | Course number. |
+| `tc.grade` | `string\|null` | Raw grade string. |
+| `tc.credits` | `number` | Credits earned (0 if not provided). |
+| `tc.term` | `string` | Term label (empty string if not provided). |
+| `tc.status` | `string` | `'completed'` or `'in-progress'`. |
+| `tc.toJSON()` | `object` | Serializable copy. |
+
+---
+
+## DeclaredProgram
+
+Created via `reqit.declaredProgram()` or automatically when passed as a plain object inside `transcript.declaredPrograms`. Represents a student's declaration of a program (major, minor, etc.).
+
+```javascript
+const dp = reqit.declaredProgram({
+  id: 'dp-001',                      // any — application-defined (optional)
+  code: 'CMPS',                      // string — program code (required)
+  type: 'major',                     // string — ProgramType value (required)
+  level: 'undergraduate',            // string — ProgramLevel value (optional)
+  role: 'primary',                   // string — 'primary' or null (optional)
+});
+```
+
+The `type` field is validated against `ProgramType` values (`major`, `minor`, `certificate`, `concentration`, `track`, `cluster`). The `level` field, when provided, is validated against `ProgramLevel` values.
+
+The `role` field identifies the student's primary program for each type. Set `role: 'primary'` on the student's main major and main minor. This drives `program-context-ref` resolution in requirements (e.g., "primary major" references).
+
+| Getter | Returns | Description |
+|--------|---------|-------------|
+| `dp.id` | `any\|null` | Application-defined ID. |
+| `dp.code` | `string` | Program code. |
+| `dp.type` | `string` | Program type (validated against ProgramType). |
+| `dp.level` | `string\|null` | Program level (validated against ProgramLevel when provided). |
+| `dp.role` | `string\|null` | `'primary'` or `null`. |
+| `dp.toJSON()` | `object` | Serializable copy. |
+
+---
+
+## ReqitVariable
+
+Created via `reqit.sharedVariable()`. Represents a reusable variable definition that can be injected into any audit, multi-tree audit, or resolution via the `sharedDefs` option.
+
+```javascript
+const v = reqit.sharedVariable({
+  name: 'discrete',                      // string — variable name without $ prefix (required)
+  requirement: 'any of (MATH 205, MATH 237)', // string | Requirement | AST (required)
+});
+```
+
+The `requirement` field accepts a string (auto-parsed), a `Requirement` instance, or a raw AST object.
+
+| Getter | Returns | Description |
+|--------|---------|-------------|
+| `v.name` | `string` | Variable name (without `$`). |
+| `v.requirement` | `Requirement` | The parsed requirement. |
+| `v.ast` | `object` | The requirement's AST. |
+| `v.data` | `object` | Frozen data object. |
+| `v.toJSON()` | `object` | `{ name, ast }` serializable form. |
+
+### sharedDefs Option
+
+Pass an array of `ReqitVariable` instances (or a `Map<string, AST>`, or a plain object `{ name: AST }`) as the `sharedDefs` option to `audit()`, `auditMulti()`, or `resolve()`. Local variable definitions in the requirement tree always take precedence over shared definitions with the same name.
+
+```javascript
+const shared = [
+  reqit.sharedVariable({ name: 'discrete', requirement: 'any of (MATH 205, MATH 237)' }),
+];
+
+// Single-tree audit
+const result = req.audit(catalog, transcript, { sharedDefs: shared });
+
+// Multi-tree audit
+const multi = reqit.auditMulti(catalog, transcript, { trees, sharedDefs: shared });
+
+// Resolution
+const resolved = req.resolve(catalog, { sharedDefs: shared });
+```
 
 ---
 

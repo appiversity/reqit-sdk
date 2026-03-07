@@ -80,11 +80,32 @@ function buildCrossListIndex(courses) {
  * @param {object} catalog - Catalog with courses, programs, attainments, gradeConfig
  * @returns {{ courses: object[], filters: { node: object, matched: object[] }[] }}
  */
-function resolve(ast, catalog) {
+/**
+ * Merge shared variable definitions into a local defs map.
+ * Local defs win on name collision.
+ *
+ * @param {Map<string, object>} defs - Local variable-def map (mutated in place)
+ * @param {Map<string, object>} sharedDefs - Map<string, ast> of shared variable ASTs
+ * @returns {Map<string, object>}
+ */
+function mergeSharedDefs(defs, sharedDefs) {
+  if (!sharedDefs) return defs;
+  for (const [name, ast] of sharedDefs) {
+    if (!defs.has(name)) {  // local defs win on collision
+      defs.set(name, { type: 'variable-def', name, value: ast });
+    }
+  }
+  return defs;
+}
+
+function resolve(ast, catalog, options) {
   const norm = normalizeCatalog(catalog);
   const courseIndex = buildCourseIndex(norm.courses);
   const crossListIndex = buildCrossListIndex(norm.courses);
   const defs = collectDefs(ast, '', new Map());
+  if (options && options.sharedDefs) {
+    mergeSharedDefs(defs, options.sharedDefs);
+  }
   // Build attribute code set for unknown-attribute warnings
   const attrCodes = norm.attributes && norm.attributes.length > 0
     ? new Set(norm.attributes.map(a => a.code))
@@ -507,5 +528,6 @@ module.exports = {
   evaluateFilter,
   evaluateFilters,
   collectDefs,
+  mergeSharedDefs,
   prepareCatalog,
 };

@@ -4,6 +4,8 @@ This tutorial walks you through building a degree audit system with the reqit SD
 
 **Prerequisites:** You should be comfortable with Node.js and understand the basics of academic degree requirements (courses, credits, prerequisites, majors/minors).
 
+> **A note on `id` fields:** Every entity type (Course, Program, TranscriptCourse, etc.) accepts an optional `id` field. The SDK never generates or interprets these — they're for round-tripping your own database keys. You can omit them entirely when working without a database.
+
 ## Installation
 
 ```bash
@@ -16,9 +18,9 @@ const reqit = require('reqit');
 
 ---
 
-## 1. Building a Catalog
+## 1. Building a Catalog — Your Institution's Course Offering
 
-A catalog represents everything your institution offers in a given academic year — courses, programs, attributes, and grade configuration. You'll typically build this from your Student Information System (SIS) data.
+Before you can write requirements or run audits, you need a catalog. A catalog represents everything your institution offers in a given academic year — courses, programs, attributes, and grade configuration. You'll typically build this from your Student Information System (SIS) data. For connecting to a database, see the [Database Integration Guide](database-guide.md).
 
 ### Courses
 
@@ -37,7 +39,7 @@ const catalog = reqit.catalog({
       subject: 'MATH', number: '152', title: 'Calculus II',
       creditsMin: 4, creditsMax: 4,
       attributes: ['QR'],
-      prerequisites: reqit.parse('MATH 151').ast,
+      prerequisites: 'MATH 151',
     },
     {
       subject: 'CMPS', number: '130', title: 'Intro to Programming',
@@ -46,13 +48,13 @@ const catalog = reqit.catalog({
     {
       subject: 'CMPS', number: '230', title: 'Data Structures',
       creditsMin: 3, creditsMax: 3,
-      prerequisites: reqit.parse('CMPS 130').ast,
+      prerequisites: 'CMPS 130',
     },
     {
       subject: 'CMPS', number: '310', title: 'Algorithms',
       creditsMin: 3, creditsMax: 3,
       attributes: ['WI'],
-      prerequisites: reqit.parse('CMPS 230').ast,
+      prerequisites: 'CMPS 230',
     },
     {
       subject: 'ENGL', number: '101', title: 'College Writing',
@@ -72,7 +74,7 @@ const catalog = reqit.catalog({
 
 A few things to note:
 
-- **Prerequisites** are reqit ASTs. The easiest way is `reqit.parse('CMPS 130').ast`. If your SIS stores prerequisites as structured data, you can build the AST objects directly.
+- **Prerequisites** can be strings (`'CMPS 130'`), Requirement instances, or raw AST objects. Strings are auto-parsed by the Course constructor. If your SIS stores prerequisites as structured data, you can pass AST objects directly.
 - **Attributes** are opaque string codes. Define them in `attributes` for human-readable names, and reference them in `course.attributes` arrays.
 - **Credits** use `creditsMin` / `creditsMax` for variable-credit courses. For fixed-credit courses, set both to the same value.
 
@@ -96,9 +98,9 @@ const subjects = catalog.getSubjects();
 
 ---
 
-## 2. Writing Requirements
+## 2. Writing Requirements — The reqit Language
 
-Requirements are written in the reqit language — a human-readable DSL that's close to how registrars think about degree requirements.
+With a catalog in place, you can define what students need to complete. Requirements are written in the reqit language — a human-readable DSL that's close to how registrars think about degree requirements. This section covers the most common patterns; see the full language reference for advanced features.
 
 ### Basic Requirements
 
@@ -226,9 +228,9 @@ console.log(csMajor.text);
 
 ---
 
-## 3. Building a Transcript
+## 3. Building a Transcript — A Student's Academic Record
 
-A transcript represents a student's academic record. Create it with course entries and any attainments, program declarations, or exceptions.
+Now that you have a catalog and requirements, you need a student's record to audit against. A transcript represents everything a student has done — courses taken, test scores, declared programs, and any exceptions (waivers/substitutions). Create it with course entries and any attainments, program declarations, or exceptions.
 
 ```javascript
 const transcript = reqit.transcript({
@@ -275,9 +277,9 @@ const modified = transcript
 
 ---
 
-## 4. Running an Audit
+## 4. Running an Audit — Evaluating Progress
 
-An audit evaluates a requirement tree against a student's transcript and tells you what's met, what's not, and what's in progress.
+This is where everything comes together. An audit evaluates a requirement tree against a student's transcript and tells you what's met, what's not, and what's in progress. The audit engine handles all the complexity — grade constraints, credit counting, filter matching, cross-listed courses, and more.
 
 ```javascript
 const result = csMajor.audit(catalog, transcript);
@@ -364,7 +366,55 @@ result.toOutline(catalog, {
 
 ---
 
-## 5. Waivers and Substitutions
+## 5. What-If Analysis — Exploring Hypothetical Scenarios
+
+Because transcripts are immutable, you can safely explore hypothetical scenarios without affecting the original data. This is one of the SDK's most powerful features for academic advising.
+
+### Testing future course plans
+
+```javascript
+// What if the student takes CMPS 320 and CMPS 380 next semester?
+const whatIf = transcript
+  .addCourse({ subject: 'CMPS', number: '320', credits: 3, status: 'in-progress' })
+  .addCourse({ subject: 'CMPS', number: '380', credits: 3, status: 'in-progress' });
+
+const whatIfResult = csMajor.audit(catalog, whatIf);
+console.log(`With planned courses: ${whatIfResult.status}`);
+// transcript is unchanged — whatIf is a separate instance
+```
+
+### Comparing potential majors
+
+```javascript
+// Student is undeclared — compare progress toward CS vs Math
+const programs = ['CMPS', 'MATH'];
+for (const code of programs) {
+  const program = catalog.findProgram(code);
+  if (!program || !program.requirements) continue;
+  const req = reqit.fromAST(program.requirements);
+  const result = req.audit(catalog, transcript);
+  console.log(`${program.name}: ${result.status} (${result.summary.met}/${result.summary.total} met)`);
+}
+```
+
+### What-if with auditMulti
+
+```javascript
+// What if the student declares a CS major and Math minor?
+const whatIfTx = transcript
+  .declareProgram({ code: 'CMPS', type: 'major', level: 'undergraduate', role: 'primary' })
+  .declareProgram({ code: 'MATH', type: 'minor', level: 'undergraduate' });
+
+const multi = reqit.auditMulti(catalog, whatIfTx, {
+  trees: { 'CMPS': csMajor, 'MATH': mathMinor },
+});
+console.log('CS:', multi.trees['CMPS'].status);
+console.log('Math:', multi.trees['MATH'].status);
+```
+
+---
+
+## 6. Waivers and Substitutions — Handling Exceptions
 
 Students sometimes get exceptions — a course is waived due to transfer credit, or one course is accepted in place of another.
 
@@ -441,9 +491,9 @@ if (result.exceptions) {
 
 ---
 
-## 6. Resolving Filters
+## 7. Resolving Filters — Previewing Course Matches
 
-Before auditing, you might want to see which courses a requirement's filters actually match. This is useful for advising — showing students their options.
+Before auditing, you might want to see which courses a requirement's filters actually match. This is useful for advising — showing students their options before they register.
 
 ```javascript
 const electives = reqit.parse(`
@@ -470,9 +520,96 @@ console.log(`CMPS 310 matched ${matchedFilters.length} filter(s)`);
 
 ---
 
-## 7. Multi-Program Audits
+## 8. Shared Variables and Clusters — Reusing Requirements Across Programs
 
-Real students have multiple requirement trees — a major, general education, maybe a minor. The multi-tree audit handles shared course assignment and overlap rules.
+When the same requirement appears in multiple programs (e.g. general education in every major), you don't want to duplicate it. The SDK offers two complementary approaches depending on whether the shared piece is independently auditable.
+
+### Cluster Programs — Independently Auditable Groups
+
+A cluster is a program that holds requirements which are referenced from other programs. General education is the canonical example: it has its own complex requirement tree, appears in every major, and should be auditable on its own.
+
+1. Store gen-ed as a program with `type: 'cluster'` in the catalog:
+
+```javascript
+const catalog = reqit.catalog({
+  ay: '2025-2026',
+  courses: [ /* ... */ ],
+  programs: [
+    { code: 'GEN-ED', name: 'General Education', type: 'cluster', level: 'undergraduate' },
+    { code: 'BS-CMPS', name: 'B.S. in Computer Science', type: 'major', level: 'undergraduate' },
+  ],
+});
+```
+
+2. Write the cluster's requirements in its own file (e.g. `gen-ed.reqit`) and attach via `withPrograms()`.
+
+3. Reference it from each major:
+
+```
+# In bs-cmps.reqit
+$gen_ed = program "GEN-ED"
+
+"Degree Requirements": all of ($gen_ed, $cs_core, $math_required)
+```
+
+The audit engine expands the cluster's full requirement tree inline. You must declare the cluster in the student's `declaredPrograms` for the reference to resolve:
+
+```javascript
+const tx = reqit.transcript({
+  courses: [...],
+  declaredPrograms: [
+    reqit.declaredProgram({ code: 'GEN-ED', type: 'cluster', level: 'undergraduate' }),
+  ],
+});
+```
+
+### Shared Variables — Reusable Building Blocks
+
+For smaller patterns that don't warrant their own program — a repeated course choice, a common sub-expression — use shared variables. Create them with `reqit.sharedVariable()` and inject via the `sharedDefs` option:
+
+```javascript
+const sharedVars = [
+  reqit.sharedVariable({
+    name: 'discrete',
+    requirement: 'any of (MATH 205, MATH 237)',
+  }),
+];
+
+// Single-tree audit
+const result = req.audit(catalog, transcript, { sharedDefs: sharedVars });
+
+// Multi-tree audit
+const multi = reqit.auditMulti(catalog, transcript, {
+  trees: { 'BS-CMPS': csMajor, 'BS-CYBER': cyberMajor },
+  sharedDefs: sharedVars,
+});
+
+// Resolution
+const resolved = req.resolve(catalog, { sharedDefs: sharedVars });
+```
+
+In the requirement file, reference the shared variable just like a local one:
+
+```
+$math_required = "Math Requirements": all of (MATH 121, $discrete)
+```
+
+**Local definitions always take precedence.** If a requirement file defines `$discrete` locally, that definition wins over the shared one.
+
+### When to Use Which
+
+| | Cluster Program | Shared Variable |
+|---|---|---|
+| **Auditable on its own** | Yes — has its own result tree | No — embedded in the referencing program's tree |
+| **Appears in audit output** | As a distinct section | Inlined where referenced |
+| **Needs `declaredPrograms`** | Yes | No |
+| **Best for** | Gen-ed, school cores, any group meaningful on its own | Common elective lists, repeated sub-expressions, small reusable patterns |
+
+---
+
+## 9. Multi-Program Audits — Shared Course Assignment
+
+Real students have multiple requirement trees — a major, general education, maybe a minor. The multi-tree audit handles shared course assignment and overlap rules so a single course isn't double-counted where policies forbid it.
 
 ```javascript
 const genEd = reqit.parse(`
@@ -511,9 +648,9 @@ const overlap = reqit.parse(`
 
 ---
 
-## 8. Displaying Audits in a Web App
+## 10. Displaying Audits in a Web App — Server-Side Rendering
 
-Here's a practical pattern for a server-rendered web application using Express and Pug.
+Here's a practical pattern for a server-rendered web application using Express and Pug. For database loading patterns, see the [Database Integration Guide](database-guide.md).
 
 ### Express Route
 
@@ -578,9 +715,9 @@ Use the classes from `toHTML()` in your stylesheet. See the [HTML Reference](htm
 
 ---
 
-## 9. Building a Custom Renderer with walk()
+## 11. Building a Custom Renderer — Using walk()
 
-The built-in `toHTML()` and `toOutline()` renderers cover most cases. When you need something completely custom — React components, JSON for a mobile API, a PDF report — use `walk()`.
+The built-in `toHTML()` and `toOutline()` renderers cover most cases. When you need something completely custom — a JSON API response, a PDF report, or server-rendered templates — use `walk()` to traverse the audit tree yourself.
 
 ### Flat Course Status List
 
@@ -659,9 +796,9 @@ each node in auditTree
 
 ---
 
-## 10. Catalog Analysis
+## 12. Catalog Analysis — Prerequisite Graphs and Impact
 
-The catalog provides tools for curriculum planning and impact analysis.
+Beyond auditing individual students, the catalog provides tools for curriculum planning and impact analysis at the institutional level.
 
 ### Prerequisite Graph
 
@@ -702,9 +839,9 @@ console.log(`GPA: ${gpa.toFixed(2)}`);
 
 ---
 
-## 11. Exporting Data
+## 13. Exporting Data — Spreadsheet-Ready Output
 
-The SDK can export requirement and audit data as spreadsheet-ready objects (CSV or XLSX).
+The SDK can export requirement and audit data as spreadsheet-ready objects for CSV or XLSX generation.
 
 ```javascript
 // Prerequisite matrix — which courses require which
@@ -719,9 +856,9 @@ const auditExport = result.export(catalog, { format: 'csv' });
 
 ---
 
-## 12. Annotations for Shared Courses
+## 14. Annotations — Marking Shared Courses
 
-When a course satisfies requirements in multiple programs, you can annotate it in the rendered output:
+When a course satisfies requirements in multiple programs, you can annotate it in the rendered output to help students and advisors understand course sharing:
 
 ```javascript
 // Build an annotations map showing which courses are shared
@@ -750,9 +887,9 @@ const html = csResult.toHTML(catalog, { annotations });
 
 ---
 
-## 13. Putting It All Together
+## 15. Putting It All Together
 
-Here's a complete, minimal example of a degree audit flow:
+Here's a complete, minimal example of a degree audit flow from start to finish:
 
 ```javascript
 const reqit = require('reqit');
@@ -763,12 +900,12 @@ const catalog = reqit.catalog({
   courses: [
     { subject: 'MATH', number: '151', title: 'Calculus I', creditsMin: 4, creditsMax: 4 },
     { subject: 'MATH', number: '152', title: 'Calculus II', creditsMin: 4, creditsMax: 4,
-      prerequisites: reqit.parse('MATH 151').ast },
+      prerequisites: 'MATH 151' },
     { subject: 'CMPS', number: '130', title: 'Intro to Programming', creditsMin: 3, creditsMax: 3 },
     { subject: 'CMPS', number: '230', title: 'Data Structures', creditsMin: 3, creditsMax: 3,
-      prerequisites: reqit.parse('CMPS 130').ast },
+      prerequisites: 'CMPS 130' },
     { subject: 'CMPS', number: '310', title: 'Algorithms', creditsMin: 3, creditsMax: 3,
-      prerequisites: reqit.parse('CMPS 230').ast },
+      prerequisites: 'CMPS 230' },
   ],
 });
 
@@ -819,3 +956,4 @@ console.log(result.toOutline(catalog));
 
 - [Data Types Reference](data-types.md) — every field on every object, with types and defaults
 - [HTML Reference](html-reference.md) — all CSS classes, DOM structure, and starter stylesheet
+- [Database Integration Guide](database-guide.md) — schema design, loading patterns, and storing audit results

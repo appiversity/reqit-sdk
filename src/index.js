@@ -17,6 +17,11 @@ const {
   ProgramLevel,
   DegreeType,
   Requirement,
+  Course,
+  Program,
+  Attribute,
+  DeclaredProgram,
+  ReqitVariable,
   Catalog,
   Degree,
   TranscriptCourse,
@@ -28,6 +33,7 @@ const {
   unwrapTranscript,
   extractTranscriptOptions,
   deriveProgramContext,
+  normalizeSharedDefs,
 } = require('./entities');
 const { auditMulti: internalAuditMulti } = require('./audit/multi-tree');
 const { isPassingGrade, meetsMinGrade, calculateGPA: internalCalculateGPA, isValidGrade } = require('./grade');
@@ -61,9 +67,34 @@ function transcript(data) {
   return new Transcript(data);
 }
 
+/** Create a Course instance from course data. */
+function course(data) {
+  return new Course(data);
+}
+
+/** Create a Program instance from program data. */
+function program(data) {
+  return new Program(data);
+}
+
+/** Create an Attribute instance from attribute data. */
+function attribute(data) {
+  return new Attribute(data);
+}
+
+/** Create a DeclaredProgram instance from declared program data. */
+function declaredProgram(data) {
+  return new DeclaredProgram(data);
+}
+
 /** Create a Degree instance from degree data. */
 function degree(data) {
   return new Degree(data);
+}
+
+/** Create a ReqitVariable instance for shared variable injection. */
+function sharedVariable(data) {
+  return new ReqitVariable(data);
 }
 
 // ============================================================
@@ -106,6 +137,7 @@ function publicAuditMulti(cat, tx, options) {
   });
   // Extract transcript options (attainments, declaredPrograms, exceptions)
   const txOpts = extractTranscriptOptions(tx);
+  if (rest.sharedDefs) rest.sharedDefs = normalizeSharedDefs(rest.sharedDefs);
   const raw = internalAuditMulti(
     treeArray,
     unwrapCatalog(cat),
@@ -125,6 +157,14 @@ module.exports = {
   parse,
   /** Wrap a raw AST object in a Requirement instance. */
   fromAST,
+  /** Create a Course instance from course data. */
+  course,
+  /** Create a Program instance from program data. */
+  program,
+  /** Create an Attribute instance from attribute data. */
+  attribute,
+  /** Create a DeclaredProgram instance from declared program data. */
+  declaredProgram,
   /** Create a Catalog instance from catalog data. */
   catalog,
   /** Create a Transcript instance from transcript data. */
@@ -135,10 +175,22 @@ module.exports = {
   waiver: waiverFactory,
   /** Create a Substitution exception for audit. */
   substitution: substitutionFactory,
+  /** Create a ReqitVariable for shared variable injection. */
+  sharedVariable,
 
   // -- Entity classes --
   /** Parsed requirement with rendering, auditing, and analysis methods. */
   Requirement,
+  /** A course in the catalog with subject, number, credits, and prerequisites. */
+  Course,
+  /** A degree program (major, minor, certificate, etc.) with requirements. */
+  Program,
+  /** A course attribute (gen-ed tag, writing intensive, etc.). */
+  Attribute,
+  /** A declared program on a transcript (major, minor, etc.). */
+  DeclaredProgram,
+  /** A shared variable definition for cross-program reuse. */
+  ReqitVariable,
   /** Course catalog with lookup and query methods. */
   Catalog,
   /** Degree credential (B.S., M.A., etc.) with metadata. */

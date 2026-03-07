@@ -18,9 +18,11 @@ const inProgressTx = require('../fixtures/transcripts/minimal/in-progress.json')
 // ============================================================
 
 describe('public API — structural guards', () => {
-  const expectedFactories = ['parse', 'fromAST', 'catalog', 'transcript', 'degree', 'waiver', 'substitution'];
+  const expectedFactories = ['parse', 'fromAST', 'course', 'program', 'attribute', 'declaredProgram', 'catalog', 'transcript', 'degree', 'waiver', 'substitution', 'sharedVariable'];
   const expectedClasses = [
-    'Requirement', 'Catalog', 'Degree', 'Transcript', 'TranscriptCourse',
+    'Requirement', 'Course', 'Program', 'Attribute', 'DeclaredProgram',
+    'ReqitVariable',
+    'Catalog', 'Degree', 'Transcript', 'TranscriptCourse',
     'ResolutionResult', 'AuditResult', 'MultiAuditResult',
     'Waiver', 'Substitution',
   ];
@@ -2574,5 +2576,548 @@ describe('External IDs on entities', () => {
     const tx2 = tx.addSubstitution(s);
     const tx3 = tx2.removeSubstitution({ subject: 'MATH', number: '250' });
     expect(tx3.substitutions).toHaveLength(0);
+  });
+});
+
+// ============================================================
+// Course entity
+// ============================================================
+
+describe('Course entity', () => {
+  test('course() factory returns Course instance', () => {
+    const c = api.course({ subject: 'MATH', number: '151' });
+    expect(c).toBeInstanceOf(api.Course);
+  });
+
+  test('requires subject and number', () => {
+    expect(() => api.course({})).toThrow('Course requires subject and number');
+    expect(() => api.course({ subject: 'MATH' })).toThrow('Course requires subject and number');
+    expect(() => api.course({ number: '151' })).toThrow('Course requires subject and number');
+  });
+
+  test('getters expose all fields', () => {
+    const c = api.course({
+      id: 42,
+      subject: 'CMPS',
+      number: '310',
+      title: 'Algorithms',
+      creditsMin: 3,
+      creditsMax: 3,
+      attributes: ['WI'],
+      crossListGroup: 'CMPS-MATH-310',
+    });
+    expect(c.id).toBe(42);
+    expect(c.subject).toBe('CMPS');
+    expect(c.number).toBe('310');
+    expect(c.title).toBe('Algorithms');
+    expect(c.creditsMin).toBe(3);
+    expect(c.creditsMax).toBe(3);
+    expect(c.attributes).toEqual(['WI']);
+    expect(c.crossListGroup).toBe('CMPS-MATH-310');
+    expect(c.prerequisites).toBeNull();
+    expect(c.corequisites).toBeNull();
+  });
+
+  test('defaults: id null, title null, credits null, attributes [], prereqs/coreqs null', () => {
+    const c = api.course({ subject: 'MATH', number: '101' });
+    expect(c.id).toBeNull();
+    expect(c.title).toBeNull();
+    expect(c.creditsMin).toBeNull();
+    expect(c.creditsMax).toBeNull();
+    expect(c.attributes).toEqual([]);
+    expect(c.crossListGroup).toBeNull();
+    expect(c.prerequisites).toBeNull();
+    expect(c.corequisites).toBeNull();
+  });
+
+  test('toJSON() returns plain object', () => {
+    const c = api.course({ subject: 'MATH', number: '151', title: 'Calculus I' });
+    const json = c.toJSON();
+    expect(json.subject).toBe('MATH');
+    expect(json.number).toBe('151');
+    expect(json).toEqual({ subject: 'MATH', number: '151', title: 'Calculus I', prerequisites: null, corequisites: null, attributes: [] });
+  });
+
+  test('data is frozen', () => {
+    const c = api.course({ subject: 'MATH', number: '151' });
+    expect(Object.isFrozen(c.data)).toBe(true);
+  });
+
+  // Prerequisite normalization
+  test('prerequisites: string is auto-parsed to AST', () => {
+    const c = api.course({ subject: 'CMPS', number: '310', prerequisites: 'CMPS 230' });
+    expect(c.prerequisites).toBeDefined();
+    expect(c.prerequisites.type).toBe('course');
+    expect(c.prerequisites.subject).toBe('CMPS');
+    expect(c.prerequisites.number).toBe('230');
+  });
+
+  test('prerequisites: Requirement instance is unwrapped to AST', () => {
+    const req = api.parse('all of (CMPS 130, CMPS 230)');
+    const c = api.course({ subject: 'CMPS', number: '310', prerequisites: req });
+    expect(c.prerequisites.type).toBe('all-of');
+    expect(c.prerequisites.items).toHaveLength(2);
+  });
+
+  test('prerequisites: raw AST object passes through', () => {
+    const ast = { type: 'course', subject: 'CMPS', number: '230' };
+    const c = api.course({ subject: 'CMPS', number: '310', prerequisites: ast });
+    expect(c.prerequisites).toEqual(ast);
+  });
+
+  test('prerequisites: null/undefined normalizes to null', () => {
+    expect(api.course({ subject: 'A', number: '1', prerequisites: null }).prerequisites).toBeNull();
+    expect(api.course({ subject: 'A', number: '1', prerequisites: undefined }).prerequisites).toBeNull();
+    expect(api.course({ subject: 'A', number: '1' }).prerequisites).toBeNull();
+  });
+
+  test('corequisites: string is auto-parsed to AST', () => {
+    const c = api.course({ subject: 'CMPS', number: '492', corequisites: 'CMPS 360' });
+    expect(c.corequisites.type).toBe('course');
+    expect(c.corequisites.subject).toBe('CMPS');
+    expect(c.corequisites.number).toBe('360');
+  });
+
+  test('corequisites: Requirement instance is unwrapped to AST', () => {
+    const req = api.parse('CMPS 360');
+    const c = api.course({ subject: 'CMPS', number: '492', corequisites: req });
+    expect(c.corequisites.type).toBe('course');
+  });
+});
+
+// ============================================================
+// Program entity
+// ============================================================
+
+describe('Program entity', () => {
+  test('program() factory returns Program instance', () => {
+    const p = api.program({ code: 'CMPS', type: 'major', level: 'undergraduate' });
+    expect(p).toBeInstanceOf(api.Program);
+  });
+
+  test('requires code, type, and level', () => {
+    expect(() => api.program({})).toThrow('Program requires a code');
+    expect(() => api.program({ code: 'CMPS' })).toThrow('Program requires a type');
+    expect(() => api.program({ code: 'CMPS', type: 'major' })).toThrow('Program requires a level');
+  });
+
+  test('getters expose all fields', () => {
+    const p = api.program({
+      id: 1, code: 'CMPS', name: 'Computer Science', type: 'major', level: 'undergraduate',
+    });
+    expect(p.id).toBe(1);
+    expect(p.code).toBe('CMPS');
+    expect(p.name).toBe('Computer Science');
+    expect(p.type).toBe('major');
+    expect(p.level).toBe('undergraduate');
+    expect(p.requirements).toBeUndefined();
+  });
+
+  test('toJSON() returns plain object', () => {
+    const p = api.program({ code: 'CMPS', type: 'major', level: 'undergraduate' });
+    const json = p.toJSON();
+    expect(json).toEqual({ code: 'CMPS', type: 'major', level: 'undergraduate' });
+  });
+
+  test('data is frozen', () => {
+    const p = api.program({ code: 'CMPS', type: 'major', level: 'undergraduate' });
+    expect(Object.isFrozen(p.data)).toBe(true);
+  });
+});
+
+// ============================================================
+// Attribute entity
+// ============================================================
+
+describe('Attribute entity', () => {
+  test('attribute() factory returns Attribute instance', () => {
+    const a = api.attribute({ code: 'WI' });
+    expect(a).toBeInstanceOf(api.Attribute);
+  });
+
+  test('requires code', () => {
+    expect(() => api.attribute({})).toThrow('Attribute requires a code');
+  });
+
+  test('getters expose all fields', () => {
+    const a = api.attribute({ id: 5, code: 'WI', name: 'Writing Intensive' });
+    expect(a.id).toBe(5);
+    expect(a.code).toBe('WI');
+    expect(a.name).toBe('Writing Intensive');
+  });
+
+  test('defaults: id null, name null', () => {
+    const a = api.attribute({ code: 'QR' });
+    expect(a.id).toBeNull();
+    expect(a.name).toBeNull();
+  });
+
+  test('toJSON() returns plain object', () => {
+    const a = api.attribute({ code: 'WI', name: 'Writing Intensive' });
+    expect(a.toJSON()).toEqual({ code: 'WI', name: 'Writing Intensive' });
+  });
+
+  test('data is frozen', () => {
+    const a = api.attribute({ code: 'WI' });
+    expect(Object.isFrozen(a.data)).toBe(true);
+  });
+});
+
+// ============================================================
+// DeclaredProgram entity
+// ============================================================
+
+describe('DeclaredProgram entity', () => {
+  test('declaredProgram() factory returns DeclaredProgram instance', () => {
+    const dp = api.declaredProgram({ code: 'CMPS', type: 'major', level: 'undergraduate' });
+    expect(dp).toBeInstanceOf(api.DeclaredProgram);
+  });
+
+  test('requires code and type', () => {
+    expect(() => api.declaredProgram({})).toThrow('DeclaredProgram requires a code');
+    expect(() => api.declaredProgram({ code: 'CMPS' })).toThrow('DeclaredProgram requires a type');
+  });
+
+  test('validates type against ProgramType values', () => {
+    expect(() => api.declaredProgram({ code: 'CMPS', type: 'invalid' })).toThrow('DeclaredProgram type must be one of');
+    // Valid types should not throw
+    expect(() => api.declaredProgram({ code: 'CMPS', type: 'major' })).not.toThrow();
+    expect(() => api.declaredProgram({ code: 'CMPS', type: 'minor' })).not.toThrow();
+    expect(() => api.declaredProgram({ code: 'CMPS', type: 'certificate' })).not.toThrow();
+  });
+
+  test('validates level against ProgramLevel values when provided', () => {
+    expect(() => api.declaredProgram({ code: 'CMPS', type: 'major', level: 'invalid' })).toThrow('DeclaredProgram level must be one of');
+    // Valid levels should not throw
+    expect(() => api.declaredProgram({ code: 'CMPS', type: 'major', level: 'undergraduate' })).not.toThrow();
+    expect(() => api.declaredProgram({ code: 'CMPS', type: 'major', level: 'graduate' })).not.toThrow();
+  });
+
+  test('level is optional', () => {
+    const dp = api.declaredProgram({ code: 'CMPS', type: 'major' });
+    expect(dp.level).toBeNull();
+  });
+
+  test('getters expose all fields', () => {
+    const dp = api.declaredProgram({
+      id: 'd-1', code: 'CMPS', type: 'major', level: 'undergraduate', role: 'primary',
+    });
+    expect(dp.id).toBe('d-1');
+    expect(dp.code).toBe('CMPS');
+    expect(dp.type).toBe('major');
+    expect(dp.level).toBe('undergraduate');
+    expect(dp.role).toBe('primary');
+  });
+
+  test('defaults: id null, role null', () => {
+    const dp = api.declaredProgram({ code: 'CMPS', type: 'major' });
+    expect(dp.id).toBeNull();
+    expect(dp.role).toBeNull();
+  });
+
+  test('toJSON() returns plain object', () => {
+    const dp = api.declaredProgram({ code: 'CMPS', type: 'major', level: 'undergraduate', role: 'primary' });
+    expect(dp.toJSON()).toEqual({ code: 'CMPS', type: 'major', level: 'undergraduate', role: 'primary' });
+  });
+
+  test('data is frozen', () => {
+    const dp = api.declaredProgram({ code: 'CMPS', type: 'major' });
+    expect(Object.isFrozen(dp.data)).toBe(true);
+  });
+});
+
+// ============================================================
+// Transcript auto-wrapping of DeclaredProgram
+// ============================================================
+
+describe('Transcript auto-wrapping of DeclaredProgram', () => {
+  test('plain declared programs are wrapped into DeclaredProgram instances', () => {
+    const tx = api.transcript({
+      courses: [],
+      declaredPrograms: [
+        { code: 'CMPS', type: 'major', level: 'undergraduate', role: 'primary' },
+      ],
+    });
+    expect(tx.declaredPrograms[0]).toBeInstanceOf(api.DeclaredProgram);
+    expect(tx.declaredPrograms[0].code).toBe('CMPS');
+  });
+
+  test('DeclaredProgram instances pass through unchanged', () => {
+    const dp = api.declaredProgram({ code: 'MATH', type: 'minor', level: 'undergraduate' });
+    const tx = api.transcript({ courses: [], declaredPrograms: [dp] });
+    expect(tx.declaredPrograms[0]).toBe(dp);
+  });
+
+  test('declareProgram with plain object auto-wraps', () => {
+    const tx = api.transcript({ courses: [] });
+    const tx2 = tx.declareProgram({ code: 'CMPS', type: 'major', level: 'undergraduate' });
+    expect(tx2.declaredPrograms[0]).toBeInstanceOf(api.DeclaredProgram);
+  });
+
+  test('declared programs work correctly in audits', () => {
+    const cat = api.catalog(minimalCatalog);
+    const req = api.parse('all of (CMPS 130, CMPS 230)');
+    const enriched = cat.withPrograms({ 'CMPS': req });
+    const mainReq = api.parse('program "CMPS"');
+    const tx = api.transcript({
+      courses: [
+        { subject: 'CMPS', number: '130', grade: 'A', credits: 3 },
+        { subject: 'CMPS', number: '230', grade: 'B', credits: 3 },
+      ],
+      declaredPrograms: [{ code: 'CMPS', type: 'major', level: 'undergraduate' }],
+    });
+    const result = mainReq.audit(enriched, tx);
+    expect(result.status).toBe('met');
+  });
+});
+
+// ============================================================
+// Catalog auto-wrapping
+// ============================================================
+
+describe('Catalog auto-wrapping', () => {
+  test('catalog.courses returns Course instances', () => {
+    const cat = api.catalog(minimalCatalog);
+    for (const c of cat.courses) {
+      expect(c).toBeInstanceOf(api.Course);
+    }
+  });
+
+  test('catalog.programs returns Program instances', () => {
+    const cat = api.catalog(minimalCatalog);
+    for (const p of cat.programs) {
+      expect(p).toBeInstanceOf(api.Program);
+    }
+  });
+
+  test('catalog.attributes returns Attribute instances', () => {
+    const cat = api.catalog(minimalCatalog);
+    for (const a of cat.attributes) {
+      expect(a).toBeInstanceOf(api.Attribute);
+    }
+  });
+
+  test('findCourse() returns Course instance', () => {
+    const cat = api.catalog(minimalCatalog);
+    const c = cat.findCourse('MATH', '151');
+    expect(c).toBeInstanceOf(api.Course);
+    expect(c.subject).toBe('MATH');
+    expect(c.number).toBe('151');
+    expect(c.title).toBe('Calculus I');
+  });
+
+  test('findProgram() returns Program instance', () => {
+    const cat = api.catalog(minimalCatalog);
+    const p = cat.findProgram('CMPS');
+    expect(p).toBeInstanceOf(api.Program);
+    expect(p.code).toBe('CMPS');
+    expect(p.type).toBe('major');
+  });
+
+  test('findAttribute() returns Attribute instance', () => {
+    const cat = api.catalog(minimalCatalog);
+    const a = cat.findAttribute('WI');
+    expect(a).toBeInstanceOf(api.Attribute);
+    expect(a.code).toBe('WI');
+    expect(a.name).toBe('Writing Intensive');
+  });
+
+  test('catalogs built with plain objects still work for audits', () => {
+    const cat = api.catalog(minimalCatalog);
+    const req = api.parse('all of (MATH 151, CMPS 130)');
+    const tx = api.transcript({
+      courses: [
+        { subject: 'MATH', number: '151', grade: 'A', credits: 4 },
+        { subject: 'CMPS', number: '130', grade: 'B', credits: 3 },
+      ],
+    });
+    const result = req.audit(cat, tx);
+    expect(result.status).toBe('met');
+  });
+
+  test('catalogs built with Course instances work', () => {
+    const c1 = api.course({ subject: 'MATH', number: '151', creditsMin: 4, creditsMax: 4 });
+    const c2 = api.course({ subject: 'CMPS', number: '130', creditsMin: 3, creditsMax: 3 });
+    const cat = api.catalog({ ay: '2025-2026', courses: [c1, c2] });
+    expect(cat.courses).toHaveLength(2);
+    expect(cat.findCourse('MATH', '151')).toBeInstanceOf(api.Course);
+  });
+
+  test('prerequisite strings auto-parse when building catalog with plain objects', () => {
+    const cat = api.catalog({
+      ay: '2025-2026',
+      courses: [
+        { subject: 'MATH', number: '151', creditsMin: 4, creditsMax: 4 },
+        { subject: 'MATH', number: '152', creditsMin: 4, creditsMax: 4, prerequisites: 'MATH 151' },
+      ],
+    });
+    const c = cat.findCourse('MATH', '152');
+    expect(c.prerequisites).toBeDefined();
+    expect(c.prerequisites.type).toBe('course');
+    expect(c.prerequisites.subject).toBe('MATH');
+    expect(c.prerequisites.number).toBe('151');
+  });
+});
+
+// ============================================================
+// 26. ReqitVariable entity
+// ============================================================
+
+describe('ReqitVariable', () => {
+  test('sharedVariable factory is a function', () => {
+    expect(typeof api.sharedVariable).toBe('function');
+  });
+
+  test('ReqitVariable class is exported', () => {
+    expect(typeof api.ReqitVariable).toBe('function');
+  });
+
+  test('constructs from string requirement', () => {
+    const v = api.sharedVariable({ name: 'discrete', requirement: 'any of (MATH 205, MATH 237)' });
+    expect(v).toBeInstanceOf(api.ReqitVariable);
+    expect(v.name).toBe('discrete');
+    expect(v.requirement).toBeInstanceOf(api.Requirement);
+    expect(v.ast).toBeDefined();
+    expect(v.ast.type).toBe('any-of');
+  });
+
+  test('constructs from Requirement instance', () => {
+    const req = api.parse('all of (CMPS 130, CMPS 230)');
+    const v = api.sharedVariable({ name: 'cs_core', requirement: req });
+    expect(v.name).toBe('cs_core');
+    expect(v.requirement).toBe(req);
+    expect(v.ast.type).toBe('all-of');
+  });
+
+  test('constructs from raw AST', () => {
+    const ast = { type: 'course', subject: 'MATH', number: '151' };
+    const v = api.sharedVariable({ name: 'calc', requirement: ast });
+    expect(v.name).toBe('calc');
+    expect(v.requirement).toBeInstanceOf(api.Requirement);
+    expect(v.ast.type).toBe('course');
+  });
+
+  test('missing name throws', () => {
+    expect(() => api.sharedVariable({ requirement: 'MATH 151' })).toThrow('name');
+  });
+
+  test('missing requirement throws', () => {
+    expect(() => api.sharedVariable({ name: 'x' })).toThrow('requirement');
+  });
+
+  test('data accessor returns frozen object', () => {
+    const v = api.sharedVariable({ name: 'x', requirement: 'MATH 151' });
+    expect(Object.isFrozen(v.data)).toBe(true);
+  });
+
+  test('toJSON returns name and ast', () => {
+    const v = api.sharedVariable({ name: 'discrete', requirement: 'any of (MATH 205, MATH 237)' });
+    const json = v.toJSON();
+    expect(json.name).toBe('discrete');
+    expect(json.ast).toBeDefined();
+    expect(json.ast.type).toBe('any-of');
+  });
+});
+
+// ============================================================
+// 27. sharedDefs support
+// ============================================================
+
+describe('sharedDefs', () => {
+  const cat = api.catalog(minimalCatalog);
+
+  test('single-tree audit: shared variable resolves in requirement', () => {
+    // Define $electives as a shared variable
+    const shared = [api.sharedVariable({ name: 'electives', requirement: 'any of (CMPS 130, CMPS 230)' })];
+    const req = api.parse('all of (MATH 151, $electives)');
+    const tx = api.transcript({
+      courses: [
+        { subject: 'MATH', number: '151', grade: 'A', credits: 4 },
+        { subject: 'CMPS', number: '130', grade: 'B', credits: 3 },
+      ],
+    });
+    const result = req.audit(cat, tx, { sharedDefs: shared });
+    expect(result.status).toBe(api.AuditStatus.MET);
+  });
+
+  test('single-tree audit: missing shared variable does not crash', () => {
+    const req = api.parse('all of (MATH 151, $missing)');
+    const tx = api.transcript({
+      courses: [{ subject: 'MATH', number: '151', grade: 'A', credits: 4 }],
+    });
+    const result = req.audit(cat, tx);
+    // MATH 151 is met but $missing is unresolved → partial-progress, not a crash
+    expect(result.status).toBe(api.AuditStatus.PARTIAL_PROGRESS);
+  });
+
+  test('local variable definition wins over shared', () => {
+    // Shared: $x = CMPS 130; Local in req: $x = MATH 151
+    const shared = [api.sharedVariable({ name: 'x', requirement: 'CMPS 130' })];
+    const req = api.parse('all of ($x = MATH 151, $x)');
+    const tx = api.transcript({
+      courses: [{ subject: 'MATH', number: '151', grade: 'A', credits: 4 }],
+    });
+    const result = req.audit(cat, tx, { sharedDefs: shared });
+    // Local $x = MATH 151 wins, so completing MATH 151 should satisfy it
+    expect(result.status).toBe(api.AuditStatus.MET);
+  });
+
+  test('multi-tree audit: sharedDefs available to all trees', () => {
+    const shared = [api.sharedVariable({ name: 'calc', requirement: 'MATH 151' })];
+    const tree1 = api.parse('all of ($calc, CMPS 130)');
+    const tree2 = api.parse('$calc');
+    const tx = api.transcript({
+      courses: [
+        { subject: 'MATH', number: '151', grade: 'A', credits: 4 },
+        { subject: 'CMPS', number: '130', grade: 'B', credits: 3 },
+      ],
+    });
+    const multi = api.auditMulti(cat, tx, {
+      trees: { PROG1: tree1, PROG2: tree2 },
+      sharedDefs: shared,
+    });
+    expect(multi.trees.PROG1.status).toBe(api.AuditStatus.MET);
+    expect(multi.trees.PROG2.status).toBe(api.AuditStatus.MET);
+  });
+
+  test('resolve: shared variable refs expand with sharedDefs', () => {
+    const shared = [api.sharedVariable({ name: 'electives', requirement: 'any of (CMPS 130, CMPS 230)' })];
+    const req = api.parse('all of (MATH 151, $electives)');
+    const resolved = req.resolve(cat, { sharedDefs: shared });
+    const allCourses = resolved.allCourses();
+    const keys = allCourses.map(c => `${c.subject}:${c.number}`);
+    expect(keys).toContain('MATH:151');
+    expect(keys).toContain('CMPS:130');
+    expect(keys).toContain('CMPS:230');
+  });
+
+  test('sharedDefs accepts plain Map<string, AST>', () => {
+    const shared = new Map([
+      ['electives', { type: 'course', subject: 'CMPS', number: '130' }],
+    ]);
+    const req = api.parse('all of (MATH 151, $electives)');
+    const tx = api.transcript({
+      courses: [
+        { subject: 'MATH', number: '151', grade: 'A', credits: 4 },
+        { subject: 'CMPS', number: '130', grade: 'B', credits: 3 },
+      ],
+    });
+    const result = req.audit(cat, tx, { sharedDefs: shared });
+    expect(result.status).toBe(api.AuditStatus.MET);
+  });
+
+  test('sharedDefs accepts plain object { name: AST }', () => {
+    const shared = {
+      electives: { type: 'course', subject: 'CMPS', number: '130' },
+    };
+    const req = api.parse('all of (MATH 151, $electives)');
+    const tx = api.transcript({
+      courses: [
+        { subject: 'MATH', number: '151', grade: 'A', credits: 4 },
+        { subject: 'CMPS', number: '130', grade: 'B', credits: 3 },
+      ],
+    });
+    const result = req.audit(cat, tx, { sharedDefs: shared });
+    expect(result.status).toBe(api.AuditStatus.MET);
   });
 });

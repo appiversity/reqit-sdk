@@ -7,6 +7,7 @@
 const {
   prepareCatalog,
   collectDefs,
+  mergeSharedDefs,
 } = require('../resolve');
 const { normalizeTranscript } = require('./transcript');
 const { auditNode } = require('./single-tree');
@@ -65,6 +66,9 @@ function prepareAudit(ast, catalog) {
         applySubstitutions(normTranscript, exCtx.substitutions);
       }
 
+      // Merge shared defs (local defs from AST win over shared)
+      const mergedDefs = opts.sharedDefs ? mergeSharedDefs(new Map(defs), opts.sharedDefs) : defs;
+
       const ctx = {
         catalog: norm,
         courses: norm.courses,
@@ -72,7 +76,7 @@ function prepareAudit(ast, catalog) {
         crossListIndex,
         transcript: normTranscript,
         gradeConfig,
-        defs,
+        defs: mergedDefs,
         expanding: new Set(),
         attainments: opts.attainments || {},
         backtrack: opts.backtrack || false,
@@ -80,6 +84,8 @@ function prepareAudit(ast, catalog) {
         // Exception context (null when no exceptions)
         waivers: exCtx ? exCtx.waivers : null,
         substitutions: exCtx ? exCtx.substitutions : null,
+        // Shared defs for sub-program audits (program-ref)
+        sharedDefs: opts.sharedDefs || null,
         // Program reference context
         programIndex,
         declaredPrograms: opts.declaredPrograms || [],

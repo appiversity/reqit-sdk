@@ -32,7 +32,14 @@ const { buildPrereqGraph } = require('./export/prereq-graph');
 // ============================================================
 
 function unwrapCatalog(c) {
-  return c instanceof Catalog ? c.data : c;
+  if (!(c instanceof Catalog)) return c;
+  const d = c.data;
+  return {
+    ...d,
+    courses: d.courses.map(e => e instanceof Course ? e.toJSON() : e),
+    programs: (d.programs || []).map(e => e instanceof Program ? e.toJSON() : e),
+    attributes: (d.attributes || []).map(e => e instanceof Attribute ? e.toJSON() : e),
+  };
 }
 
 function unwrapTranscript(t) {
@@ -116,7 +123,7 @@ function extractTranscriptOptions(t) {
   }
   const declared = t.declaredPrograms;
   if (declared && declared.length > 0) {
-    opts.declaredPrograms = declared;
+    opts.declaredPrograms = declared.map(dp => dp instanceof DeclaredProgram ? dp.toJSON() : dp);
   }
   const exceptions = [];
   for (const w of t.waivers) exceptions.push(w);
@@ -222,6 +229,96 @@ const DegreeType = Object.freeze({
 });
 
 // ============================================================
+// DeclaredProgram
+// ============================================================
+
+const PROGRAM_TYPE_VALUES = new Set(Object.values(ProgramType));
+const PROGRAM_LEVEL_VALUES = new Set(Object.values(ProgramLevel));
+
+class DeclaredProgram {
+  #data;
+
+  constructor(data) {
+    if (!data || !data.code) throw new Error('DeclaredProgram requires a code');
+    if (!data.type) throw new Error('DeclaredProgram requires a type');
+    if (!PROGRAM_TYPE_VALUES.has(data.type)) {
+      throw new Error(`DeclaredProgram type must be one of: ${[...PROGRAM_TYPE_VALUES].join(', ')}`);
+    }
+    if (data.level && !PROGRAM_LEVEL_VALUES.has(data.level)) {
+      throw new Error(`DeclaredProgram level must be one of: ${[...PROGRAM_LEVEL_VALUES].join(', ')}`);
+    }
+    this.#data = Object.freeze({ ...data });
+  }
+
+  get id() { return this.#data.id ?? null; }
+  get code() { return this.#data.code; }
+  get type() { return this.#data.type; }
+  get level() { return this.#data.level || null; }
+  get role() { return this.#data.role || null; }
+  get data() { return this.#data; }
+
+  toJSON() { return { ...this.#data }; }
+}
+
+// ============================================================
+// ReqitVariable
+// ============================================================
+
+class ReqitVariable {
+  #data;
+  constructor(data) {
+    if (!data || !data.name) throw new Error('ReqitVariable requires a name');
+    if (!data.requirement) throw new Error('ReqitVariable requires a requirement');
+    let requirement = data.requirement;
+    if (typeof requirement === 'string') {
+      requirement = new Requirement(internalParse(requirement));
+    } else if (!(requirement instanceof Requirement)) {
+      requirement = new Requirement(requirement); // raw AST
+    }
+    this.#data = Object.freeze({ ...data, requirement });
+  }
+  get name() { return this.#data.name; }
+  get requirement() { return this.#data.requirement; }
+  get ast() { return this.#data.requirement.ast; }
+  get data() { return this.#data; }
+  toJSON() { return { name: this.#data.name, ast: this.ast }; }
+}
+
+// ============================================================
+// normalizeSharedDefs (converts user-facing formats to Map<string, ast>)
+// ============================================================
+
+function normalizeSharedDefs(input) {
+  if (!input) return undefined;
+  // Array of ReqitVariable instances (or duck-typed { name, requirement|ast })
+  if (Array.isArray(input)) {
+    const map = new Map();
+    for (const v of input) {
+      const name = v instanceof ReqitVariable ? v.name : v.name;
+      const ast = v instanceof ReqitVariable ? v.ast
+        : v.requirement instanceof Requirement ? v.requirement.ast
+        : v.requirement;
+      map.set(name, ast);
+    }
+    return map;
+  }
+  // Map<string, Requirement|AST>
+  if (input instanceof Map) {
+    const map = new Map();
+    for (const [name, val] of input) {
+      map.set(name, val instanceof Requirement ? val.ast : val);
+    }
+    return map;
+  }
+  // Plain object { name: Requirement|AST }
+  const map = new Map();
+  for (const [name, val] of Object.entries(input)) {
+    map.set(name, val instanceof Requirement ? val.ast : val);
+  }
+  return map;
+}
+
+// ============================================================
 // Requirement
 // ============================================================
 
@@ -244,13 +341,16 @@ class Requirement {
 
   toHTML(catalog, options) { return toHTML(this.#ast, unwrapCatalog(catalog), null, options); }
 
-  resolve(catalog) {
-    return new ResolutionResult(resolve(this.#ast, unwrapCatalog(catalog)));
+  resolve(catalog, opts) {
+    const options = opts ? { ...opts } : undefined;
+    if (options && options.sharedDefs) options.sharedDefs = normalizeSharedDefs(options.sharedDefs);
+    return new ResolutionResult(resolve(this.#ast, unwrapCatalog(catalog), options));
   }
 
   audit(catalog, transcript, opts) {
     const txOpts = extractTranscriptOptions(transcript);
     const merged = { ...txOpts, ...opts };
+    if (merged.sharedDefs) merged.sharedDefs = normalizeSharedDefs(merged.sharedDefs);
     const raw = audit(this.#ast, unwrapCatalog(catalog), unwrapTranscript(transcript), merged);
     return new AuditResult(raw, this.#ast);
   }
@@ -335,6 +435,97 @@ class PrereqGraph {
 }
 
 // ============================================================
+// Course
+// ============================================================
+
+class Course {
+  #data;
+
+  constructor(data) {
+    if (!data || !data.subject || !data.number) {
+      throw new Error('Course requires subject and number');
+    }
+    let prerequisites = data.prerequisites || null;
+    if (typeof prerequisites === 'string') {
+      prerequisites = internalParse(prerequisites);
+    } else if (prerequisites instanceof Requirement) {
+      prerequisites = prerequisites.ast;
+    }
+    let corequisites = data.corequisites || null;
+    if (typeof corequisites === 'string') {
+      corequisites = internalParse(corequisites);
+    } else if (corequisites instanceof Requirement) {
+      corequisites = corequisites.ast;
+    }
+    this.#data = Object.freeze({
+      ...data,
+      prerequisites,
+      corequisites,
+      attributes: data.attributes || [],
+    });
+  }
+
+  get id() { return this.#data.id ?? null; }
+  get subject() { return this.#data.subject; }
+  get number() { return this.#data.number; }
+  get title() { return this.#data.title || null; }
+  get creditsMin() { return this.#data.creditsMin ?? null; }
+  get creditsMax() { return this.#data.creditsMax ?? null; }
+  get attributes() { return this.#data.attributes; }
+  get crossListGroup() { return this.#data.crossListGroup || null; }
+  get prerequisites() { return this.#data.prerequisites; }
+  get corequisites() { return this.#data.corequisites; }
+  get data() { return this.#data; }
+
+  toJSON() { return { ...this.#data }; }
+}
+
+// ============================================================
+// Program
+// ============================================================
+
+class Program {
+  #data;
+
+  constructor(data) {
+    if (!data || !data.code) throw new Error('Program requires a code');
+    if (!data.type) throw new Error('Program requires a type');
+    if (!data.level) throw new Error('Program requires a level');
+    this.#data = Object.freeze({ ...data });
+  }
+
+  get id() { return this.#data.id ?? null; }
+  get code() { return this.#data.code; }
+  get name() { return this.#data.name || null; }
+  get type() { return this.#data.type; }
+  get level() { return this.#data.level; }
+  get requirements() { return this.#data.requirements; }
+  get data() { return this.#data; }
+
+  toJSON() { return { ...this.#data }; }
+}
+
+// ============================================================
+// Attribute
+// ============================================================
+
+class Attribute {
+  #data;
+
+  constructor(data) {
+    if (!data || !data.code) throw new Error('Attribute requires a code');
+    this.#data = Object.freeze({ ...data });
+  }
+
+  get id() { return this.#data.id ?? null; }
+  get code() { return this.#data.code; }
+  get name() { return this.#data.name || null; }
+  get data() { return this.#data; }
+
+  toJSON() { return { ...this.#data }; }
+}
+
+// ============================================================
 // Degree
 // ============================================================
 
@@ -382,7 +573,18 @@ class Catalog {
   constructor(data) {
     if (!data || !data.courses) throw new Error('Catalog requires courses');
     if (!data.ay) throw new Error('Catalog requires ay');
-    this.#data = Object.freeze(data);
+    this.#data = Object.freeze({
+      ...data,
+      courses: Object.freeze(
+        data.courses.map(c => c instanceof Course ? c : new Course(c))
+      ),
+      programs: Object.freeze(
+        (data.programs || []).map(p => p instanceof Program ? p : new Program(p))
+      ),
+      attributes: Object.freeze(
+        (data.attributes || []).map(a => a instanceof Attribute ? a : new Attribute(a))
+      ),
+    });
   }
 
   get data() { return this.#data; }
@@ -567,16 +769,26 @@ class Catalog {
 
   withPrograms(programMap) {
     const programs = (this.#data.programs || []).map(p => {
-      const req = programMap[p.code];
-      if (!req) return p;
-      return { ...p, requirements: req instanceof Requirement ? req.ast : req };
+      const pData = p instanceof Program ? p.toJSON() : p;
+      const req = programMap[pData.code];
+      if (!req) return pData;
+      return { ...pData, requirements: req instanceof Requirement ? req.ast : req };
     });
     for (const [code, req] of Object.entries(programMap)) {
       if (!programs.some(p => p.code === code)) {
-        programs.push({ code, requirements: req instanceof Requirement ? req.ast : req });
+        programs.push({ code, type: 'major', level: 'undergraduate', requirements: req instanceof Requirement ? req.ast : req });
       }
     }
-    return new Catalog({ ...this.#data, programs });
+    return new Catalog({ ...this.#toPlainData(), programs });
+  }
+
+  #toPlainData() {
+    return {
+      ...this.#data,
+      courses: this.#data.courses.map(c => c instanceof Course ? c.toJSON() : c),
+      programs: (this.#data.programs || []).map(p => p instanceof Program ? p.toJSON() : p),
+      attributes: (this.#data.attributes || []).map(a => a instanceof Attribute ? a.toJSON() : a),
+    };
   }
 }
 
@@ -630,7 +842,7 @@ class Transcript {
     );
     this.#attainments = Object.freeze(data.attainments || {});
     this.#declaredPrograms = Object.freeze(
-      (data.declaredPrograms || []).map(dp => Object.freeze({ ...dp }))
+      (data.declaredPrograms || []).map(dp => dp instanceof DeclaredProgram ? dp : new DeclaredProgram(dp))
     );
     this.#waivers = Object.freeze(
       (data.waivers || []).map(w => w instanceof Waiver ? w : null).filter(Boolean)
@@ -964,6 +1176,11 @@ module.exports = {
   ProgramLevel,
   DegreeType,
   Requirement,
+  Course,
+  Program,
+  Attribute,
+  DeclaredProgram,
+  ReqitVariable,
   Catalog,
   Degree,
   TranscriptCourse,
@@ -975,4 +1192,5 @@ module.exports = {
   unwrapTranscript,
   extractTranscriptOptions,
   deriveProgramContext,
+  normalizeSharedDefs,
 };

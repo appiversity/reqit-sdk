@@ -20,6 +20,7 @@ const { isPassingGrade, meetsMinGrade, calculateGPA } = require('../grade');
 const {
   evaluateFilters,
   collectDefs,
+  mergeSharedDefs,
 } = require('../resolve');
 const { forEachChild } = require('../ast/children');
 const { lookupTranscriptEntry } = require('./transcript');
@@ -775,6 +776,7 @@ function auditProgramRef(node, ctx) {
   // Run sub-audit
   visitedPrograms.add(code);
   const subDefs = collectDefs(program.requirements, '', new Map());
+  if (ctx.sharedDefs) mergeSharedDefs(subDefs, ctx.sharedDefs);
   const subCtx = {
     ...ctx,
     defs: subDefs,
