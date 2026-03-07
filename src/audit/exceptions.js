@@ -382,7 +382,7 @@ function applySubstitutions(normTranscript, substitutions) {
     };
 
     normTranscript.byKey.set(originalKey, virtualEntry);
-    normTranscript.entries.push(virtualEntry);
+    normTranscript.courses.push(virtualEntry);
   }
 
   return normTranscript;

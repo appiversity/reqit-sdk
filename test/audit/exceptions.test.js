@@ -402,7 +402,7 @@ describe('applySubstitutions()', () => {
       byKey: new Map([
         ['PHYS:201', { subject: 'PHYS', number: '201', grade: 'B+', credits: 4, status: 'completed' }],
       ]),
-      entries: [{ subject: 'PHYS', number: '201', grade: 'B+', credits: 4, status: 'completed' }],
+      courses: [{ subject: 'PHYS', number: '201', grade: 'B+', credits: 4, status: 'completed' }],
     };
     const sub = substitution({
       original: { subject: 'MATH', number: '151' },
@@ -426,7 +426,7 @@ describe('applySubstitutions()', () => {
   test('does not create virtual entry when replacement not on transcript', () => {
     const normTranscript = {
       byKey: new Map(),
-      entries: [],
+      courses: [],
     };
     const sub = substitution({
       original: { subject: 'MATH', number: '151' },
@@ -445,7 +445,7 @@ describe('applySubstitutions()', () => {
         ['MATH:151', { subject: 'MATH', number: '151', grade: 'A', credits: 4, status: 'completed' }],
         ['PHYS:201', { subject: 'PHYS', number: '201', grade: 'B', credits: 4, status: 'completed' }],
       ]),
-      entries: [],
+      courses: [],
     };
     const sub = substitution({
       original: { subject: 'MATH', number: '151' },

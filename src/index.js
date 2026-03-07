@@ -7,13 +7,15 @@ const {
   AuditStatus,
   Requirement,
   Catalog,
-  TranscriptEntry,
+  TranscriptCourse,
   Transcript,
   ResolutionResult,
   AuditResult,
   MultiAuditResult,
   unwrapCatalog,
   unwrapTranscript,
+  extractTranscriptOptions,
+  deriveProgramContext,
 } = require('./entities');
 const { auditMulti: internalAuditMulti, CourseAssignmentMap } = require('./audit/multi-tree');
 const { prepareAudit } = require('./audit');
@@ -38,24 +40,24 @@ function catalog(data) {
   return new Catalog(data);
 }
 
-function transcript(entries) {
-  return new Transcript(entries);
+function transcript(data) {
+  return new Transcript(data);
 }
 
 // ============================================================
 // calculateGPA — entity-aware wrapper
 // ============================================================
 
-function calculateGPA(entriesOrTranscript, configOrCatalog) {
-  const entries = entriesOrTranscript instanceof Transcript
-    ? unwrapTranscript(entriesOrTranscript)
-    : Array.isArray(entriesOrTranscript)
-      ? entriesOrTranscript.map(e => e instanceof TranscriptEntry ? e.toJSON() : e)
-      : entriesOrTranscript;
+function calculateGPA(coursesOrTranscript, configOrCatalog) {
+  const courses = coursesOrTranscript instanceof Transcript
+    ? unwrapTranscript(coursesOrTranscript)
+    : Array.isArray(coursesOrTranscript)
+      ? coursesOrTranscript.map(e => e instanceof TranscriptCourse ? e.toJSON() : e)
+      : coursesOrTranscript;
   const config = configOrCatalog instanceof Catalog
     ? configOrCatalog.gradeConfig
     : configOrCatalog;
-  return internalCalculateGPA(entries, config);
+  return internalCalculateGPA(courses, config);
 }
 
 // ============================================================
@@ -63,8 +65,10 @@ function calculateGPA(entriesOrTranscript, configOrCatalog) {
 // ============================================================
 
 function publicAuditMulti(cat, tx, options) {
-  const { trees, overlapRules, programContext, ...rest } = options || {};
+  const { trees, overlapRules, programContext: explicitProgramContext, ...rest } = options || {};
   const asts = {};
+  // Derive programContext from transcript if not explicitly provided
+  const programContext = explicitProgramContext || deriveProgramContext(tx);
   const treeArray = Object.entries(trees).map(([name, req]) => {
     const ast = req instanceof Requirement ? req.ast : req;
     asts[name] = ast;
@@ -76,11 +80,13 @@ function publicAuditMulti(cat, tx, options) {
     }
     return entry;
   });
+  // Extract transcript options (attainments, declaredPrograms, exceptions)
+  const txOpts = extractTranscriptOptions(tx);
   const raw = internalAuditMulti(
     treeArray,
     unwrapCatalog(cat),
     unwrapTranscript(tx),
-    { overlapRules, ...rest },
+    { overlapRules, ...txOpts, ...rest },
   );
   return new MultiAuditResult(raw, asts);
 }
@@ -102,7 +108,7 @@ module.exports = {
   Requirement,
   Catalog,
   Transcript,
-  TranscriptEntry,
+  TranscriptCourse,
   ResolutionResult,
   AuditResult,
   MultiAuditResult,

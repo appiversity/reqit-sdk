@@ -31,7 +31,7 @@ describe('normalizeTranscript', () => {
   test('empty transcript produces empty result', () => {
     const norm = normalizeTranscript(empty, gradeConfig);
     expect(norm.byKey.size).toBe(0);
-    expect(norm.entries).toHaveLength(0);
+    expect(norm.courses).toHaveLength(0);
   });
 
   test('null transcript produces empty result', () => {
@@ -87,10 +87,10 @@ describe('normalizeTranscript', () => {
     expect(norm.byKey.get('MATH:101').term).toBe('Spring 2024');
   });
 
-  test('entries array matches byKey values', () => {
+  test('courses array matches byKey values', () => {
     const norm = normalizeTranscript(partial, gradeConfig);
-    expect(norm.entries).toHaveLength(norm.byKey.size);
-    for (const entry of norm.entries) {
+    expect(norm.courses).toHaveLength(norm.byKey.size);
+    for (const entry of norm.courses) {
       expect(norm.byKey.has(`${entry.subject}:${entry.number}`)).toBe(true);
     }
   });
@@ -214,14 +214,14 @@ describe('creditsEarned', () => {
   test('sums credits for completed courses with passing grades', () => {
     const norm = normalizeTranscript(complete, gradeConfig);
     // All 22 entries are completed with passing grades
-    const earned = creditsEarned(norm.entries, gradeConfig, isPassingGrade);
+    const earned = creditsEarned(norm.courses, gradeConfig, isPassingGrade);
     const expected = complete.reduce((sum, e) => sum + e.credits, 0);
     expect(earned).toBe(expected);
   });
 
   test('excludes in-progress entries', () => {
     const norm = normalizeTranscript(inProgress, gradeConfig);
-    const earned = creditsEarned(norm.entries, gradeConfig, isPassingGrade);
+    const earned = creditsEarned(norm.courses, gradeConfig, isPassingGrade);
     // Only completed entries with passing grades
     const completedPassing = inProgress.filter(e =>
       e.status === 'completed' && e.grade != null && isPassingGrade(e.grade, gradeConfig)
@@ -232,7 +232,7 @@ describe('creditsEarned', () => {
 
   test('excludes failing grades', () => {
     const norm = normalizeTranscript(failing, gradeConfig);
-    const earned = creditsEarned(norm.entries, gradeConfig, isPassingGrade);
+    const earned = creditsEarned(norm.courses, gradeConfig, isPassingGrade);
     // Only MATH 101 (B+) and CMPS 130 (D-, passing with 0.7 points) are passing
     // MATH 151 (F), CMPS 135 (NP), CMPS 230 (F) are not passing
     // ENGL 101 (W) was filtered as withdrawn
@@ -241,33 +241,33 @@ describe('creditsEarned', () => {
 
   test('empty transcript returns 0', () => {
     const norm = normalizeTranscript(empty, gradeConfig);
-    expect(creditsEarned(norm.entries, gradeConfig, isPassingGrade)).toBe(0);
+    expect(creditsEarned(norm.courses, gradeConfig, isPassingGrade)).toBe(0);
   });
 });
 
 describe('creditsInProgress', () => {
   test('sums credits for in-progress courses', () => {
     const norm = normalizeTranscript(inProgress, gradeConfig);
-    const ip = creditsInProgress(norm.entries);
+    const ip = creditsInProgress(norm.courses);
     // MATH 152 (4), CMPS 310 (3), CMPS 320 (3)
     expect(ip).toBe(10);
   });
 
   test('complete transcript has 0 in-progress credits', () => {
     const norm = normalizeTranscript(complete, gradeConfig);
-    expect(creditsInProgress(norm.entries)).toBe(0);
+    expect(creditsInProgress(norm.courses)).toBe(0);
   });
 
   test('empty transcript returns 0', () => {
     const norm = normalizeTranscript(empty, gradeConfig);
-    expect(creditsInProgress(norm.entries)).toBe(0);
+    expect(creditsInProgress(norm.courses)).toBe(0);
   });
 });
 
 describe('creditsAttempted', () => {
   test('sums all credits (completed + in-progress, not withdrawn)', () => {
     const norm = normalizeTranscript(inProgress, gradeConfig);
-    const attempted = creditsAttempted(norm.entries);
+    const attempted = creditsAttempted(norm.courses);
     // All non-withdrawn entries
     const expected = inProgress
       .filter(e => e.status !== 'withdrawn')
@@ -277,14 +277,14 @@ describe('creditsAttempted', () => {
 
   test('complete transcript: attempted equals earned', () => {
     const norm = normalizeTranscript(complete, gradeConfig);
-    const attempted = creditsAttempted(norm.entries);
-    const earned = creditsEarned(norm.entries, gradeConfig, isPassingGrade);
+    const attempted = creditsAttempted(norm.courses);
+    const earned = creditsEarned(norm.courses, gradeConfig, isPassingGrade);
     expect(attempted).toBe(earned);
   });
 
   test('failing transcript: attempted includes failed courses', () => {
     const norm = normalizeTranscript(failing, gradeConfig);
-    const attempted = creditsAttempted(norm.entries);
+    const attempted = creditsAttempted(norm.courses);
     // MATH 101 (3), MATH 151 (4), CMPS 130 (3), CMPS 135 (3), CMPS 230 (3)
     // ENGL 101 filtered (withdrawn)
     expect(attempted).toBe(16);
@@ -292,6 +292,6 @@ describe('creditsAttempted', () => {
 
   test('empty transcript returns 0', () => {
     const norm = normalizeTranscript(empty, gradeConfig);
-    expect(creditsAttempted(norm.entries)).toBe(0);
+    expect(creditsAttempted(norm.courses)).toBe(0);
   });
 });

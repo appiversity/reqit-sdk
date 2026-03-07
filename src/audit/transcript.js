@@ -3,10 +3,11 @@
 /**
  * transcript.js — Transcript normalization, indexing, and helpers.
  *
- * A transcript is an external input: an array of TranscriptEntry objects
- * provided by the consuming application. Reqit does not store transcripts.
+ * A transcript is an external input: a Transcript entity with courses,
+ * attainments, declared programs, waivers, and substitutions.
+ * Reqit does not store transcripts.
  *
- * TranscriptEntry shape:
+ * TranscriptCourse shape:
  *   subject  — subject code (e.g. "MATH")
  *   number   — course number (e.g. "151")
  *   grade    — grade string, or null for in-progress
@@ -28,24 +29,24 @@ const { isAuditableGrade } = require('../grade');
  *   4. Build courseKey → entry Map
  *   5. Build crossListGroup → entries Map (using catalog cross-list info)
  *
- * @param {object[]} entries - Raw transcript entries
+ * @param {object[]} courses - Raw transcript course entries
  * @param {object} gradeConfig - Institution grade configuration
  * @param {object} [catalogIndex] - Optional catalog courseKey → course Map
  *   for cross-list group resolution
  * @returns {{
  *   byKey: Map<string, object>,
  *   byCrossListGroup: Map<string, object[]>,
- *   entries: object[]
+ *   courses: object[]
  * }}
  */
-function normalizeTranscript(entries, gradeConfig, catalogIndex) {
-  if (!entries || !Array.isArray(entries)) {
-    return { byKey: new Map(), byCrossListGroup: new Map(), entries: [] };
+function normalizeTranscript(courses, gradeConfig, catalogIndex) {
+  if (!courses || !Array.isArray(courses)) {
+    return { byKey: new Map(), byCrossListGroup: new Map(), courses: [] };
   }
 
   // Step 1+2: filter withdrawn and non-auditable
   const auditable = [];
-  for (const entry of entries) {
+  for (const entry of courses) {
     if (entry.status === 'withdrawn') continue;
     if (entry.grade != null && !isAuditableGrade(entry.grade, gradeConfig)) continue;
     auditable.push(entry);
@@ -77,7 +78,7 @@ function normalizeTranscript(entries, gradeConfig, catalogIndex) {
   return {
     byKey,
     byCrossListGroup,
-    entries: Array.from(byKey.values()),
+    courses: Array.from(byKey.values()),
   };
 }
 
@@ -119,7 +120,7 @@ function lookupTranscriptEntry(key, normalizedTranscript, catalogIndex, crossLis
 /**
  * Sum credits earned (completed with passing grade).
  *
- * @param {object[]} entries - Filtered transcript entries
+ * @param {object[]} courses - Filtered transcript course entries
  * @param {object} gradeConfig - Grade configuration
  * @param {Function} isPassingGrade - Grade check function
  * @returns {number}
@@ -137,7 +138,7 @@ function creditsEarned(entries, gradeConfig, isPassingGrade) {
 /**
  * Sum credits in progress (enrolled, no grade yet).
  *
- * @param {object[]} entries - Filtered transcript entries
+ * @param {object[]} courses - Filtered transcript course entries
  * @returns {number}
  */
 function creditsInProgress(entries) {
@@ -153,7 +154,7 @@ function creditsInProgress(entries) {
 /**
  * Sum credits attempted (completed + in-progress — not withdrawn).
  *
- * @param {object[]} entries - Filtered transcript entries
+ * @param {object[]} courses - Filtered transcript course entries
  * @returns {number}
  */
 function creditsAttempted(entries) {

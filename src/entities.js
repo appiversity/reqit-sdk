@@ -24,6 +24,7 @@ const { exportProgramChecklist } = require('./export/program-checklist');
 const { exportAudit } = require('./export/audit-export');
 const { buildSummary } = require('./audit/status');
 const { walkResult } = require('./audit/walk-result');
+const { Waiver, Substitution } = require('./audit/exceptions');
 
 // ============================================================
 // Helpers (not exported)
@@ -35,9 +36,55 @@ function unwrapCatalog(c) {
 
 function unwrapTranscript(t) {
   if (t instanceof Transcript) {
-    return t.entries.map(e => e instanceof TranscriptEntry ? e.toJSON() : e);
+    return t.courses.map(e => e instanceof TranscriptCourse ? e.toJSON() : e);
+  }
+  if (t && typeof t === 'object' && !Array.isArray(t) && Array.isArray(t.courses)) {
+    return t.courses;
   }
   return t;
+}
+
+/**
+ * Extract audit options from a Transcript instance.
+ * Returns { attainments, declaredPrograms, exceptions } for the audit engine.
+ */
+function extractTranscriptOptions(t) {
+  if (!(t instanceof Transcript)) return {};
+  const opts = {};
+  const attainments = t.attainments;
+  if (attainments && Object.keys(attainments).length > 0) {
+    opts.attainments = attainments;
+  }
+  const declared = t.declaredPrograms;
+  if (declared && declared.length > 0) {
+    opts.declaredPrograms = declared;
+  }
+  const exceptions = [];
+  for (const w of t.waivers) exceptions.push(w);
+  for (const s of t.substitutions) exceptions.push(s);
+  if (exceptions.length > 0) opts.exceptions = exceptions;
+  return opts;
+}
+
+/**
+ * Derive programContext from transcript's declaredPrograms.
+ * First declared program with role 'primary' for each type becomes the context entry.
+ */
+function deriveProgramContext(t) {
+  if (!(t instanceof Transcript)) return null;
+  const declared = t.declaredPrograms;
+  if (!declared || declared.length === 0) return null;
+  const ctx = {};
+  for (const dp of declared) {
+    if (dp.role === 'primary') {
+      if (dp.type === 'major' && !ctx['primary-major']) {
+        ctx['primary-major'] = dp.code;
+      } else if (dp.type === 'minor' && !ctx['primary-minor']) {
+        ctx['primary-minor'] = dp.code;
+      }
+    }
+  }
+  return Object.keys(ctx).length > 0 ? ctx : null;
 }
 
 // ============================================================
@@ -81,7 +128,9 @@ class Requirement {
   }
 
   audit(catalog, transcript, opts) {
-    const raw = audit(this.#ast, unwrapCatalog(catalog), unwrapTranscript(transcript), opts);
+    const txOpts = extractTranscriptOptions(transcript);
+    const merged = { ...txOpts, ...opts };
+    const raw = audit(this.#ast, unwrapCatalog(catalog), unwrapTranscript(transcript), merged);
     return new AuditResult(raw, this.#ast);
   }
 
@@ -175,15 +224,15 @@ class Catalog {
 }
 
 // ============================================================
-// TranscriptEntry
+// TranscriptCourse
 // ============================================================
 
-class TranscriptEntry {
+class TranscriptCourse {
   #data;
 
   constructor(data) {
     if (!data || !data.subject || !data.number) {
-      throw new Error('TranscriptEntry requires subject and number');
+      throw new Error('TranscriptCourse requires subject and number');
     }
     this.#data = Object.freeze(data);
   }
@@ -203,27 +252,156 @@ class TranscriptEntry {
 // ============================================================
 
 class Transcript {
-  #entries;
+  #courses;
+  #attainments;
+  #declaredPrograms;
+  #waivers;
+  #substitutions;
+  #level;
 
-  constructor(entries) {
-    if (!Array.isArray(entries)) throw new Error('Transcript requires an array of entries');
-    this.#entries = Object.freeze(
-      entries.map(e => e instanceof TranscriptEntry ? e : new TranscriptEntry(e))
+  constructor(data) {
+    if (Array.isArray(data)) {
+      throw new Error('Transcript requires a data object with a courses array, not a plain array');
+    }
+    if (!data || !Array.isArray(data.courses)) {
+      throw new Error('Transcript requires a data object with a courses array');
+    }
+    this.#courses = Object.freeze(
+      data.courses.map(e => e instanceof TranscriptCourse ? e : new TranscriptCourse(e))
     );
-  }
-
-  get entries() { return this.#entries; }
-
-  addEntry(entry) {
-    const e = entry instanceof TranscriptEntry ? entry : new TranscriptEntry(entry);
-    return new Transcript([...this.#entries, e]);
-  }
-
-  removeEntry(subject, number) {
-    return new Transcript(
-      this.#entries.filter(e => !(e.subject === subject && e.number === number))
+    this.#attainments = Object.freeze(data.attainments || {});
+    this.#declaredPrograms = Object.freeze(
+      (data.declaredPrograms || []).map(dp => Object.freeze({ ...dp }))
     );
+    this.#waivers = Object.freeze(
+      (data.waivers || []).map(w => w instanceof Waiver ? w : null).filter(Boolean)
+    );
+    this.#substitutions = Object.freeze(
+      (data.substitutions || []).map(s => s instanceof Substitution ? s : null).filter(Boolean)
+    );
+    this.#level = data.level || null;
   }
+
+  get courses() { return this.#courses; }
+  get attainments() { return this.#attainments; }
+  get declaredPrograms() { return this.#declaredPrograms; }
+  get waivers() { return this.#waivers; }
+  get substitutions() { return this.#substitutions; }
+  get level() { return this.#level; }
+
+  // -- Immutable course mutations --
+
+  addCourse(course) {
+    const c = course instanceof TranscriptCourse ? course : new TranscriptCourse(course);
+    return new Transcript(this.#toData({ courses: [...this.#courses, c] }));
+  }
+
+  removeCourse(subject, number) {
+    return new Transcript(this.#toData({
+      courses: this.#courses.filter(e => !(e.subject === subject && e.number === number)),
+    }));
+  }
+
+  // -- Immutable attainment mutations --
+
+  addAttainment(code, value) {
+    return new Transcript(this.#toData({
+      attainments: { ...this.#attainments, [code]: value },
+    }));
+  }
+
+  removeAttainment(code) {
+    const { [code]: _, ...rest } = this.#attainments;
+    return new Transcript(this.#toData({ attainments: rest }));
+  }
+
+  // -- Immutable program declaration mutations --
+
+  declareProgram(declaration) {
+    return new Transcript(this.#toData({
+      declaredPrograms: [...this.#declaredPrograms, declaration],
+    }));
+  }
+
+  undeclareProgram(code) {
+    return new Transcript(this.#toData({
+      declaredPrograms: this.#declaredPrograms.filter(d => d.code !== code),
+    }));
+  }
+
+  // -- Immutable waiver mutations --
+
+  addWaiver(waiver) {
+    if (!(waiver instanceof Waiver)) {
+      throw new Error('addWaiver() requires a Waiver instance (use reqit.waiver() to create one)');
+    }
+    return new Transcript(this.#toData({
+      waivers: [...this.#waivers, waiver],
+    }));
+  }
+
+  removeWaiver(target) {
+    return new Transcript(this.#toData({
+      waivers: this.#waivers.filter(w => !matchesWaiverTarget(w, target)),
+    }));
+  }
+
+  // -- Immutable substitution mutations --
+
+  addSubstitution(substitution) {
+    if (!(substitution instanceof Substitution)) {
+      throw new Error('addSubstitution() requires a Substitution instance (use reqit.substitution() to create one)');
+    }
+    return new Transcript(this.#toData({
+      substitutions: [...this.#substitutions, substitution],
+    }));
+  }
+
+  removeSubstitution(target) {
+    return new Transcript(this.#toData({
+      substitutions: this.#substitutions.filter(s => !matchesSubstitutionTarget(s, target)),
+    }));
+  }
+
+  // -- Internal helper to build data object for new Transcript --
+
+  #toData(overrides) {
+    return {
+      courses: overrides.courses || [...this.#courses],
+      attainments: overrides.attainments || { ...this.#attainments },
+      declaredPrograms: overrides.declaredPrograms || [...this.#declaredPrograms],
+      waivers: overrides.waivers || [...this.#waivers],
+      substitutions: overrides.substitutions || [...this.#substitutions],
+      level: this.#level,
+    };
+  }
+}
+
+/**
+ * Match a waiver against a removal target.
+ * Target can be a course { subject, number }, or a string matching
+ * the score/attainment/quantity/label target value.
+ */
+function matchesWaiverTarget(waiver, target) {
+  const t = waiver.target;
+  if (typeof target === 'object' && target.subject && target.number) {
+    return t.course && t.course.subject === target.subject && t.course.number === target.number;
+  }
+  if (typeof target === 'string') {
+    return t.score === target || t.attainment === target || t.quantity === target || t.label === target;
+  }
+  return false;
+}
+
+/**
+ * Match a substitution against a removal target.
+ * Target is { subject, number } matching the original course.
+ */
+function matchesSubstitutionTarget(sub, target) {
+  if (typeof target === 'object' && target.subject && target.number) {
+    return sub.original.subject === target.subject && sub.original.number === target.number;
+  }
+  return false;
 }
 
 // ============================================================
@@ -339,11 +517,13 @@ module.exports = {
   AuditStatus,
   Requirement,
   Catalog,
-  TranscriptEntry,
+  TranscriptCourse,
   Transcript,
   ResolutionResult,
   AuditResult,
   MultiAuditResult,
   unwrapCatalog,
   unwrapTranscript,
+  extractTranscriptOptions,
+  deriveProgramContext,
 };
