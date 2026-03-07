@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "description": "Parser, AST, resolver, auditor, and exporters for academic requirements",
   "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./advanced": "./src/advanced.js"
+  },
   "scripts": {
     "test": "jest",
     "test:coverage": "jest --coverage",

@@ -1,6 +1,14 @@
 'use strict';
 
-// reqit SDK — public API (class-based)
+/**
+ * reqit SDK — public API
+ *
+ * Primary entry point for the reqit academic requirements toolkit.
+ * Parse requirements, build catalogs/transcripts, run degree audits,
+ * and render results as HTML or text outlines.
+ *
+ * Low-level engine internals are available via `require('reqit/advanced')`.
+ */
 
 const { parse: internalParse } = require('./parser');
 const {
@@ -21,33 +29,39 @@ const {
   extractTranscriptOptions,
   deriveProgramContext,
 } = require('./entities');
-const { auditMulti: internalAuditMulti, CourseAssignmentMap } = require('./audit/multi-tree');
-const { prepareAudit } = require('./audit');
-const { isPassingGrade, meetsMinGrade, calculateGPA: internalCalculateGPA, isAuditableGrade, DEFAULT_GRADE_CONFIG, isValidGrade } = require('./grade');
+const { auditMulti: internalAuditMulti } = require('./audit/multi-tree');
+const { isPassingGrade, meetsMinGrade, calculateGPA: internalCalculateGPA, isValidGrade } = require('./grade');
 const { exportPrereqMatrix } = require('./export/prereq-matrix');
 const { exportDependencyMatrix } = require('./export/dependency-matrix');
 const { Waiver, Substitution, waiver: waiverFactory, substitution: substitutionFactory } = require('./audit/exceptions');
+
+const VERSION = require('../package.json').version;
 
 // ============================================================
 // Entity factories
 // ============================================================
 
+/** Parse a requirement string into a Requirement instance. */
 function parse(text) {
   return new Requirement(internalParse(text));
 }
 
+/** Wrap a raw AST object in a Requirement instance. */
 function fromAST(ast) {
   return new Requirement(ast);
 }
 
+/** Create a Catalog instance from catalog data. */
 function catalog(data) {
   return new Catalog(data);
 }
 
+/** Create a Transcript instance from transcript data. */
 function transcript(data) {
   return new Transcript(data);
 }
 
+/** Create a Degree instance from degree data. */
 function degree(data) {
   return new Degree(data);
 }
@@ -56,6 +70,7 @@ function degree(data) {
 // calculateGPA — entity-aware wrapper
 // ============================================================
 
+/** Calculate GPA from transcript courses. Accepts Transcript or plain array. */
 function calculateGPA(coursesOrTranscript, configOrCatalog) {
   const courses = coursesOrTranscript instanceof Transcript
     ? unwrapTranscript(coursesOrTranscript)
@@ -72,6 +87,7 @@ function calculateGPA(coursesOrTranscript, configOrCatalog) {
 // Multi-tree audit facade
 // ============================================================
 
+/** Audit multiple requirement trees with shared course assignment. */
 function publicAuditMulti(cat, tx, options) {
   const { trees, overlapRules, programContext: explicitProgramContext, ...rest } = options || {};
   const asts = {};
@@ -104,45 +120,75 @@ function publicAuditMulti(cat, tx, options) {
 // ============================================================
 
 module.exports = {
-  // Entity factories
+  // -- Factories --
+  /** Parse a requirement string into a Requirement instance. */
   parse,
+  /** Wrap a raw AST object in a Requirement instance. */
   fromAST,
+  /** Create a Catalog instance from catalog data. */
   catalog,
+  /** Create a Transcript instance from transcript data. */
   transcript,
+  /** Create a Degree instance from degree data. */
   degree,
-  // Exception factories
+  /** Create a Waiver exception for audit. */
   waiver: waiverFactory,
+  /** Create a Substitution exception for audit. */
   substitution: substitutionFactory,
-  // Entity classes (for instanceof checks)
+
+  // -- Entity classes --
+  /** Parsed requirement with rendering, auditing, and analysis methods. */
   Requirement,
+  /** Course catalog with lookup and query methods. */
   Catalog,
+  /** Degree credential (B.S., M.A., etc.) with metadata. */
   Degree,
+  /** Student transcript with immutable mutation methods. */
   Transcript,
+  /** Single course entry on a transcript. */
   TranscriptCourse,
+  /** Result of resolving filters against a catalog. */
   ResolutionResult,
+  /** Result of auditing a single requirement tree. */
   AuditResult,
+  /** Result of auditing multiple requirement trees with shared courses. */
   MultiAuditResult,
-  // Exception classes (for instanceof checks)
+  /** A waiver exception (course, score, attainment, or label waiver). */
   Waiver,
+  /** A course substitution exception. */
   Substitution,
-  // Enums
+
+  // -- Enumerations --
+  /** Audit status values: MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET, WAIVED, SUBSTITUTED. */
   AuditStatus,
+  /** Program type values: MAJOR, MINOR, CERTIFICATE, CONCENTRATION, TRACK, CLUSTER. */
   ProgramType,
+  /** Program level values: UNDERGRADUATE, GRADUATE, DOCTORAL, etc. */
   ProgramLevel,
+  /** Degree type abbreviations: BA, BS, MA, MS, PHD, etc. */
   DegreeType,
-  // Multi-tree
+
+  // -- Multi-tree audit --
+  /** Audit multiple requirement trees with shared course assignment and overlap policies. */
   auditMulti: publicAuditMulti,
-  // Catalog-level exports
+
+  // -- Catalog exports --
+  /** Export a prerequisite matrix as spreadsheet data. */
   exportPrereqMatrix,
+  /** Export a dependency matrix as spreadsheet data. */
   exportDependencyMatrix,
-  // Grade utilities
+
+  // -- Grade utilities --
+  /** Check if a grade meets a minimum grade threshold. */
   meetsMinGrade,
+  /** Check if a grade is a passing grade. */
   isPassingGrade,
+  /** Calculate GPA from a list of course entries. */
   calculateGPA,
+  /** Check if a grade string is valid in the given configuration. */
   isValidGrade,
-  // Internal-use exports (backward compat for reqit-pg/reqit-catalog)
-  CourseAssignmentMap,
-  prepareAudit,
-  isAuditableGrade,
-  DEFAULT_GRADE_CONFIG,
+
+  // -- Meta --
+  /** SDK version string (from package.json). */
+  version: VERSION,
 };

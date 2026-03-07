@@ -28,9 +28,7 @@ describe('public API — structural guards', () => {
     'auditMulti', 'exportPrereqMatrix', 'exportDependencyMatrix',
     'meetsMinGrade', 'isPassingGrade', 'calculateGPA', 'isValidGrade',
   ];
-  const expectedBackwardCompat = [
-    'CourseAssignmentMap', 'prepareAudit', 'isAuditableGrade', 'DEFAULT_GRADE_CONFIG',
-  ];
+  const expectedMeta = ['version'];
 
   test.each(expectedFactories)('%s is exported as a function', (name) => {
     expect(typeof api[name]).toBe('function');
@@ -44,8 +42,20 @@ describe('public API — structural guards', () => {
     expect(typeof api[name]).toBe('function');
   });
 
-  test.each(expectedBackwardCompat)('%s is exported', (name) => {
+  test.each(expectedMeta)('%s is exported', (name) => {
     expect(api[name]).toBeDefined();
+  });
+
+  test('version matches package.json', () => {
+    const pkg = require('../../package.json');
+    expect(api.version).toBe(pkg.version);
+  });
+
+  test('internal-use exports are NOT on the public API', () => {
+    expect(api.CourseAssignmentMap).toBeUndefined();
+    expect(api.prepareAudit).toBeUndefined();
+    expect(api.isAuditableGrade).toBeUndefined();
+    expect(api.DEFAULT_GRADE_CONFIG).toBeUndefined();
   });
 
   test('AuditStatus is exported with all six values', () => {
@@ -992,10 +1002,11 @@ describe('Multi-tree audit', () => {
   });
 
   test('multi.courseAssignments is a CourseAssignmentMap', () => {
+    const advanced = require('../../src/advanced');
     const result = api.auditMulti(minimalCatalog, { courses: completeTx }, {
       trees: { major: majorReq },
     });
-    expect(result.courseAssignments).toBeInstanceOf(api.CourseAssignmentMap);
+    expect(result.courseAssignments).toBeInstanceOf(advanced.CourseAssignmentMap);
   });
 
   test('multi.warnings is an array', () => {
@@ -1350,30 +1361,38 @@ describe('Plain object acceptance', () => {
 });
 
 // ============================================================
-// 19. Backward compatibility
+// 19. reqit/advanced subpath
 // ============================================================
 
-describe('Backward compatibility', () => {
+describe('reqit/advanced subpath', () => {
+  const advanced = require('../../src/advanced');
+
   test('prepareAudit is exported and functional', () => {
     const ast = api.parse('MATH 151').ast;
-    const prepared = api.prepareAudit(ast, minimalCatalog);
+    const prepared = advanced.prepareAudit(ast, minimalCatalog);
     expect(typeof prepared.run).toBe('function');
     const result = prepared.run(completeTx);
     expect(result.status).toBe('met');
   });
 
   test('CourseAssignmentMap is exported', () => {
-    const cam = new api.CourseAssignmentMap();
+    const cam = new advanced.CourseAssignmentMap();
     expect(typeof cam.assign).toBe('function');
   });
 
   test('isAuditableGrade is exported', () => {
-    expect(typeof api.isAuditableGrade).toBe('function');
+    expect(typeof advanced.isAuditableGrade).toBe('function');
   });
 
   test('DEFAULT_GRADE_CONFIG is exported', () => {
-    expect(api.DEFAULT_GRADE_CONFIG).toBeDefined();
-    expect(api.DEFAULT_GRADE_CONFIG.scale).toBeDefined();
+    expect(advanced.DEFAULT_GRADE_CONFIG).toBeDefined();
+    expect(advanced.DEFAULT_GRADE_CONFIG.scale).toBeDefined();
+  });
+
+  test('exports exactly four items', () => {
+    const keys = Object.keys(advanced);
+    expect(keys).toHaveLength(4);
+    expect(keys.sort()).toEqual(['CourseAssignmentMap', 'DEFAULT_GRADE_CONFIG', 'isAuditableGrade', 'prepareAudit']);
   });
 });
 
