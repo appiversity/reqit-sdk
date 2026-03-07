@@ -285,6 +285,50 @@ class Catalog {
     return [...(this.#data.attributes || [])].sort((a, b) => a.code.localeCompare(b.code));
   }
 
+  /**
+   * Find courses matching a filter object.
+   * Supports `subject`, `attribute`, and combinations thereof.
+   * @param {{ subject?: string, attribute?: string }} [filter]
+   * @returns {Array<Object>} Matching courses
+   */
+  findCourses(filter) {
+    const courses = this.#data.courses;
+    if (!filter || Object.keys(filter).length === 0) return [...courses];
+    return courses.filter(c => {
+      if (filter.subject && c.subject !== filter.subject) return false;
+      if (filter.attribute && !(c.attributes || []).includes(filter.attribute)) return false;
+      return true;
+    });
+  }
+
+  /**
+   * Get all unique subject codes from the catalog, sorted alphabetically.
+   * @returns {string[]}
+   */
+  getSubjects() {
+    const subjects = new Set();
+    for (const c of this.#data.courses) {
+      subjects.add(c.subject);
+    }
+    return [...subjects].sort();
+  }
+
+  /**
+   * Get cross-listed equivalents for a course.
+   * Returns courses in the same crossListGroup, excluding the queried course itself.
+   * @param {string} subject
+   * @param {string} number
+   * @returns {Array<Object>}
+   */
+  getCrossListEquivalents(subject, number) {
+    const course = this.findCourse(subject, number);
+    if (!course || !course.crossListGroup) return [];
+    return this.#data.courses.filter(c =>
+      c.crossListGroup === course.crossListGroup &&
+      !(c.subject === subject && c.number === number)
+    );
+  }
+
   withPrograms(programMap) {
     const programs = (this.#data.programs || []).map(p => {
       const req = programMap[p.code];

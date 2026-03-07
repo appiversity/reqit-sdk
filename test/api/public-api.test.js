@@ -1504,6 +1504,84 @@ describe('Catalog query methods', () => {
 });
 
 // ============================================================
+// 25a. Catalog.findCourses / getSubjects / getCrossListEquivalents (Issue 3)
+// ============================================================
+
+describe('Catalog course discovery methods', () => {
+  const cat = api.catalog(minimalCatalog);
+
+  test('findCourses with no filter returns all courses', () => {
+    const all = cat.findCourses();
+    expect(all).toHaveLength(minimalCatalog.courses.length);
+  });
+
+  test('findCourses with empty filter returns all courses', () => {
+    expect(cat.findCourses({})).toHaveLength(minimalCatalog.courses.length);
+  });
+
+  test('findCourses by subject', () => {
+    const math = cat.findCourses({ subject: 'MATH' });
+    expect(math).toHaveLength(4);
+    expect(math.every(c => c.subject === 'MATH')).toBe(true);
+  });
+
+  test('findCourses by attribute', () => {
+    const wi = cat.findCourses({ attribute: 'WI' });
+    // CMPS 310, CMPS 320, CMPS 360, ENGL 101, ENGL 201
+    expect(wi).toHaveLength(5);
+    expect(wi.every(c => c.attributes.includes('WI'))).toBe(true);
+  });
+
+  test('findCourses by subject and attribute', () => {
+    const cmpsWI = cat.findCourses({ subject: 'CMPS', attribute: 'WI' });
+    // CMPS 310, CMPS 320, CMPS 360
+    expect(cmpsWI).toHaveLength(3);
+    expect(cmpsWI.every(c => c.subject === 'CMPS' && c.attributes.includes('WI'))).toBe(true);
+  });
+
+  test('findCourses returns empty array for no matches', () => {
+    expect(cat.findCourses({ subject: 'FAKE' })).toHaveLength(0);
+    expect(cat.findCourses({ attribute: 'NONEXISTENT' })).toHaveLength(0);
+  });
+
+  test('findCourses returns new array each time', () => {
+    const a = cat.findCourses({ subject: 'MATH' });
+    const b = cat.findCourses({ subject: 'MATH' });
+    expect(a).not.toBe(b);
+    expect(a).toEqual(b);
+  });
+
+  test('getSubjects returns sorted unique subject codes', () => {
+    const subjects = cat.getSubjects();
+    expect(subjects).toEqual(['ART', 'BIOL', 'CHEM', 'CMPS', 'ENGL', 'HIST', 'MATH', 'PHYS']);
+  });
+
+  test('getCrossListEquivalents returns empty for non-cross-listed course', () => {
+    expect(cat.getCrossListEquivalents('MATH', '151')).toEqual([]);
+  });
+
+  test('getCrossListEquivalents returns empty for unknown course', () => {
+    expect(cat.getCrossListEquivalents('FAKE', '999')).toEqual([]);
+  });
+
+  test('getCrossListEquivalents finds cross-listed courses', () => {
+    // Add cross-listing to a custom catalog
+    const crossListCatalog = api.catalog({
+      ...minimalCatalog,
+      courses: [
+        ...minimalCatalog.courses,
+        { id: 100, subject: 'CSE', number: '340', title: 'Intro to ML', creditsMin: 3, creditsMax: 3, crossListGroup: 'ML-INTRO' },
+        { id: 101, subject: 'MATH', number: '340', title: 'Intro to ML', creditsMin: 3, creditsMax: 3, crossListGroup: 'ML-INTRO' },
+      ],
+    });
+    const equiv = crossListCatalog.getCrossListEquivalents('CSE', '340');
+    expect(equiv).toHaveLength(1);
+    expect(equiv[0].subject).toBe('MATH');
+    expect(equiv[0].number).toBe('340');
+  });
+});
+
+// ============================================================
 // 25b. Catalog.attributes (Issue 12)
 // ============================================================
 
