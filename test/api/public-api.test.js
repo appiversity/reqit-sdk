@@ -58,6 +58,47 @@ describe('public API — structural guards', () => {
     expect(api.AuditStatus.SUBSTITUTED).toBe('substituted');
   });
 
+  test('ProgramType is exported with all six values', () => {
+    expect(api.ProgramType).toBeDefined();
+    expect(api.ProgramType.MAJOR).toBe('major');
+    expect(api.ProgramType.MINOR).toBe('minor');
+    expect(api.ProgramType.CERTIFICATE).toBe('certificate');
+    expect(api.ProgramType.CONCENTRATION).toBe('concentration');
+    expect(api.ProgramType.TRACK).toBe('track');
+    expect(api.ProgramType.CLUSTER).toBe('cluster');
+    expect(Object.isFrozen(api.ProgramType)).toBe(true);
+  });
+
+  test('ProgramLevel is exported with all six values', () => {
+    expect(api.ProgramLevel).toBeDefined();
+    expect(api.ProgramLevel.UNDERGRADUATE).toBe('undergraduate');
+    expect(api.ProgramLevel.GRADUATE).toBe('graduate');
+    expect(api.ProgramLevel.DOCTORAL).toBe('doctoral');
+    expect(api.ProgramLevel.PROFESSIONAL).toBe('professional');
+    expect(api.ProgramLevel.POST_GRADUATE).toBe('post-graduate');
+    expect(api.ProgramLevel.POST_DOCTORAL).toBe('post-doctoral');
+    expect(Object.isFrozen(api.ProgramLevel)).toBe(true);
+  });
+
+  test('DegreeType is exported with common degree types', () => {
+    expect(api.DegreeType).toBeDefined();
+    expect(api.DegreeType.BS).toBe('B.S.');
+    expect(api.DegreeType.BA).toBe('B.A.');
+    expect(api.DegreeType.MA).toBe('M.A.');
+    expect(api.DegreeType.MS).toBe('M.S.');
+    expect(api.DegreeType.PHD).toBe('Ph.D.');
+    expect(api.DegreeType.MBA).toBe('M.B.A.');
+    expect(api.DegreeType.JD).toBe('J.D.');
+    expect(api.DegreeType.MD).toBe('M.D.');
+    // Associate degrees
+    expect(api.DegreeType.AA).toBe('A.A.');
+    expect(api.DegreeType.AS).toBe('A.S.');
+    // Professional degrees
+    expect(api.DegreeType.DO).toBe('D.O.');
+    expect(api.DegreeType.DDS).toBe('D.D.S.');
+    expect(Object.isFrozen(api.DegreeType)).toBe(true);
+  });
+
   test('no unexpected undefined exports', () => {
     const allKeys = Object.keys(api);
     const undefinedKeys = allKeys.filter(k => api[k] === undefined);

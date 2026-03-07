@@ -5,6 +5,9 @@
 const { parse: internalParse } = require('./parser');
 const {
   AuditStatus,
+  ProgramType,
+  ProgramLevel,
+  DegreeType,
   Requirement,
   Catalog,
   TranscriptCourse,
@@ -115,8 +118,11 @@ module.exports = {
   // Exception classes (for instanceof checks)
   Waiver,
   Substitution,
-  // Enum
+  // Enums
   AuditStatus,
+  ProgramType,
+  ProgramLevel,
+  DegreeType,
   // Multi-tree
   auditMulti: publicAuditMulti,
   // Catalog-level exports

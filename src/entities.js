@@ -88,7 +88,7 @@ function deriveProgramContext(t) {
 }
 
 // ============================================================
-// AuditStatus enum
+// Enumerations
 // ============================================================
 
 const AuditStatus = Object.freeze({
@@ -98,6 +98,67 @@ const AuditStatus = Object.freeze({
   NOT_MET: 'not-met',
   WAIVED: 'waived',
   SUBSTITUTED: 'substituted',
+});
+
+const ProgramType = Object.freeze({
+  MAJOR: 'major',
+  MINOR: 'minor',
+  CERTIFICATE: 'certificate',
+  CONCENTRATION: 'concentration',
+  TRACK: 'track',
+  CLUSTER: 'cluster',
+});
+
+const ProgramLevel = Object.freeze({
+  UNDERGRADUATE: 'undergraduate',
+  GRADUATE: 'graduate',
+  DOCTORAL: 'doctoral',
+  PROFESSIONAL: 'professional',
+  POST_GRADUATE: 'post-graduate',
+  POST_DOCTORAL: 'post-doctoral',
+});
+
+const DegreeType = Object.freeze({
+  // Associate degrees
+  AA: 'A.A.',
+  AS: 'A.S.',
+  AAS: 'A.A.S.',
+  // Bachelor's degrees
+  BA: 'B.A.',
+  BS: 'B.S.',
+  BFA: 'B.F.A.',
+  BBA: 'B.B.A.',
+  BSN: 'B.S.N.',
+  BE: 'B.E.',
+  BARCH: 'B.Arch.',
+  BMUS: 'B.Mus.',
+  BSW: 'B.S.W.',
+  // Master's degrees
+  MA: 'M.A.',
+  MS: 'M.S.',
+  MBA: 'M.B.A.',
+  MFA: 'M.F.A.',
+  MED: 'M.Ed.',
+  MSW: 'M.S.W.',
+  MPH: 'M.P.H.',
+  MPA: 'M.P.A.',
+  MSN: 'M.S.N.',
+  MENG: 'M.Eng.',
+  // Doctoral degrees
+  PHD: 'Ph.D.',
+  EDD: 'Ed.D.',
+  DBA: 'D.B.A.',
+  DNP: 'D.N.P.',
+  DMA: 'D.M.A.',
+  PSYD: 'Psy.D.',
+  // Professional degrees
+  JD: 'J.D.',
+  MD: 'M.D.',
+  DO: 'D.O.',
+  DDS: 'D.D.S.',
+  DPHARM: 'Pharm.D.',
+  DVM: 'D.V.M.',
+  MDIV: 'M.Div.',
 });
 
 // ============================================================
@@ -515,6 +576,9 @@ class MultiAuditResult {
 
 module.exports = {
   AuditStatus,
+  ProgramType,
+  ProgramLevel,
+  DegreeType,
   Requirement,
   Catalog,
   TranscriptCourse,
