@@ -453,26 +453,26 @@ describe('ResolutionResult enrichment', () => {
 describe('Single-tree audit', () => {
   test('audit(catalog, transcript) returns AuditResult', () => {
     const req = api.parse('MATH 151');
-    const result = req.audit(minimalCatalog, { courses: completeTx });
+    const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     expect(result).toBeInstanceOf(api.AuditResult);
   });
 
   test('result.status is an AuditStatus value', () => {
     const req = api.parse('MATH 151');
-    const result = req.audit(minimalCatalog, { courses: completeTx });
+    const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     expect(Object.values(api.AuditStatus)).toContain(result.status);
   });
 
   test('result.items is the annotated tree', () => {
     const req = api.parse('MATH 151');
-    const result = req.audit(minimalCatalog, { courses: completeTx });
+    const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     expect(result.items).toBeDefined();
     expect(result.items.type).toBe('course');
   });
 
   test('result.summary has met, notMet, inProgress', () => {
     const req = api.parse('all of (MATH 151, CMPS 130)');
-    const result = req.audit(minimalCatalog, { courses: completeTx });
+    const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     const s = result.summary;
     expect(s).toHaveProperty('met');
     expect(s).toHaveProperty('notMet');
@@ -481,13 +481,13 @@ describe('Single-tree audit', () => {
 
   test('result.warnings is an array', () => {
     const req = api.parse('MATH 151');
-    const result = req.audit(minimalCatalog, { courses: completeTx });
+    const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     expect(Array.isArray(result.warnings)).toBe(true);
   });
 
   test('result.findUnmet() returns unmet leaf nodes', () => {
     const req = api.parse('all of (MATH 151, CMPS 310)');
-    const result = req.audit(minimalCatalog, { courses: partialTx });
+    const result = req.audit(minimalCatalog, api.transcript({ courses: partialTx }));
     const unmet = result.findUnmet();
     expect(Array.isArray(unmet)).toBe(true);
     expect(unmet).toHaveLength(1);
@@ -495,14 +495,14 @@ describe('Single-tree audit', () => {
 
   test('result.findNextEligible(catalog, transcript) returns eligible courses', () => {
     const req = api.parse('all of (MATH 151, CMPS 310)');
-    const result = req.audit(minimalCatalog, { courses: partialTx });
-    const eligible = result.findNextEligible(minimalCatalog, { courses: partialTx });
+    const result = req.audit(minimalCatalog, api.transcript({ courses: partialTx }));
+    const eligible = result.findNextEligible(minimalCatalog, api.transcript({ courses: partialTx }));
     expect(Array.isArray(eligible)).toBe(true);
   });
 
   test('result.toHTML(catalog) returns HTML with status classes', () => {
     const req = api.parse('MATH 151');
-    const result = req.audit(minimalCatalog, { courses: completeTx });
+    const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     const html = result.toHTML(minimalCatalog);
     expect(typeof html).toBe('string');
     expect(html).toContain('reqit-status-met');
@@ -510,7 +510,7 @@ describe('Single-tree audit', () => {
 
   test('result.export(catalog, { format: "csv" }) returns CSV string', () => {
     const req = api.parse('all of (MATH 151, CMPS 130)');
-    const result = req.audit(minimalCatalog, { courses: completeTx });
+    const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     const csv = result.export(minimalCatalog, { format: 'csv' });
     expect(typeof csv).toBe('string');
     expect(csv).toContain('MATH');
@@ -519,7 +519,7 @@ describe('Single-tree audit', () => {
   test('works with Catalog/Transcript entities', () => {
     const req = api.parse('MATH 151');
     const cat = api.catalog(minimalCatalog);
-    const tx = api.transcript({ courses: completeTx });
+    const tx = api.transcript(api.transcript({ courses: completeTx }));
     const result = req.audit(cat, tx);
     expect(result.status).toBe(api.AuditStatus.MET);
   });
@@ -728,7 +728,7 @@ describe('TranscriptCourse entity', () => {
 
 describe('Transcript entity', () => {
   test('transcript({ courses }) returns Transcript instance', () => {
-    const tx = api.transcript({ courses: completeTx });
+    const tx = api.transcript(api.transcript({ courses: completeTx }));
     expect(tx).toBeInstanceOf(api.Transcript);
   });
 
@@ -737,7 +737,7 @@ describe('Transcript entity', () => {
   });
 
   test('transcript.courses is frozen array of TranscriptCourse instances', () => {
-    const tx = api.transcript({ courses: completeTx });
+    const tx = api.transcript(api.transcript({ courses: completeTx }));
     expect(Object.isFrozen(tx.courses)).toBe(true);
     expect(tx.courses[0]).toBeInstanceOf(api.TranscriptCourse);
   });
@@ -748,7 +748,7 @@ describe('Transcript entity', () => {
   });
 
   test('addCourse(plain) returns new Transcript with entry appended', () => {
-    const tx = api.transcript({ courses: completeTx });
+    const tx = api.transcript(api.transcript({ courses: completeTx }));
     const tx2 = tx.addCourse({ subject: 'NEW', number: '999', grade: 'B', credits: 3 });
     expect(tx2).toBeInstanceOf(api.Transcript);
     expect(tx2.courses).toHaveLength(tx.courses.length + 1);
@@ -756,14 +756,14 @@ describe('Transcript entity', () => {
   });
 
   test('addCourse(TranscriptCourse) returns new Transcript', () => {
-    const tx = api.transcript({ courses: completeTx });
+    const tx = api.transcript(api.transcript({ courses: completeTx }));
     const entry = new api.TranscriptCourse({ subject: 'NEW', number: '999' });
     const tx2 = tx.addCourse(entry);
     expect(tx2.courses[tx2.courses.length - 1].subject).toBe('NEW');
   });
 
   test('removeCourse(subject, number) returns new Transcript without matching entries', () => {
-    const tx = api.transcript({ courses: completeTx });
+    const tx = api.transcript(api.transcript({ courses: completeTx }));
     const before = tx.courses.length;
     const tx2 = tx.removeCourse('MATH', '151');
     expect(tx2.courses.length).toBeLessThan(before);
@@ -771,7 +771,7 @@ describe('Transcript entity', () => {
   });
 
   test('original transcript unchanged after add/remove (immutability)', () => {
-    const tx = api.transcript({ courses: completeTx });
+    const tx = api.transcript(api.transcript({ courses: completeTx }));
     const originalLength = tx.courses.length;
     tx.addCourse({ subject: 'NEW', number: '999' });
     tx.removeCourse('MATH', '151');
@@ -781,14 +781,14 @@ describe('Transcript entity', () => {
   test('methods accept Transcript entity', () => {
     const req = api.parse('MATH 151');
     const cat = api.catalog(minimalCatalog);
-    const tx = api.transcript({ courses: completeTx });
+    const tx = api.transcript(api.transcript({ courses: completeTx }));
     const result = req.audit(cat, tx);
     expect(result.status).toBe(api.AuditStatus.MET);
   });
 
   test('methods accept plain transcript objects', () => {
     const req = api.parse('MATH 151');
-    const result = req.audit(minimalCatalog, { courses: completeTx });
+    const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     expect(result.status).toBe(api.AuditStatus.MET);
   });
 });
@@ -1005,14 +1005,14 @@ describe('Multi-tree audit', () => {
   const minorReq = api.parse('all of (CMPS 130, CMPS 230)');
 
   test('auditMulti(catalog, transcript, { trees }) returns MultiAuditResult', () => {
-    const result = api.auditMulti(minimalCatalog, { courses: completeTx }, {
+    const result = api.auditMulti(minimalCatalog, api.transcript({ courses: completeTx }), {
       trees: { major: majorReq, minor: minorReq },
     });
     expect(result).toBeInstanceOf(api.MultiAuditResult);
   });
 
   test('multi.trees is { name: AuditResult }', () => {
-    const result = api.auditMulti(minimalCatalog, { courses: completeTx }, {
+    const result = api.auditMulti(minimalCatalog, api.transcript({ courses: completeTx }), {
       trees: { major: majorReq, minor: minorReq },
     });
     const trees = result.trees;
@@ -1021,7 +1021,7 @@ describe('Multi-tree audit', () => {
   });
 
   test('each tree entry has AuditResult methods (findUnmet, toHTML)', () => {
-    const result = api.auditMulti(minimalCatalog, { courses: completeTx }, {
+    const result = api.auditMulti(minimalCatalog, api.transcript({ courses: completeTx }), {
       trees: { major: majorReq },
     });
     const tree = result.trees.major;
@@ -1030,7 +1030,7 @@ describe('Multi-tree audit', () => {
   });
 
   test('multi.overlapResults is an array', () => {
-    const result = api.auditMulti(minimalCatalog, { courses: completeTx }, {
+    const result = api.auditMulti(minimalCatalog, api.transcript({ courses: completeTx }), {
       trees: { major: majorReq },
     });
     expect(Array.isArray(result.overlapResults)).toBe(true);
@@ -1038,21 +1038,21 @@ describe('Multi-tree audit', () => {
 
   test('multi.courseAssignments is a CourseAssignmentMap', () => {
     const advanced = require('../../src/advanced');
-    const result = api.auditMulti(minimalCatalog, { courses: completeTx }, {
+    const result = api.auditMulti(minimalCatalog, api.transcript({ courses: completeTx }), {
       trees: { major: majorReq },
     });
     expect(result.courseAssignments).toBeInstanceOf(advanced.CourseAssignmentMap);
   });
 
   test('multi.warnings is an array', () => {
-    const result = api.auditMulti(minimalCatalog, { courses: completeTx }, {
+    const result = api.auditMulti(minimalCatalog, api.transcript({ courses: completeTx }), {
       trees: { major: majorReq },
     });
     expect(Array.isArray(result.warnings)).toBe(true);
   });
 
   test('works with Requirement values in trees map', () => {
-    const result = api.auditMulti(minimalCatalog, { courses: completeTx }, {
+    const result = api.auditMulti(minimalCatalog, api.transcript({ courses: completeTx }), {
       trees: { major: majorReq },
     });
     expect(result.trees.major.status).toBe(api.AuditStatus.MET);
@@ -1060,14 +1060,14 @@ describe('Multi-tree audit', () => {
 
   test('works with plain AST values in trees map', () => {
     const ast = { type: 'course', subject: 'MATH', number: '151' };
-    const result = api.auditMulti(minimalCatalog, { courses: completeTx }, {
+    const result = api.auditMulti(minimalCatalog, api.transcript({ courses: completeTx }), {
       trees: { test: ast },
     });
     expect(result.trees.test.status).toBe(api.AuditStatus.MET);
   });
 
   test('programContext maps roles correctly', () => {
-    const result = api.auditMulti(minimalCatalog, { courses: completeTx }, {
+    const result = api.auditMulti(minimalCatalog, api.transcript({ courses: completeTx }), {
       trees: { major: majorReq, minor: minorReq },
       programContext: { 'primary-major': 'major', 'primary-minor': 'minor' },
     });
@@ -1099,7 +1099,7 @@ describe('Multi-tree audit', () => {
   });
 
   test('overlapRules are respected', () => {
-    const result = api.auditMulti(minimalCatalog, { courses: completeTx }, {
+    const result = api.auditMulti(minimalCatalog, api.transcript({ courses: completeTx }), {
       trees: { major: majorReq, minor: minorReq },
       programContext: { 'primary-major': 'major', 'primary-minor': 'minor' },
       overlapRules: [{
@@ -1245,7 +1245,7 @@ describe('Export', () => {
 
   test('audit export as CSV', () => {
     const req = api.parse('MATH 151');
-    const result = req.audit(minimalCatalog, { courses: completeTx });
+    const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     const csv = result.export(minimalCatalog, { format: 'csv' });
     expect(typeof csv).toBe('string');
     expect(csv).toContain('MATH');
@@ -1294,7 +1294,7 @@ describe('Fluent chaining', () => {
 
   test('parse(text).audit(catalog, transcript).findUnmet() — audit pipeline', () => {
     const unmet = api.parse('all of (MATH 151, CMPS 310)')
-      .audit(minimalCatalog, { courses: partialTx })
+      .audit(minimalCatalog, api.transcript({ courses: partialTx }))
       .findUnmet();
     expect(Array.isArray(unmet)).toBe(true);
   });
@@ -1349,7 +1349,7 @@ describe('Error handling', () => {
   test('audit with minimal catalog still completes', () => {
     const req = api.parse('MATH 151');
     const cat = { courses: [{ subject: 'MATH', number: '151' }] };
-    const result = req.audit(cat, { courses: [{ subject: 'MATH', number: '151', grade: 'A', credits: 3, status: 'completed' }] });
+    const result = req.audit(cat, api.transcript({ courses: [{ subject: 'MATH', number: '151', grade: 'A', credits: 3, status: 'completed' }] }));
     expect(result.status).toBeDefined();
   });
 });
@@ -1364,12 +1364,20 @@ describe('Plain object acceptance', () => {
     expect(() => req.toOutline(minimalCatalog)).not.toThrow();
     expect(() => req.toHTML(minimalCatalog)).not.toThrow();
     expect(() => req.resolve(minimalCatalog)).not.toThrow();
-    expect(() => req.audit(minimalCatalog, { courses: completeTx })).not.toThrow();
+    expect(() => req.audit(minimalCatalog, api.transcript({ courses: completeTx }))).not.toThrow();
   });
 
-  test('every method that accepts transcript also accepts plain object', () => {
+  test('audit rejects plain transcript objects — requires Transcript instance', () => {
     const req = api.parse('MATH 151');
-    expect(() => req.audit(minimalCatalog, { courses: completeTx })).not.toThrow();
+    expect(() => req.audit(minimalCatalog, { courses: completeTx }))
+      .toThrow('Expected a Transcript instance');
+  });
+
+  test('findNextEligible rejects plain transcript objects — requires Transcript instance', () => {
+    const req = api.parse('MATH 151');
+    const result = req.audit(minimalCatalog, api.transcript({ courses: [] }));
+    expect(() => result.findNextEligible(minimalCatalog, { courses: completeTx }))
+      .toThrow('Expected a Transcript instance');
   });
 
   test('diff() accepts Requirement or plain AST', () => {
@@ -1382,7 +1390,7 @@ describe('Plain object acceptance', () => {
   test('auditMulti trees can be Requirement or plain AST', () => {
     const ast = { type: 'course', subject: 'MATH', number: '151' };
     const req = api.parse('CMPS 130');
-    const result = api.auditMulti(minimalCatalog, { courses: completeTx }, {
+    const result = api.auditMulti(minimalCatalog, api.transcript({ courses: completeTx }), {
       trees: { a: ast, b: req },
     });
     expect(result.trees.a).toBeInstanceOf(api.AuditResult);
@@ -1438,7 +1446,7 @@ describe('reqit/advanced subpath', () => {
 describe('AuditResult.summary correctness', () => {
   test('complete transcript — all met', () => {
     const req = api.parse('all of (MATH 151, CMPS 130)');
-    const result = req.audit(minimalCatalog, { courses: completeTx });
+    const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     expect(result.summary).toEqual({
       met: 2, waived: 0, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 0, total: 2,
     });
@@ -1446,7 +1454,7 @@ describe('AuditResult.summary correctness', () => {
 
   test('partial transcript — mixed met/not-met', () => {
     const req = api.parse('all of (MATH 151, CMPS 310)');
-    const result = req.audit(minimalCatalog, { courses: partialTx });
+    const result = req.audit(minimalCatalog, api.transcript({ courses: partialTx }));
     expect(result.summary).toEqual({
       met: 1, waived: 0, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 1, total: 2,
     });
@@ -1454,7 +1462,7 @@ describe('AuditResult.summary correctness', () => {
 
   test('in-progress transcript — in-progress items', () => {
     const req = api.parse('all of (CMPS 310, CMPS 320)');
-    const result = req.audit(minimalCatalog, { courses: inProgressTx });
+    const result = req.audit(minimalCatalog, api.transcript({ courses: inProgressTx }));
     expect(result.summary).toEqual({
       met: 0, waived: 0, substituted: 0, inProgress: 2, partialProgress: 0, notMet: 0, total: 2,
     });
@@ -1462,7 +1470,7 @@ describe('AuditResult.summary correctness', () => {
 
   test('credits-from root — walks source.items', () => {
     const req = api.parse('at least 6 credits from (MATH 151, CMPS 130)');
-    const result = req.audit(minimalCatalog, { courses: completeTx });
+    const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     expect(result.summary).toEqual({
       met: 2, waived: 0, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 0, total: 2,
     });
@@ -1470,7 +1478,7 @@ describe('AuditResult.summary correctness', () => {
 
   test('leaf root — single item summary', () => {
     const req = api.parse('MATH 151');
-    const result = req.audit(minimalCatalog, { courses: completeTx });
+    const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     expect(result.summary).toEqual({
       met: 1, waived: 0, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 0, total: 1,
     });
@@ -1483,7 +1491,7 @@ describe('AuditResult.summary correctness', () => {
 
 describe('MultiAuditResult.trees identity stability', () => {
   test('repeated access returns same object reference', () => {
-    const multi = api.auditMulti(minimalCatalog, { courses: completeTx }, {
+    const multi = api.auditMulti(minimalCatalog, api.transcript({ courses: completeTx }), {
       trees: {
         a: api.parse('MATH 151'),
         b: api.parse('CMPS 130'),
@@ -1540,7 +1548,7 @@ describe('Entity construction edge cases', () => {
 describe('AuditResult.walk', () => {
   test('visits all nodes with correct paths', () => {
     const req = api.parse('all of (MATH 151, CMPS 130)');
-    const result = req.audit(minimalCatalog, { courses: completeTx });
+    const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     const visited = [];
     result.walk((node, path) => {
       visited.push({ type: node.type, path });
@@ -1553,7 +1561,7 @@ describe('AuditResult.walk', () => {
 
   test('walk is a function on AuditResult', () => {
     const req = api.parse('MATH 151');
-    const result = req.audit(minimalCatalog, { courses: completeTx });
+    const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     expect(typeof result.walk).toBe('function');
   });
 });
@@ -1565,7 +1573,7 @@ describe('AuditResult.walk', () => {
 describe('AuditResult.summary scope unwrap', () => {
   test('scoped program returns group-level counts', () => {
     const req = api.parse('$a = MATH 151\n$b = CMPS 130\nall of ($a, $b)');
-    const result = req.audit(minimalCatalog, { courses: completeTx });
+    const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     const s = result.summary;
     // Should unwrap scope+variable-refs to see the all-of with 2 items
     expect(s.total).toBe(2);
@@ -1574,7 +1582,7 @@ describe('AuditResult.summary scope unwrap', () => {
 
   test('scope wrapping single body returns body-level summary', () => {
     const req = api.parse('scope "test" { all of (MATH 151, CMPS 130) }');
-    const result = req.audit(minimalCatalog, { courses: completeTx });
+    const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     const s = result.summary;
     expect(s.total).toBe(2);
   });
@@ -2207,7 +2215,7 @@ describe('Audit with exceptions (public API)', () => {
 
   test('audit without exceptions has no exceptions property', () => {
     const req = api.parse('MATH 151');
-    const result = req.audit(minimalCatalog, { courses: completeTx });
+    const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     expect(result.exceptions).toBeNull();
   });
 
@@ -2274,7 +2282,7 @@ describe('labels — integration', () => {
       $math = "Mathematics": all of (MATH 151, MATH 152)
       all of ($core, $math)
     }`);
-    const result = req.audit(minimalCatalog, { courses: completeTx });
+    const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     // Labels survive through audit on resolved variable-ref results
     const tree = result.items;
     expect(tree.items[0].resolved.label).toBe('CS Core');
@@ -2313,7 +2321,7 @@ describe('labels — integration', () => {
 
   test('labeled none-of preserves label through audit', () => {
     const req = api.parse('"Excluded": none of (MATH 999)');
-    const result = req.audit(minimalCatalog, { courses: completeTx });
+    const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     expect(result.items.label).toBe('Excluded');
   });
 });

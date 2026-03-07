@@ -39,10 +39,7 @@ function unwrapTranscript(t) {
   if (t instanceof Transcript) {
     return t.courses.map(e => e instanceof TranscriptCourse ? e.toJSON() : e);
   }
-  if (t && typeof t === 'object' && !Array.isArray(t) && Array.isArray(t.courses)) {
-    return t.courses;
-  }
-  return t;
+  throw new Error('Expected a Transcript instance — use reqit.transcript() to create one');
 }
 
 /**
