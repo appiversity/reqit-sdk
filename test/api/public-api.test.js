@@ -1690,6 +1690,114 @@ describe('Catalog degree queries', () => {
 });
 
 // ============================================================
+// 25e. Reverse dependency queries (Issue 4)
+// ============================================================
+
+describe('Catalog.prereqGraph()', () => {
+  const cat = api.catalog(minimalCatalog);
+  const graph = cat.prereqGraph();
+
+  test('directPrereqs returns direct prerequisites', () => {
+    const prereqs = graph.directPrereqs('MATH:152');
+    expect(prereqs).toEqual(new Set(['MATH:151']));
+  });
+
+  test('directPrereqs returns empty set for no prereqs', () => {
+    expect(graph.directPrereqs('MATH:101').size).toBe(0);
+  });
+
+  test('directPrereqs returns empty set for unknown course', () => {
+    expect(graph.directPrereqs('FAKE:999').size).toBe(0);
+  });
+
+  test('transitivePrereqs includes direct and indirect', () => {
+    const prereqs = graph.transitivePrereqs('MATH:250');
+    // MATH 250 requires MATH 152 which requires MATH 151
+    expect(prereqs).toContain('MATH:152');
+    expect(prereqs).toContain('MATH:151');
+  });
+
+  test('dependents returns direct reverse dependencies', () => {
+    const deps = graph.dependents('MATH:151');
+    expect(deps).toContain('MATH:152');
+    expect(deps).toContain('PHYS:201');
+  });
+
+  test('transitiveDependents returns full reverse transitive closure', () => {
+    const deps = graph.transitiveDependents('MATH:151');
+    // MATH 151 → MATH 152 → MATH 250 → CMPS 350
+    expect(deps).toContain('MATH:152');
+    expect(deps).toContain('MATH:250');
+    expect(deps).toContain('CMPS:350');
+  });
+
+  test('prereqGraph is cached', () => {
+    const g1 = cat.prereqGraph();
+    const g2 = cat.prereqGraph();
+    expect(g1).toBe(g2);
+  });
+});
+
+describe('Catalog.findProgramsRequiring()', () => {
+  const cmpsMajor = api.parse('all of (CMPS 130, CMPS 230, MATH 151)');
+  const mathMajor = api.parse('all of (MATH 151, MATH 152, any of (CMPS 130, CMPS 230))');
+  const cat = api.catalog(minimalCatalog).withPrograms({
+    CMPS: cmpsMajor,
+    MATH: mathMajor,
+  });
+
+  test('finds programs requiring a course as required', () => {
+    const results = cat.findProgramsRequiring('MATH', '151');
+    const cmps = results.find(r => r.code === 'CMPS');
+    const math = results.find(r => r.code === 'MATH');
+    expect(cmps).toBeDefined();
+    expect(cmps.context).toBe('required');
+    expect(math).toBeDefined();
+    expect(math.context).toBe('required');
+  });
+
+  test('identifies elective courses inside any-of', () => {
+    const results = cat.findProgramsRequiring('CMPS', '130');
+    const math = results.find(r => r.code === 'MATH');
+    expect(math).toBeDefined();
+    expect(math.context).toBe('elective');
+  });
+
+  test('returns empty array for unreferenced course', () => {
+    expect(cat.findProgramsRequiring('ART', '101')).toHaveLength(0);
+  });
+
+  test('skips programs without requirements', () => {
+    // CMPS-MINOR has no requirements attached
+    const results = cat.findProgramsRequiring('CMPS', '130');
+    const minor = results.find(r => r.code === 'CMPS-MINOR');
+    expect(minor).toBeUndefined();
+  });
+});
+
+describe('Catalog.courseImpact()', () => {
+  const cmpsMajor = api.parse('all of (CMPS 130, CMPS 230, MATH 151)');
+  const cat = api.catalog(minimalCatalog).withPrograms({ CMPS: cmpsMajor });
+
+  test('returns dependent courses and programs', () => {
+    const impact = cat.courseImpact('CMPS', '130');
+    // CMPS 130 is a prereq for CMPS 230, which chains to CMPS 310, etc.
+    expect(impact.dependentCourses).toContain('CMPS:230');
+    expect(impact.dependentCourses.length).toBeGreaterThan(0);
+    // CMPS program requires it
+    expect(impact.programs).toHaveLength(1);
+    expect(impact.programs[0].code).toBe('CMPS');
+    expect(impact.programs[0].context).toBe('required');
+  });
+
+  test('returns empty arrays for isolated course', () => {
+    const impact = cat.courseImpact('ART', '101');
+    expect(impact.dependentCourses).toHaveLength(0);
+    expect(impact.programs).toHaveLength(0);
+  });
+});
+
+// ============================================================
 // 25b. Catalog.attributes (Issue 12)
 // ============================================================
 

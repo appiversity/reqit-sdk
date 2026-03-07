@@ -25,6 +25,7 @@ const { exportAudit } = require('./export/audit-export');
 const { buildSummary } = require('./audit/status');
 const { walkResult } = require('./audit/walk-result');
 const { Waiver, Substitution } = require('./audit/exceptions');
+const { buildPrereqGraph } = require('./export/prereq-graph');
 
 // ============================================================
 // Helpers (not exported)
@@ -42,6 +43,67 @@ function unwrapTranscript(t) {
     return t.courses;
   }
   return t;
+}
+
+/**
+ * Static analysis: classify how a course appears in a requirement tree.
+ * Returns 'required' if every ancestor up to root is all-of or transparent,
+ * 'elective' if it appears inside n-of/any-of/filter, or null if not found.
+ * @param {Object} node - AST node
+ * @param {string} targetKey - courseKey to search for
+ * @param {boolean} [allRequired=true] - whether all ancestors are required
+ * @returns {string|null} 'required', 'elective', or null
+ */
+function classifyCourseInTree(node, targetKey, allRequired) {
+  if (allRequired === undefined) allRequired = true;
+  switch (node.type) {
+    case 'course':
+      return courseKey(node) === targetKey
+        ? (allRequired ? 'required' : 'elective')
+        : null;
+    case 'course-filter':
+      return null; // filter matches are always elective — but we don't resolve here
+    case 'all-of': {
+      for (const item of node.items) {
+        const r = classifyCourseInTree(item, targetKey, allRequired);
+        if (r) return r;
+      }
+      return null;
+    }
+    case 'any-of':
+    case 'n-of':
+    case 'none-of':
+    case 'one-from-each':
+    case 'from-n-groups': {
+      for (const item of node.items) {
+        const r = classifyCourseInTree(item, targetKey, false);
+        if (r) return r;
+      }
+      return null;
+    }
+    case 'credits-from': {
+      const src = node.source.type === 'all-of' ? node.source.items : [node.source];
+      for (const item of src) {
+        const r = classifyCourseInTree(item, targetKey, false);
+        if (r) return r;
+      }
+      return null;
+    }
+    case 'with-constraint':
+      return classifyCourseInTree(node.requirement, targetKey, allRequired);
+    case 'except': {
+      const r = classifyCourseInTree(node.source, targetKey, allRequired);
+      if (r) return r;
+      // Don't classify courses in the exclude list
+      return null;
+    }
+    case 'variable-def':
+      return classifyCourseInTree(node.value, targetKey, allRequired);
+    case 'scope':
+      return classifyCourseInTree(node.body, targetKey, allRequired);
+    default:
+      return null;
+  }
 }
 
 /**
@@ -217,6 +279,64 @@ class Requirement {
 }
 
 // ============================================================
+// PrereqGraph
+// ============================================================
+
+/**
+ * Prerequisite graph with forward and reverse lookups.
+ * Built lazily from catalog prerequisite data.
+ */
+class PrereqGraph {
+  #forward; // Map<courseKey, { direct: Set, transitive: Set }>
+  #reverse; // Map<courseKey, Set<courseKey>> — direct dependents
+
+  constructor(forwardGraph) {
+    this.#forward = forwardGraph;
+    // Build reverse index
+    this.#reverse = new Map();
+    for (const [key, entry] of forwardGraph) {
+      for (const prereq of entry.direct) {
+        if (!this.#reverse.has(prereq)) this.#reverse.set(prereq, new Set());
+        this.#reverse.get(prereq).add(key);
+      }
+    }
+  }
+
+  /** Direct prerequisites of a course. */
+  directPrereqs(key) {
+    const entry = this.#forward.get(key);
+    return entry ? new Set(entry.direct) : new Set();
+  }
+
+  /** All transitive prerequisites (direct + indirect). */
+  transitivePrereqs(key) {
+    const entry = this.#forward.get(key);
+    if (!entry) return new Set();
+    return new Set([...entry.direct, ...entry.transitive]);
+  }
+
+  /** Courses that directly depend on this course as a prerequisite. */
+  dependents(key) {
+    return new Set(this.#reverse.get(key) || []);
+  }
+
+  /** All courses that transitively depend on this course. */
+  transitiveDependents(key) {
+    const result = new Set();
+    const queue = [...(this.#reverse.get(key) || [])];
+    while (queue.length > 0) {
+      const dep = queue.shift();
+      if (result.has(dep)) continue;
+      result.add(dep);
+      for (const next of (this.#reverse.get(dep) || [])) {
+        if (!result.has(next)) queue.push(next);
+      }
+    }
+    return result;
+  }
+}
+
+// ============================================================
 // Degree
 // ============================================================
 
@@ -258,6 +378,7 @@ class Catalog {
   #programIndex;
   #attributeIndex;
   #degreeIndex;
+  #prereqGraph;
 
   constructor(data) {
     if (!data || !data.courses) throw new Error('Catalog requires courses');
@@ -392,6 +513,57 @@ class Catalog {
       if (filter.level && d.level !== filter.level) return false;
       return true;
     });
+  }
+
+  /**
+   * Get the prerequisite graph for this catalog.
+   * Lazily built on first call. Returns a PrereqGraph with forward and reverse lookups.
+   * @returns {PrereqGraph}
+   */
+  prereqGraph() {
+    if (!this.#prereqGraph) {
+      this.#prereqGraph = new PrereqGraph(buildPrereqGraph(this.#data));
+    }
+    return this.#prereqGraph;
+  }
+
+  /**
+   * Find programs that reference a given course in their requirements.
+   * Requires programs to have `requirements` attached (via withPrograms).
+   * Uses static analysis: required = all ancestors are all-of/transparent;
+   * elective = inside n-of/any-of/filter.
+   * @param {string} subject
+   * @param {string} number
+   * @returns {Array<{ code: string, context: string }>}
+   */
+  findProgramsRequiring(subject, number) {
+    const programs = this.#data.programs || [];
+    const targetKey = courseKey({ subject, number });
+    const results = [];
+
+    for (const prog of programs) {
+      if (!prog.requirements) continue;
+      const context = classifyCourseInTree(prog.requirements, targetKey);
+      if (context) {
+        results.push({ code: prog.code, context });
+      }
+    }
+    return results;
+  }
+
+  /**
+   * Assess the impact of retiring a course.
+   * Returns dependent courses (from prereq graph) and programs that reference it.
+   * @param {string} subject
+   * @param {string} number
+   * @returns {{ dependentCourses: string[], programs: Array<{ code: string, context: string }> }}
+   */
+  courseImpact(subject, number) {
+    const key = courseKey({ subject, number });
+    const graph = this.prereqGraph();
+    const dependentCourses = [...graph.transitiveDependents(key)].sort();
+    const programs = this.findProgramsRequiring(subject, number);
+    return { dependentCourses, programs };
   }
 
   withPrograms(programMap) {
