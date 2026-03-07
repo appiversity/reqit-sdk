@@ -85,6 +85,11 @@ function resolve(ast, catalog) {
   const courseIndex = buildCourseIndex(norm.courses);
   const crossListIndex = buildCrossListIndex(norm.courses);
   const defs = collectDefs(ast, '', new Map());
+  // Build attribute code set for unknown-attribute warnings
+  const attrCodes = norm.attributes && norm.attributes.length > 0
+    ? new Set(norm.attributes.map(a => a.code))
+    : null;
+
   const ctx = {
     catalog: norm,
     courseIndex,
@@ -94,6 +99,7 @@ function resolve(ast, catalog) {
     defs,                  // variable name → variable-def node
     expanding: new Set(),  // guards against circular variable refs
     warnings: [],          // resolver warnings (e.g. unknown attribute codes)
+    attrCodes,             // Set<string> of valid attribute codes, or null
   };
 
   walkNode(ast, ctx);
@@ -382,13 +388,13 @@ function walkNode(node, ctx) {
     }
 
     case 'course-filter': {
-      // Warn on unknown attribute codes
-      if (ctx.catalog.attributes && ctx.catalog.attributes.length > 0) {
+      // Warn on unknown attribute codes (O(1) lookup via pre-built Set)
+      if (ctx.attrCodes) {
         for (const f of node.filters) {
           if (f.field === 'attribute') {
             const codes = Array.isArray(f.value) ? f.value : [f.value];
             for (const code of codes) {
-              if (!ctx.catalog.attributes.some(a => a.code === code)) {
+              if (!ctx.attrCodes.has(code)) {
                 ctx.warnings.push(`Unknown attribute code "${code}" in filter; not defined in catalog attributes`);
               }
             }

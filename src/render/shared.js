@@ -158,17 +158,38 @@ function unwrapCreditsSource(node) {
   return node.source.type === 'all-of' ? node.source.items : [node.source];
 }
 
+// --- lookupAttributeName with WeakMap-cached index ---
+
+/** @type {WeakMap<Object, Map<string, string>>} */
+const _attrIndex = new WeakMap();
+
+/**
+ * Build (or retrieve from cache) an O(1) index from attribute code → name.
+ * @param {Object} catalog
+ * @returns {Map<string, string>}
+ */
+function getAttrIndex(catalog) {
+  if (_attrIndex.has(catalog)) return _attrIndex.get(catalog);
+  const index = new Map();
+  for (const a of (catalog.attributes || [])) {
+    index.set(a.code, a.name);
+  }
+  _attrIndex.set(catalog, index);
+  return index;
+}
+
 /**
  * Look up an attribute's display name from the catalog.
  * Returns the human-readable name if defined, otherwise the raw code.
+ * First call per catalog builds an index; subsequent calls are O(1).
  * @param {string} code - Attribute code (e.g. "WI")
  * @param {Object|null} catalog - Catalog with optional attributes array
  * @returns {string} Attribute display name or raw code
  */
 function lookupAttributeName(code, catalog) {
-  if (!catalog || !catalog.attributes) return code;
-  const attr = catalog.attributes.find(a => a.code === code);
-  return attr ? attr.name : code;
+  if (!catalog) return code;
+  const index = getAttrIndex(catalog);
+  return index.get(code) || code;
 }
 
 module.exports = {
