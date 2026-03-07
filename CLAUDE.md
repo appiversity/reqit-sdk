@@ -135,6 +135,9 @@ courseKey(course) // → "MATH:151"
 - New operator → add to `OP_SYMBOLS` + `OP_PHRASES` in `shared.js`
 - `shared.js` has a maintenance guide comment at the top listing all change-impact points
 
+### Keep VS Code extension in sync with grammar changes
+Any change to the Peggy.js grammar (`src/parser/grammar.pegjs`) — new keywords, new node types, new syntax — must also be reflected in the VS Code TextMate grammar at `vscode-reqit/syntaxes/reqit.tmLanguage.json`. Update the keyword list, add new patterns for new constructs, and verify highlighting works on sample `.reqit` files.
+
 ### Exhaustiveness tests are structural guards
 Both `test/render/exhaustiveness.test.js` and `test/resolve/exhaustiveness.test.js` verify every `NODE_TYPE` is handled. Adding a node type without updating all renderers/resolver will fail these tests.
 
