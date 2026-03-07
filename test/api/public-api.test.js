@@ -338,6 +338,70 @@ describe('Resolution', () => {
 });
 
 // ============================================================
+// 6b. ResolutionResult enrichment (Issue 7)
+// ============================================================
+
+describe('ResolutionResult enrichment', () => {
+  test('allCourses deduplicates explicit and filter-matched courses', () => {
+    // MATH 151 appears explicitly AND would be matched by "courses where subject = MATH"
+    const req = api.parse('all of (MATH 151, courses where subject = "MATH")');
+    const result = req.resolve(minimalCatalog);
+    const all = result.allCourses();
+    const keys = all.map(c => `${c.subject}:${c.number}`);
+    const unique = new Set(keys);
+    expect(keys.length).toBe(unique.size); // no duplicates
+  });
+
+  test('coursesForFilter returns matched courses for a specific filter', () => {
+    const req = api.parse('courses where subject = "CMPS"');
+    const result = req.resolve(minimalCatalog);
+    const matched = result.coursesForFilter(0);
+    expect(matched).toHaveLength(11);
+    expect(matched.every(c => c.subject === 'CMPS')).toBe(true);
+  });
+
+  test('coursesForFilter returns empty array for out-of-range index', () => {
+    const req = api.parse('courses where subject = "CMPS"');
+    const result = req.resolve(minimalCatalog);
+    expect(result.coursesForFilter(99)).toEqual([]);
+  });
+
+  test('filtersForCourse returns which filters matched a course', () => {
+    const req = api.parse('all of (courses where subject = "CMPS", courses where attribute = "WI")');
+    const result = req.resolve(minimalCatalog);
+    // CMPS 310 has attribute WI and subject CMPS — matched by both filters
+    const matches = result.filtersForCourse('CMPS', '310');
+    expect(matches.length).toBe(2);
+    expect(matches[0]).toHaveProperty('index');
+    expect(matches[0]).toHaveProperty('node');
+  });
+
+  test('filtersForCourse returns empty array for unmatched course', () => {
+    const req = api.parse('courses where subject = "CMPS"');
+    const result = req.resolve(minimalCatalog);
+    expect(result.filtersForCourse('MATH', '151')).toEqual([]);
+  });
+
+  test('totalUniqueCourses returns count', () => {
+    const req = api.parse('all of (MATH 151, MATH 152)');
+    const result = req.resolve(minimalCatalog);
+    expect(result.totalUniqueCourses).toBe(2);
+  });
+
+  test('subjects returns Set of subject codes', () => {
+    const req = api.parse('all of (MATH 151, CMPS 130)');
+    const result = req.resolve(minimalCatalog);
+    expect(result.subjects).toEqual(new Set(['MATH', 'CMPS']));
+  });
+
+  test('subjects includes filter-matched subjects', () => {
+    const req = api.parse('courses where attribute = "FA"');
+    const result = req.resolve(minimalCatalog);
+    expect(result.subjects).toContain('ART');
+  });
+});
+
+// ============================================================
 // 7. Single-tree audit
 // ============================================================
 

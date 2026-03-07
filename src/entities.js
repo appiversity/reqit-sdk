@@ -768,11 +768,82 @@ function matchesSubstitutionTarget(sub, target) {
 
 class ResolutionResult {
   #raw;
+  #reverseIndex; // Map<courseKey, number[]> — filter indices that matched each course
 
   constructor(raw) { this.#raw = raw; }
 
+  /** Explicit course references found during resolution. */
   get courses() { return this.#raw.courses; }
+
+  /** Filter nodes and their matched courses. */
   get filters() { return this.#raw.filters; }
+
+  /**
+   * All unique courses across explicit references and filter matches.
+   * Deduplicated by courseKey.
+   * @returns {Array<Object>}
+   */
+  allCourses() {
+    const seen = new Set();
+    const result = [];
+    for (const c of this.#raw.courses) {
+      const key = courseKey(c);
+      if (!seen.has(key)) { seen.add(key); result.push(c); }
+    }
+    for (const f of this.#raw.filters) {
+      for (const c of f.matched) {
+        const key = courseKey(c);
+        if (!seen.has(key)) { seen.add(key); result.push(c); }
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Courses matched by a specific filter (by index).
+   * @param {number} index - Filter index
+   * @returns {Array<Object>}
+   */
+  coursesForFilter(index) {
+    const f = this.#raw.filters[index];
+    return f ? [...f.matched] : [];
+  }
+
+  /**
+   * Which filters matched a given course (reverse lookup).
+   * @param {string} subject
+   * @param {string} number
+   * @returns {Array<{ node: Object, index: number }>}
+   */
+  filtersForCourse(subject, number) {
+    if (!this.#reverseIndex) {
+      this.#reverseIndex = new Map();
+      for (let i = 0; i < this.#raw.filters.length; i++) {
+        for (const c of this.#raw.filters[i].matched) {
+          const key = courseKey(c);
+          if (!this.#reverseIndex.has(key)) this.#reverseIndex.set(key, []);
+          this.#reverseIndex.get(key).push(i);
+        }
+      }
+    }
+    const key = courseKey({ subject, number });
+    const indices = this.#reverseIndex.get(key) || [];
+    return indices.map(i => ({ node: this.#raw.filters[i].node, index: i }));
+  }
+
+  /** Count of unique courses (explicit + filter-matched). */
+  get totalUniqueCourses() {
+    return this.allCourses().length;
+  }
+
+  /** Set of subject codes across all resolved courses. */
+  get subjects() {
+    const subjects = new Set();
+    for (const c of this.allCourses()) {
+      subjects.add(c.subject);
+    }
+    return subjects;
+  }
 }
 
 // ============================================================
