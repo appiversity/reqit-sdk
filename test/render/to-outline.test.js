@@ -459,6 +459,60 @@ describe('toOutline — direct AST: null/empty catalog handling', () => {
   });
 });
 
+// === Labels ===
+
+describe('toOutline — labels', () => {
+  test('labeled all-of', () => {
+    expect(outline('"Core": all of (MATH 151, MATH 152)')).toBe(
+      'Core \u2014 All of the following:\n\u251C\u2500\u2500 MATH 151\n\u2514\u2500\u2500 MATH 152'
+    );
+  });
+
+  test('labeled any-of', () => {
+    const result = outline('"Alternatives": any of (MATH 151, MATH 152)');
+    expect(result).toContain('Alternatives \u2014 Any one of the following:');
+  });
+
+  test('labeled n-of', () => {
+    const result = outline('"Electives": at least 2 of (MATH 151, MATH 152, MATH 250)');
+    expect(result).toContain('Electives \u2014 Complete at least 2 of the following:');
+  });
+
+  test('labeled from-n-groups', () => {
+    const result = outline('"Breadth": from at least 2 of (courses where attribute = "HUM", courses where attribute = "SCI")');
+    expect(result).toContain('Breadth \u2014 From at least 2 of the following groups:');
+  });
+
+  test('labeled one-from-each', () => {
+    const result = outline('"Distribution": one from each of (courses where attribute = "HUM", courses where attribute = "SCI")');
+    expect(result).toContain('Distribution \u2014 One from each of the following:');
+  });
+
+  test('labeled none-of', () => {
+    const result = outline('"Excluded": none of (MATH 151, MATH 152)');
+    expect(result).toContain('Excluded \u2014 None of the following:');
+  });
+
+  test('unlabeled composite unchanged', () => {
+    expect(outline('all of (MATH 151, MATH 152)')).toBe(
+      'All of the following:\n\u251C\u2500\u2500 MATH 151\n\u2514\u2500\u2500 MATH 152'
+    );
+  });
+
+  test('labeled credits-from', () => {
+    const result = outline('"Technical": at least 15 credits from (courses where subject = "CSE")');
+    expect(result).toContain('Technical \u2014 Complete at least 15 credits from:');
+  });
+
+  test('nested labeled inside all-of', () => {
+    const result = outline(`all of (
+      "Math Core": all of (MATH 151, MATH 152),
+      CSCI 120
+    )`);
+    expect(result).toContain('\u251C\u2500\u2500 Math Core \u2014 All of the following:');
+  });
+});
+
 // === Error ===
 
 describe('toOutline — error', () => {

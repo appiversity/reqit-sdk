@@ -18,15 +18,17 @@ const { OP_PHRASES, comparisonPhrase, lookupTitle, renderFilterPhrase, unwrapCre
  * @returns {string}
  */
 function compositeLabel(node) {
+  let base;
   switch (node.type) {
-    case 'all-of': return 'All of the following:';
-    case 'any-of': return 'Any one of the following:';
-    case 'none-of': return 'None of the following:';
-    case 'n-of': return `Complete ${comparisonPhrase(node.comparison)} ${node.count} of the following:`;
-    case 'one-from-each': return 'One from each of the following:';
-    case 'from-n-groups': return `From at least ${node.count} of the following groups:`;
-    default: return node.type;
+    case 'all-of': base = 'All of the following:'; break;
+    case 'any-of': base = 'Any one of the following:'; break;
+    case 'none-of': base = 'None of the following:'; break;
+    case 'n-of': base = `Complete ${comparisonPhrase(node.comparison)} ${node.count} of the following:`; break;
+    case 'one-from-each': base = 'One from each of the following:'; break;
+    case 'from-n-groups': base = `From at least ${node.count} of the following groups:`; break;
+    default: base = node.type;
   }
+  return node.label ? `${node.label} \u2014 ${base}` : base;
 }
 
 /**
@@ -114,7 +116,8 @@ function renderTree(node, catalog, prefix, connector) {
       break;
     case 'credits-from': {
       const comp = comparisonPhrase(node.comparison) + ' ' + node.credits;
-      label = `Complete ${comp} credits from:` + renderPostConstraints(node, catalog);
+      const creditsBase = `Complete ${comp} credits from:`;
+      label = (node.label ? `${node.label} \u2014 ${creditsBase}` : creditsBase) + renderPostConstraints(node, catalog);
       children = unwrapCreditsSource(node);
       break;
     }

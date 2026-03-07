@@ -572,6 +572,46 @@ describe('round-trip — RCNJ BS CS', () => {
   });
 });
 
+// ============================================================
+// Labels
+// ============================================================
+
+describe('round-trip — labels', () => {
+  test.each([
+    '"Core": all of (MATH 151, MATH 152)',
+    '"Alt": any of (MATH 151, MATH 152)',
+    '"Excluded": none of (MATH 151, MATH 152)',
+    '"Electives": at least 2 of (MATH 151, MATH 152, MATH 250)',
+    '"Technical": at least 15 credits from (courses where subject = "CSE")',
+    '"Distribution": one from each of (courses where attribute = "HUM", courses where attribute = "SCI")',
+    '"Breadth": from at least 2 of (courses where attribute = "HUM", courses where attribute = "SCI")',
+  ])('%s', (text) => roundTrip(text));
+
+  test('labeled variable-def', () => {
+    roundTrip('$core = "Core": all of (MATH 151, MATH 152)');
+  });
+
+  test('labeled with except and grade constraint', () => {
+    roundTrip('"Electives": at least 3 of (CMPS 301, CMPS 302, CMPS 350) except (CMPS 350) with grade >= "C"');
+  });
+
+  test('nested labels', () => {
+    roundTrip('"Outer": all of ("Inner": any of (MATH 151, MATH 152), CSCI 120)');
+  });
+
+  test('labeled scope program', () => {
+    roundTrip(`scope "cmps-major" {
+      $core = "CS Core": all of (CMPS 130, CMPS 230)
+      $math = "Mathematics": all of (MATH 151, MATH 152)
+      all of ($core, $math)
+    }`);
+  });
+
+  test('labeled with where clause', () => {
+    roundTrip('"Major": at least 5 of (POLI 215, POLI 301, POLI 309) where at least 2 match (subject = "POLI")');
+  });
+});
+
 describe('round-trip — complex combined constructs', () => {
   test('credits-from with except and grade constraint', () => {
     roundTrip(`at least 15 credits from (

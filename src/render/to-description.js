@@ -15,15 +15,20 @@ const { comparisonPhrase, renderFilterPhrase, unwrapCreditsSource } = require('.
  * @returns {string}
  */
 function compositeLabel(node) {
+  let base;
   switch (node.type) {
-    case 'all-of': return 'Complete all of the following';
-    case 'any-of': return 'Complete any one of the following';
-    case 'none-of': return 'None of the following may be used';
-    case 'n-of': return `Complete ${comparisonPhrase(node.comparison)} ${node.count} of the following`;
-    case 'one-from-each': return 'Complete one course from each of the following areas';
-    case 'from-n-groups': return `Complete courses from at least ${node.count} of the following groups`;
-    default: return node.type;
+    case 'all-of': base = 'Complete all of the following'; break;
+    case 'any-of': base = 'Complete any one of the following'; break;
+    case 'none-of': base = 'None of the following may be used'; break;
+    case 'n-of': base = `Complete ${comparisonPhrase(node.comparison)} ${node.count} of the following`; break;
+    case 'one-from-each': base = 'Complete one course from each of the following areas'; break;
+    case 'from-n-groups': base = `Complete courses from at least ${node.count} of the following groups`; break;
+    default: base = node.type;
   }
+  if (node.label) {
+    return `${node.label} \u2014 ${base.charAt(0).toLowerCase()}${base.slice(1)}`;
+  }
+  return base;
 }
 
 /**
@@ -135,7 +140,10 @@ function renderNode(node, indent) {
     case 'credits-from': {
       const comp = comparisonPhrase(node.comparison) + ' ' + node.credits;
       const sourceItems = unwrapCreditsSource(node);
-      return `Complete ${comp} credits from:${renderItems(sourceItems, indent)}` + renderPostConstraints(node);
+      const heading = node.label
+        ? `${node.label} \u2014 complete ${comp} credits from:`
+        : `Complete ${comp} credits from:`;
+      return `${heading}${renderItems(sourceItems, indent)}` + renderPostConstraints(node);
     }
 
     case 'with-constraint': {

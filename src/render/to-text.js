@@ -121,33 +121,40 @@ function renderNode(node) {
     // --- Composite nodes ---
     case 'all-of':
       text = `all of (${renderItems(node.items)})`;
-      return renderPostConstraints(node, text);
+      text = renderPostConstraints(node, text);
+      return node.label ? `"${node.label}": ${text}` : text;
 
     case 'any-of':
       text = `any of (${renderItems(node.items)})`;
-      return renderPostConstraints(node, text);
+      text = renderPostConstraints(node, text);
+      return node.label ? `"${node.label}": ${text}` : text;
 
     case 'none-of':
       text = `none of (${renderItems(node.items)})`;
-      return renderPostConstraints(node, text);
+      text = renderPostConstraints(node, text);
+      return node.label ? `"${node.label}": ${text}` : text;
 
     case 'n-of':
       text = `${comparisonPhrase(node.comparison)} ${node.count} of (${renderItems(node.items)})`;
-      return renderPostConstraints(node, text);
+      text = renderPostConstraints(node, text);
+      return node.label ? `"${node.label}": ${text}` : text;
 
     case 'one-from-each':
       text = `one from each of (${renderItems(node.items)})`;
-      return renderPostConstraints(node, text);
+      text = renderPostConstraints(node, text);
+      return node.label ? `"${node.label}": ${text}` : text;
 
     case 'from-n-groups':
       text = `from at least ${node.count} of (${renderItems(node.items)})`;
-      return renderPostConstraints(node, text);
+      text = renderPostConstraints(node, text);
+      return node.label ? `"${node.label}": ${text}` : text;
 
     case 'credits-from': {
       const prefix = comparisonPhrase(node.comparison);
       const sourceItems = renderItems(unwrapCreditsSource(node));
       text = `${prefix} ${node.credits} credits from (${sourceItems})`;
-      return renderPostConstraints(node, text);
+      text = renderPostConstraints(node, text);
+      return node.label ? `"${node.label}": ${text}` : text;
     }
 
     // --- Wrapper/modifier nodes ---

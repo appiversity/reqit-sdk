@@ -467,6 +467,61 @@ describe('toText — complex combined constructs', () => {
   });
 });
 
+// === Labels ===
+
+describe('toText — labels', () => {
+  test('labeled all-of', () => {
+    expectText('"Core": all of (MATH 151, MATH 152)', '"Core": all of (MATH 151, MATH 152)');
+  });
+
+  test('labeled any-of', () => {
+    expectText('"Alt": any of (MATH 151, MATH 152)', '"Alt": any of (MATH 151, MATH 152)');
+  });
+
+  test('labeled none-of', () => {
+    expectText('"Excluded": none of (MATH 151, MATH 152)', '"Excluded": none of (MATH 151, MATH 152)');
+  });
+
+  test('labeled n-of', () => {
+    expectText(
+      '"Electives": at least 2 of (MATH 151, MATH 152, MATH 250)',
+      '"Electives": at least 2 of (MATH 151, MATH 152, MATH 250)'
+    );
+  });
+
+  test('labeled one-from-each', () => {
+    expectText(
+      '"Distribution": one from each of (courses where attribute = "HUM", courses where attribute = "SCI")',
+      '"Distribution": one from each of (courses where attribute = "HUM", courses where attribute = "SCI")'
+    );
+  });
+
+  test('labeled from-n-groups', () => {
+    expectText(
+      '"Breadth": from at least 2 of (courses where attribute = "HUM", courses where attribute = "SCI")',
+      '"Breadth": from at least 2 of (courses where attribute = "HUM", courses where attribute = "SCI")'
+    );
+  });
+
+  test('labeled credits-from', () => {
+    expectText(
+      '"Technical": at least 15 credits from (courses where subject = "CSE")',
+      '"Technical": at least 15 credits from (courses where subject = "CSE")'
+    );
+  });
+
+  test('labeled variable-def renders label on value', () => {
+    expectText(
+      '$core = "CS Core": all of (CMPS 130, CMPS 230)',
+      '$core = "CS Core": all of (CMPS 130, CMPS 230)'
+    );
+  });
+
+  test('unlabeled composite unchanged', () => {
+    expectText('all of (MATH 151, MATH 152)', 'all of (MATH 151, MATH 152)');
+  });
+});
+
 // === Direct AST construction ===
 
 describe('toText — direct AST', () => {

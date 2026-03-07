@@ -371,6 +371,7 @@ function auditNoneOf(node, ctx) {
     status: noneOf(statuses),
     items,
     summary: buildSummary(statuses),
+    ...(node.label ? { label: node.label } : {}),
   };
 }
 

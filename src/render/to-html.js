@@ -66,15 +66,20 @@ function renderItemList(items, catalog) {
  * @returns {string} HTML string
  */
 function compositeLabel(node) {
+  let base;
   switch (node.type) {
-    case 'all-of': return 'Complete <strong>all</strong> of the following:';
-    case 'any-of': return 'Complete <strong>any one</strong> of the following:';
-    case 'none-of': return '<strong>None</strong> of the following may be used:';
-    case 'n-of': return `Complete <strong>${comparisonPhrase(node.comparison)} ${node.count}</strong> of the following:`;
-    case 'one-from-each': return 'Complete <strong>one from each</strong> of the following:';
-    case 'from-n-groups': return `Complete courses from <strong>at least ${node.count}</strong> of the following groups:`;
-    default: return node.type;
+    case 'all-of': base = 'Complete <strong>all</strong> of the following:'; break;
+    case 'any-of': base = 'Complete <strong>any one</strong> of the following:'; break;
+    case 'none-of': base = '<strong>None</strong> of the following may be used:'; break;
+    case 'n-of': base = `Complete <strong>${comparisonPhrase(node.comparison)} ${node.count}</strong> of the following:`; break;
+    case 'one-from-each': base = 'Complete <strong>one from each</strong> of the following:'; break;
+    case 'from-n-groups': base = `Complete courses from <strong>at least ${node.count}</strong> of the following groups:`; break;
+    default: base = node.type;
   }
+  if (node.label) {
+    return `<span class="reqit-named-label">${esc(node.label)}</span> \u2014 ${base.charAt(0).toLowerCase()}${base.slice(1)}`;
+  }
+  return base;
 }
 
 /**
@@ -132,8 +137,12 @@ function renderNode(node, catalog) {
     case 'credits-from': {
       const comp = comparisonPhrase(node.comparison);
       const sourceItems = unwrapCreditsSource(node);
+      const creditsBase = `Complete <strong>${comp} ${node.credits} credits</strong> from:`;
+      const creditsHeading = node.label
+        ? `<span class="reqit-named-label">${esc(node.label)}</span> \u2014 ${creditsBase.charAt(0).toLowerCase()}${creditsBase.slice(1)}`
+        : creditsBase;
       return `<div class="reqit-requirement reqit-credits-from">` +
-        `<p class="reqit-label">Complete <strong>${comp} ${node.credits} credits</strong> from:</p>` +
+        `<p class="reqit-label">${creditsHeading}</p>` +
         renderPostConstraints(node, catalog) +
         renderItemList(sourceItems, catalog) +
         `</div>`;
@@ -317,8 +326,12 @@ function renderNodeWithAudit(node, catalog, auditNode) {
         sourceItems.map((item, i) =>
           `<li>${renderNodeWithAudit(item, catalog, sourceAuditItems[i] || sourceAudit)}</li>`
         ).join('') + '</ul>';
+      const creditsBaseAudit = `Complete <strong>${comp} ${node.credits} credits</strong> from:`;
+      const creditsHeadingAudit = node.label
+        ? `<span class="reqit-named-label">${esc(node.label)}</span> \u2014 ${creditsBaseAudit.charAt(0).toLowerCase()}${creditsBaseAudit.slice(1)}`
+        : creditsBaseAudit;
       return `<div class="reqit-requirement reqit-credits-from${sc}">` +
-        `<p class="reqit-label">${si}Complete <strong>${comp} ${node.credits} credits</strong> from:</p>` +
+        `<p class="reqit-label">${si}${creditsHeadingAudit}</p>` +
         renderPostConstraints(node, catalog) +
         itemsHtml +
         `</div>`;

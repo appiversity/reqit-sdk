@@ -249,6 +249,17 @@ function walkNode(node, ctx, path, isTopLevel) {
     }
   }
 
+  // Rule 15: label must be a non-empty string when present
+  if (node.label !== undefined) {
+    if (typeof node.label !== 'string' || node.label.length === 0) {
+      ctx.errors.push({
+        rule: 15,
+        message: '"label" must be a non-empty string',
+        path
+      });
+    }
+  }
+
   // Recurse into children
   forEachChild(node, (child, key) => {
     const childValue = node[key];

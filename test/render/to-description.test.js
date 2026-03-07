@@ -363,6 +363,53 @@ describe('toDescription — post_constraints', () => {
   });
 });
 
+// === Labels ===
+
+describe('toDescription — labels', () => {
+  test('labeled all-of', () => {
+    const result = desc('"Core Requirements": all of (MATH 151, MATH 152)');
+    expect(result).toBe(
+      'Core Requirements \u2014 complete all of the following:\n  - MATH 151\n  - MATH 152'
+    );
+  });
+
+  test('labeled any-of', () => {
+    const result = desc('"Alternatives": any of (MATH 151, MATH 152)');
+    expect(result).toContain('Alternatives \u2014 complete any one of the following:');
+  });
+
+  test('labeled none-of', () => {
+    const result = desc('"Exclusions": none of (MATH 151, MATH 152)');
+    expect(result).toContain('Exclusions \u2014 none of the following may be used:');
+  });
+
+  test('labeled n-of', () => {
+    const result = desc('"Electives": at least 2 of (MATH 151, MATH 152, MATH 250)');
+    expect(result).toContain('Electives \u2014 complete at least 2 of the following:');
+  });
+
+  test('labeled credits-from', () => {
+    const result = desc('"Technical": at least 15 credits from (courses where subject = "CSE")');
+    expect(result).toContain('Technical \u2014 complete at least 15 credits from:');
+  });
+
+  test('labeled one-from-each', () => {
+    const result = desc('"Distribution": one from each of (courses where attribute = "HUM", courses where attribute = "SCI")');
+    expect(result).toContain('Distribution \u2014 complete one course from each of the following areas:');
+  });
+
+  test('labeled from-n-groups', () => {
+    const result = desc('"Breadth": from at least 2 of (courses where attribute = "HUM", courses where attribute = "SCI")');
+    expect(result).toContain('Breadth \u2014 complete courses from at least 2 of the following groups:');
+  });
+
+  test('unlabeled composite unchanged', () => {
+    expect(desc('all of (MATH 151, MATH 152)')).toBe(
+      'Complete all of the following:\n  - MATH 151\n  - MATH 152'
+    );
+  });
+});
+
 // === Complex ===
 
 describe('toDescription — complex', () => {

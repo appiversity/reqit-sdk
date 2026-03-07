@@ -1360,3 +1360,58 @@ describe('Multi-tree audit with exceptions', () => {
     expect(result.trees.minor.status).toBe(api.AuditStatus.WAIVED);
   });
 });
+
+// ============================================================
+// Labels — integration tests
+// ============================================================
+
+describe('labels — integration', () => {
+  test('parse labeled DSL → audit → labels preserved in result', () => {
+    const req = api.parse(`scope "cmps-major" {
+      $core = "CS Core": all of (CMPS 130, CMPS 148)
+      $math = "Mathematics": all of (MATH 151, MATH 152)
+      all of ($core, $math)
+    }`);
+    const result = req.audit(minimalCatalog, completeTx);
+    // Labels survive through audit on resolved variable-ref results
+    const tree = result.items;
+    expect(tree.items[0].resolved.label).toBe('CS Core');
+    expect(tree.items[1].resolved.label).toBe('Mathematics');
+  });
+
+  test('parse labeled DSL → toHTML → named-label span appears', () => {
+    const req = api.parse('"Core": all of (MATH 151, MATH 152)');
+    const html = req.toHTML(minimalCatalog);
+    expect(html).toContain('<span class="reqit-named-label">Core</span>');
+    expect(html).toContain('reqit-all-of');
+  });
+
+  test('parse labeled DSL → description → label in heading', () => {
+    const req = api.parse('"Core": all of (MATH 151, MATH 152)');
+    expect(req.description).toContain('Core \u2014 complete all of the following:');
+  });
+
+  test('parse labeled DSL → toOutline → label in heading', () => {
+    const req = api.parse('"Core": all of (MATH 151, MATH 152)');
+    const outline = req.toOutline(minimalCatalog);
+    expect(outline).toContain('Core \u2014 All of the following:');
+  });
+
+  test('end-to-end round-trip with labeled program', () => {
+    const input = `scope "cmps-major" {
+      $core = "CS Core": all of (CMPS 130, CMPS 230)
+      $math = "Mathematics": all of (MATH 151, MATH 152)
+      all of ($core, $math)
+    }`;
+    const req1 = api.parse(input);
+    const text = req1.text;
+    const req2 = api.parse(text);
+    expect(req2.ast).toEqual(req1.ast);
+  });
+
+  test('labeled none-of preserves label through audit', () => {
+    const req = api.parse('"Excluded": none of (MATH 999)');
+    const result = req.audit(minimalCatalog, completeTx);
+    expect(result.items.label).toBe('Excluded');
+  });
+});

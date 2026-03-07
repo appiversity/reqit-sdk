@@ -484,6 +484,68 @@ describe('toHTML — direct AST: XSS in non-course fields', () => {
   });
 });
 
+// === Labels ===
+
+describe('toHTML — labels', () => {
+  test('labeled all-of has named-label span', () => {
+    const result = html('"Core": all of (MATH 151, MATH 152)');
+    expect(result).toContain('<span class="reqit-named-label">Core</span>');
+    expect(result).toContain('\u2014 complete <strong>all</strong> of the following:');
+    expect(result).toContain('reqit-all-of');
+  });
+
+  test('labeled any-of', () => {
+    const result = html('"Alternatives": any of (MATH 151, MATH 152)');
+    expect(result).toContain('<span class="reqit-named-label">Alternatives</span>');
+    expect(result).toContain('\u2014 complete <strong>any one</strong> of the following:');
+  });
+
+  test('labeled none-of', () => {
+    const result = html('"Excluded": none of (MATH 151, MATH 152)');
+    expect(result).toContain('<span class="reqit-named-label">Excluded</span>');
+    expect(result).toContain('\u2014 <strong>None</strong> of the following may be used:');
+  });
+
+  test('labeled n-of', () => {
+    const result = html('"Electives": at least 2 of (MATH 151, MATH 152, MATH 250)');
+    expect(result).toContain('<span class="reqit-named-label">Electives</span>');
+    expect(result).toContain('\u2014 complete <strong>at least 2</strong> of the following:');
+  });
+
+  test('labeled credits-from', () => {
+    const result = html('"Technical": at least 15 credits from (courses where subject = "CSE")');
+    expect(result).toContain('<span class="reqit-named-label">Technical</span>');
+    expect(result).toContain('reqit-credits-from');
+  });
+
+  test('labeled one-from-each', () => {
+    const result = html('"Distribution": one from each of (courses where attribute = "HUM", courses where attribute = "SCI")');
+    expect(result).toContain('<span class="reqit-named-label">Distribution</span>');
+  });
+
+  test('labeled from-n-groups', () => {
+    const result = html('"Breadth": from at least 2 of (courses where attribute = "HUM", courses where attribute = "SCI")');
+    expect(result).toContain('<span class="reqit-named-label">Breadth</span>');
+  });
+
+  test('label is XSS-escaped', () => {
+    const result = toHTML({
+      type: 'all-of',
+      label: '<script>alert("xss")</script>',
+      items: [{ type: 'course', subject: 'MATH', number: '151' }],
+    });
+    expect(result).not.toContain('<script>');
+    expect(result).toContain('&lt;script&gt;');
+    expect(result).toContain('reqit-named-label');
+  });
+
+  test('unlabeled composite unchanged', () => {
+    const result = html('all of (MATH 151, MATH 152)');
+    expect(result).not.toContain('reqit-named-label');
+    expect(result).toContain('Complete <strong>all</strong> of the following:');
+  });
+});
+
 // === Error ===
 
 describe('toHTML — error', () => {

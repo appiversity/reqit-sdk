@@ -993,4 +993,51 @@ describe('validate()', () => {
     });
   });
 
+  // === Rule 15: label format ===
+
+  describe('Rule 15 — label format', () => {
+    test('valid label passes', () => {
+      const result = validate({
+        type: 'all-of',
+        label: 'Core Requirements',
+        items: [course('MATH', '151'), course('MATH', '152')]
+      });
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('no label passes', () => {
+      const result = validate({
+        type: 'all-of',
+        items: [course('MATH', '151')]
+      });
+      expect(result).toEqual({ valid: true });
+    });
+
+    test('empty string label fails', () => {
+      const result = validate({
+        type: 'all-of',
+        label: '',
+        items: [course('MATH', '151')]
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].rule).toBe(15);
+    });
+
+    test('non-string label fails', () => {
+      const result = validate({
+        type: 'all-of',
+        label: 42,
+        items: [course('MATH', '151')]
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].rule).toBe(15);
+    });
+
+    test('parsed labeled AST validates', () => {
+      const ast = parse('"Core": all of (MATH 151, MATH 152)');
+      expect(validate(ast)).toEqual({ valid: true });
+    });
+  });
+
 });

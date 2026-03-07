@@ -58,6 +58,7 @@ Decimal "decimal number"
 
 PrimaryExpression
   = ScopeBlock
+  / LabeledComposite
   / AllOf
   / AnyOf
   / NoneOf
@@ -167,6 +168,15 @@ Quantity
   = QUANTITY __ name:Code _ op:ComparisonOp _ value:Decimal {
       return { type: 'quantity', name: name.toUpperCase(), op, value };
     }
+
+LabeledComposite
+  = label:StringLiteral _ ":" _ expr:CompositeExpression {
+      expr.label = label;
+      return expr;
+    }
+
+CompositeExpression
+  = AllOf / AnyOf / NoneOf / NOf / CreditsFrom / OneFromEach / FromNGroups
 
 AllOf
   = ALL __ OF _ "(" _ items:ItemList _ ")" {
