@@ -77,6 +77,9 @@ A letter grade or equivalent mark assigned to a completed course. In Reqit, `wit
 **In**
 A comparison operator that matches a field against multiple values. Written as `subject in ("CSCI", "MATH", "DATA")`. Matches if the field equals any of the listed values.
 
+**Label**
+A display name attached to a composite expression using the syntax `"label": composite`. Labels give human-readable names to sections of a requirement tree. Example: `"Core Courses": all of (CMPS 130, CMPS 230)`. Labels appear in rendered output (outlines, HTML) as section headings.
+
 **Institution scope**
 A scope that holds variables shared across all programs at an institution. Variables defined here are accessible from any program scope without a qualified reference.
 
@@ -111,10 +114,13 @@ A program context reference that resolves to the student's declared primary majo
 A program context reference that resolves to the student's declared minor at evaluation time. Written as `primary minor`. Used in overlap rules.
 
 **Program**
-An academic program — a major, minor, certificate, concentration, track, or cluster. In Reqit, referenced as `program CODE type level` (e.g., `program CS major undergraduate`).
+An academic program — a major, minor, certificate, concentration, track, or cluster. In Reqit, referenced as `program CODE type level` (e.g., `program CS major undergraduate`) or by quoted code alone: `program "CMPS-BS"`.
 
 **Program context reference**
 A reference to a student's declared program that resolves at evaluation time. The two program context references are `primary major` and `primary minor`.
+
+**Program filter**
+An expression that describes programs by their properties rather than naming them individually. Written as `all programs where type = "major"` or with other quantifiers (`any program where`, `at least N programs where`, `at most N programs where`, `exactly N programs where`). Filterable fields: `type`, `level`, `code`.
 
 **Program level**
 The academic level of a program: `undergraduate`, `graduate`, `doctoral`, `professional`, `post-graduate`, or `post-doctoral`.

@@ -48,6 +48,97 @@ any program minor undergraduate
 
 "Any undergraduate minor."
 
+## Program References by Quoted Code
+
+When a program is already identified by a unique code in the catalog, you can reference it directly with a quoted string:
+
+```
+program "CMPS-BS"
+```
+
+"The student must have declared the program with code CMPS-BS."
+
+This form is simpler than the full `program CODE type level` syntax — it looks up the program by its catalog code alone. Use it when the code is sufficient to identify the program unambiguously:
+
+```
+program "MATH-MINOR"
+program "DATA-SCI-CERT"
+program "ACCT-MBA"
+```
+
+### When To Use Which Form
+
+| Form | When to use | Example |
+|---|---|---|
+| `program CODE type level` | Code might be shared across types/levels | `program CS major undergraduate` |
+| `program "CODE"` | Unique code in catalog | `program "CMPS-BS"` |
+
+Both forms produce the same AST node type and behave identically in audits. The quoted form is more concise when your institution uses unique program codes.
+
+## Program Filters
+
+Just as course filters let you describe courses by properties, **program filters** let you describe programs by type, level, or code. Program filters evaluate against the student's declared programs at audit time.
+
+### Syntax
+
+```
+all programs where type = "major"
+```
+
+"All of the student's declared programs that are majors must be satisfied."
+
+The general form is:
+
+```
+QUANTIFIER programs where CONDITION [and CONDITION ...]
+```
+
+### Quantifiers
+
+Program filters support five quantifiers — the same set as counted requirements:
+
+```
+all programs where type = "minor"                    # Every matching program
+any program where level = "undergraduate"            # At least one
+at least 2 programs where type = "major"             # 2 or more
+at most 1 programs where type = "concentration"      # No more than 1
+exactly 2 programs where level = "graduate"          # Precisely 2
+```
+
+Note: `any program` is singular, while the other quantifiers use `programs` (plural).
+
+### Filter Fields
+
+Program filters support three fields:
+
+| Field | Values | Example |
+|---|---|---|
+| `type` | `"major"`, `"minor"`, `"certificate"`, `"concentration"`, `"track"`, `"cluster"` | `type = "major"` |
+| `level` | `"undergraduate"`, `"graduate"`, `"doctoral"`, `"professional"`, `"post-graduate"`, `"post-doctoral"` | `level = "undergraduate"` |
+| `code` | Any program code string | `code = "CMPS-BS"` |
+
+### Combining Conditions
+
+Use `and` to combine multiple conditions:
+
+```
+all programs where type = "major" and level = "undergraduate"
+```
+
+"All of the student's declared undergraduate majors."
+
+### Use Cases
+
+**Graduation requirement — all declared minors must be complete:**
+```
+all programs where type = "minor"
+```
+
+**At least one declared program must be a graduate certificate:**
+```
+any program where type = "certificate" and level = "graduate"
+```
+
 ## Program Context References
 
 While program references identify programs from the catalog, **program context references** refer to a student's declared program at the time of evaluation. These resolve based on the student's academic plan:
@@ -224,7 +315,11 @@ For reference, here are all supported values:
 | Construct | Meaning | Example |
 |---|---|---|
 | `program CODE type level` | Named program reference | `program CS major undergraduate` |
+| `program "CODE"` | Program reference by quoted code | `program "CMPS-BS"` |
 | `any program type level` | Wildcard program reference | `any program minor undergraduate` |
+| `all programs where ...` | All matching declared programs | `all programs where type = "minor"` |
+| `any program where ...` | At least one matching program | `any program where level = "graduate"` |
+| `at least N programs where ...` | N or more matching programs | `at least 2 programs where type = "major"` |
 | `primary major` | Student's declared major | Used in overlap rules |
 | `primary minor` | Student's declared minor | Used in overlap rules |
 | `overlap between (A, B) at most N unit` | Limit shared courses | `overlap between ($gen_ed, primary major) at most 3 courses` |

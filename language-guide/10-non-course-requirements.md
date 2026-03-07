@@ -45,13 +45,14 @@ score IB_MATHEMATICS >= 5
 
 ### Score Operators
 
-Score supports all comparison operators:
+Score supports all comparison operators, and values can be integers or decimals:
 
 ```
 score SAT_MATH >= 580        # 580 or higher
 score SAT_MATH > 500         # Above 500
 score SAT_MATH <= 700        # 700 or lower
 score GRE_VERBAL >= 155      # Graduate exam threshold
+score AP_CALCULUS_AB >= 3.5   # Decimal threshold
 ```
 
 ### Test Scores as Prerequisite Alternatives
@@ -153,13 +154,14 @@ quantity CLINICAL_HOURS >= 500
 
 "The student must have accumulated at least 500 clinical hours."
 
-Like scores, quantities support all comparison operators:
+Like scores, quantities support all comparison operators and decimal values:
 
 ```
 quantity CLINICAL_HOURS >= 500
 quantity RESEARCH_CREDITS >= 6
 quantity COMMUNITY_SERVICE_HOURS >= 40
 quantity PRACTICUM_DAYS >= 30
+quantity LAB_HOURS >= 2.5
 ```
 
 ### Quantities vs. Scores

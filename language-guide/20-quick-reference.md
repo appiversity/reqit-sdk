@@ -132,14 +132,34 @@ courses where prerequisite includes (MATH 151)
 courses where corequisite includes (ENGL 201)
 ```
 
+## Labels
+
+```
+"Core Courses": all of (CMPS 130, CMPS 230)    # Named section
+"Electives": at least 3 of (...)                # Named section
+```
+
 ## Program References
 
 ```
-program CS major undergraduate
+program CS major undergraduate                  # By code, type, and level
 program DATA_SCIENCE certificate graduate
+program "CMPS-BS"                               # By quoted catalog code
 any program major undergraduate
 any program minor undergraduate
 ```
+
+## Program Filters
+
+```
+all programs where type = "major"                           # Every matching program
+any program where level = "undergraduate"                   # At least one
+at least 2 programs where type = "major"                    # 2 or more
+at most 1 programs where type = "concentration"             # No more than 1
+all programs where type = "minor" and level = "undergraduate"  # Combined conditions
+```
+
+**Program filter fields:** `type`, `level`, `code`
 
 ## Program Context References
 

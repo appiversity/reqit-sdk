@@ -50,7 +50,7 @@ Scope names are typically derived from the program code and type. The convention
 | Accounting major | ACCT | major | `acct-major` |
 | Data Science certificate | DATA | certificate | `data-certificate` |
 
-Scope names can contain letters, digits, hyphens, and underscores.
+Scope names must start with a letter and can contain letters, digits, hyphens, and underscores.
 
 ## Variable Resolution Inside a Scope
 

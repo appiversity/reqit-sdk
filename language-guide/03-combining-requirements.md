@@ -174,6 +174,51 @@ any of (
 - Taking the combined course (CSE 007), or
 - Taking an intro CS course (either CMPS 130 or CMPS 135) plus Calculus I"
 
+## Labels — Naming Sections
+
+You can attach a display name to any composite expression by prefixing it with a quoted label and a colon:
+
+```
+"Core Courses": all of (
+  CMPS 130,
+  CMPS 230,
+  CMPS 340
+)
+```
+
+The label `"Core Courses"` doesn't change the requirement's logic — it's a display annotation. Renderers use labels as section headings in outlines, HTML, and other output formats.
+
+### Labels in Context
+
+Labels are most useful inside larger requirements, where they give each section a clear heading:
+
+```
+all of (
+  "Core Courses": all of (
+    CMPS 130,
+    CMPS 230,
+    CMPS 340,
+    CMPS 490
+  ),
+
+  "Electives": at least 4 of (
+    CMPS 305, CMPS 310, CMPS 320,
+    CMPS 331, CMPS 342, CMPS 345
+  ),
+
+  "Math Requirements": all of (
+    MATH 151,
+    MATH 152
+  )
+)
+```
+
+Without labels, rendered output uses generic headings like "All of the following." With labels, it uses "Core Courses," "Electives," and "Math Requirements."
+
+### What Can Be Labeled
+
+Labels can be attached to any composite expression — `all of`, `any of`, `none of`, `at least N of`, `at most N of`, `exactly N of`, `one from each of`, and `from at least N of`. They cannot be attached to leaf expressions like individual course references.
+
 ## Tips for Readable Requirements
 
 1. **Use comments** to label sections (comments start with `#`)
@@ -219,6 +264,7 @@ Both are identical to Reqit. The second is far easier to read and maintain.
 | `all of (A, B, C)` | Every item required | `all of (MATH 151, MATH 152)` |
 | `any of (A, B, C)` | At least one required | `any of (MATH 170, MATH 171)` |
 | `none of (A, B, C)` | None may be completed | `none of (CMPS 490, CMPS 491)` |
+| `"label": composite` | Named section | `"Core": all of (CMPS 130, CMPS 230)` |
 | Nesting | Combinations inside combinations | `all of (any of (A, B), C)` |
 
 ---

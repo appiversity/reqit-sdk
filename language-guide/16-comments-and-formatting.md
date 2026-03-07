@@ -80,7 +80,7 @@ ALL OF (MATH 151, MATH 152)
 All Of (MATH 151, MATH 152)
 ```
 
-Keywords include: `all`, `any`, `of`, `at`, `least`, `most`, `exactly`, `courses`, `where`, `and`, `in`, `not`, `from`, `credits`, `none`, `except`, `with`, `grade`, `gpa`, `score`, `attainment`, `quantity`, `one`, `each`, `scope`, `match`, `program`, `primary`, `major`, `minor`, `overlap`, `between`, `outside`, `prerequisite`, `corequisite`, `includes`, `concurrent`.
+Keywords include: `all`, `any`, `of`, `at`, `least`, `most`, `exactly`, `courses`, `where`, `and`, `in`, `not`, `from`, `credits`, `none`, `except`, `with`, `grade`, `gpa`, `score`, `attainment`, `quantity`, `one`, `each`, `scope`, `match`, `program`, `programs`, `primary`, `major`, `minor`, `overlap`, `between`, `outside`, `prerequisite`, `corequisite`, `includes`, `concurrent`.
 
 ### Course References
 

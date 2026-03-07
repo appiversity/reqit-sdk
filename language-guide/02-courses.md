@@ -16,8 +16,8 @@ This means: "the student must complete MATH 151." It's the simplest possible req
 
 A course reference has two parts separated by a space:
 
-- **Subject code** — two or more letters (e.g., `MATH`, `CSCI`, `BIOL`, `INTD`)
-- **Course number** — starts with a digit (e.g., `151`, `301`, `490`)
+- **Subject code** — starts with a letter, followed by one or more letters or digits (e.g., `MATH`, `CSCI`, `BIOL`, `INTD`, `CS2`)
+- **Course number** — typically starts with a digit (e.g., `151`, `301`, `490`), but may also start with a letter if it contains at least one digit (e.g., `A101`)
 
 More examples:
 
@@ -51,7 +51,7 @@ MATH 076         # Leading zeros are fine
 BIOL 3XX         # Alphanumeric patterns
 ```
 
-As long as the number starts with a digit, Reqit accepts any combination of digits, letters, and periods. The number is also normalized to uppercase, so `101a` becomes `101A`.
+Reqit accepts any course number that starts with a digit, or starts with a letter provided it contains at least one digit. In either case, digits, letters, and periods are all allowed. The number is normalized to uppercase, so `101a` becomes `101A`.
 
 ## What a Course Reference Means
 
