@@ -241,7 +241,7 @@ function renderTree(node, catalog, prefix, connector, opts) {
 const DEFAULT_ICONS = {
   'met': '\u2713',              // ✓
   'not-met': '\u2717',          // ✗
-  'in-progress': '\u25D1',      // ◑
+  'in-progress': '\u25D5',      // ◕
   'partial-progress': '\u25D4', // ◔
   'waived': '\u2298',           // ⊘
   'substituted': '\u21C4',      // ⇄

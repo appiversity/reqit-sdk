@@ -276,7 +276,7 @@ function statusIndicator(status, pfx) {
   if (!status) return '';
   switch (status) {
     case 'met': return `<span class="${pfx}status-indicator">&#10003;</span> `;
-    case 'in-progress': return `<span class="${pfx}status-indicator">&#9711;</span> `;
+    case 'in-progress': return `<span class="${pfx}status-indicator">&#9685;</span> `;
     case 'partial-progress': return `<span class="${pfx}status-indicator">&#9681;</span> `;
     case 'not-met': return `<span class="${pfx}status-indicator">&#9675;</span> `;
     default: return '';

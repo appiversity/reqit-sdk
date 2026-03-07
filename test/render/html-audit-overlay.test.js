@@ -40,7 +40,7 @@ describe('toHTML audit overlay', () => {
     };
     const html = toHTML(ast, null, auditNode);
     expect(html).toContain('reqit-status-in-progress');
-    expect(html).toContain('&#9711;'); // in-progress indicator
+    expect(html).toContain('&#9685;'); // in-progress indicator
   });
 
   test('partial-progress course → reqit-status-partial-progress class + half-circle', () => {

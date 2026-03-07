@@ -217,7 +217,7 @@ A `<span>` with a Unicode checkmark/circle prepended to each node:
 ```html
 <span class="reqit-status-indicator">&#10003;</span>  <!-- ✓ met -->
 <span class="reqit-status-indicator">&#9675;</span>   <!-- ○ not-met -->
-<span class="reqit-status-indicator">&#9711;</span>   <!-- ◯ in-progress -->
+<span class="reqit-status-indicator">&#9685;</span>   <!-- ◕ in-progress -->
 <span class="reqit-status-indicator">&#9681;</span>   <!-- ◑ partial-progress -->
 ```
 
@@ -305,7 +305,7 @@ For met courses, grade and term info from `satisfiedBy`:
 | `reqit-status-not-met` | `<span>` or `<div>` | Status is not-met. |
 | `reqit-status-in-progress` | `<span>` or `<div>` | Status is in-progress. |
 | `reqit-status-partial-progress` | `<span>` or `<div>` | Status is partial-progress. |
-| `reqit-status-indicator` | `<span>` | Unicode status icon (✓, ○, ◯, ◑). |
+| `reqit-status-indicator` | `<span>` | Unicode status icon (✓, ○, ◕, ◑). |
 | `reqit-grade` | `<span>` | Grade earned (e.g. "A"). |
 | `reqit-term` | `<span>` | Term completed (e.g. "Fall 2023"). |
 

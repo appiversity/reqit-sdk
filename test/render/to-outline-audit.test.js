@@ -31,11 +31,11 @@ describe('toOutline audit — status icons', () => {
     expect(result).toBe('\u2717 MATH 253 - Calculus III');
   });
 
-  test('in-progress course shows ◑', () => {
+  test('in-progress course shows ◕', () => {
     const ast = { type: 'course', subject: 'MATH', number: '152' };
     const auditNode = { type: 'course', status: 'in-progress' };
     const result = toOutline(ast, catalog, auditNode);
-    expect(result).toBe('\u25D1 MATH 152 - Calculus II');
+    expect(result).toBe('\u25D5 MATH 152 - Calculus II');
   });
 
   test('waived shows ⊘', () => {
