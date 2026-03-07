@@ -1,0 +1,150 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Reqit",
+  "scopeName": "source.reqit",
+  "fileTypes": ["reqit"],
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#label" },
+    { "include": "#string" },
+    { "include": "#variable-definition" },
+    { "include": "#variable-reference" },
+    { "include": "#attainment" },
+    { "include": "#score-quantity" },
+    { "include": "#course-reference" },
+    { "include": "#keyword-phrases" },
+    { "include": "#keywords" },
+    { "include": "#operators" },
+    { "include": "#numbers" },
+    { "include": "#punctuation" }
+  ],
+  "repository": {
+    "comment": {
+      "name": "comment.line.number-sign.reqit",
+      "match": "#.*$"
+    },
+
+    "label": {
+      "comment": "Labeled composite: \"Label\": all of (...)",
+      "match": "(\"[^\"]*\")(\\s*:)",
+      "captures": {
+        "1": { "name": "entity.name.section.label.reqit" },
+        "2": { "name": "punctuation.separator.label.reqit" }
+      }
+    },
+
+    "string": {
+      "name": "string.quoted.double.reqit",
+      "begin": "\"",
+      "end": "\"",
+      "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.reqit" } },
+      "endCaptures": { "0": { "name": "punctuation.definition.string.end.reqit" } }
+    },
+
+    "variable-definition": {
+      "comment": "$name = expression",
+      "match": "(\\$[a-zA-Z_]\\w*)(\\s*=)",
+      "captures": {
+        "1": { "name": "variable.other.definition.reqit" },
+        "2": { "name": "keyword.operator.assignment.reqit" }
+      }
+    },
+
+    "variable-reference": {
+      "comment": "$name or $scope.name",
+      "name": "variable.other.reqit",
+      "match": "\\$[a-zA-Z_][\\w.]*"
+    },
+
+    "attainment": {
+      "comment": "attainment CODE",
+      "match": "(?i)\\b(attainment)\\s+([A-Za-z][A-Za-z0-9_]*)",
+      "captures": {
+        "1": { "name": "keyword.control.reqit" },
+        "2": { "name": "entity.name.tag.reqit" }
+      }
+    },
+
+    "score-quantity": {
+      "comment": "score CODE >= value  or  quantity CODE >= value",
+      "match": "(?i)\\b(score|quantity)\\s+([A-Za-z][A-Za-z0-9_]*)",
+      "captures": {
+        "1": { "name": "keyword.control.reqit" },
+        "2": { "name": "entity.name.tag.reqit" }
+      }
+    },
+
+    "course-reference": {
+      "comment": "SUBJ NUM — e.g. CMPS 147, MATH 121, INFO 224",
+      "match": "\\b([A-Z]{2,})\\s+([0-9][0-9A-Za-z.]*)",
+      "captures": {
+        "1": { "name": "entity.name.type.subject.reqit" },
+        "2": { "name": "constant.other.course-number.reqit" }
+      }
+    },
+
+    "keyword-phrases": {
+      "comment": "Multi-word keywords matched before single keywords",
+      "patterns": [
+        {
+          "name": "keyword.control.composite.reqit",
+          "match": "(?i)\\bone\\s+from\\s+each\\s+of\\b"
+        },
+        {
+          "name": "keyword.control.composite.reqit",
+          "match": "(?i)\\bfrom\\s+at\\s+(least|most)\\b"
+        },
+        {
+          "name": "keyword.control.composite.reqit",
+          "match": "(?i)\\bat\\s+(least|most)\\b"
+        },
+        {
+          "name": "keyword.control.composite.reqit",
+          "match": "(?i)\\b(all|any|none|exactly)\\s+of\\b"
+        },
+        {
+          "name": "keyword.control.composite.reqit",
+          "match": "(?i)\\bcredits\\s+from\\b"
+        },
+        {
+          "name": "keyword.operator.logical.reqit",
+          "match": "(?i)\\bnot\\s+in\\b"
+        },
+        {
+          "name": "keyword.control.reqit",
+          "match": "(?i)\\bany\\s+program\\b"
+        },
+        {
+          "name": "keyword.control.reqit",
+          "match": "(?i)\\boverlap\\s+between\\b"
+        }
+      ]
+    },
+
+    "keywords": {
+      "name": "keyword.control.reqit",
+      "match": "(?i)\\b(all|any|none|at|least|most|exactly|of|from|one|each|credits|with|where|except|scope|courses|attainment|score|quantity|program|and|or|grade|gpa|in|not|match|outside|between|primary|major|minor|concurrent|includes|prerequisite|corequisite|overlap)\\b"
+    },
+
+    "operators": {
+      "name": "keyword.operator.comparison.reqit",
+      "match": ">=|<=|!=|>|<|="
+    },
+
+    "numbers": {
+      "name": "constant.numeric.reqit",
+      "match": "\\b\\d+(\\.\\d+)?\\b"
+    },
+
+    "punctuation": {
+      "patterns": [
+        { "name": "punctuation.section.parens.begin.reqit", "match": "\\(" },
+        { "name": "punctuation.section.parens.end.reqit", "match": "\\)" },
+        { "name": "punctuation.section.braces.begin.reqit", "match": "\\{" },
+        { "name": "punctuation.section.braces.end.reqit", "match": "\\}" },
+        { "name": "punctuation.separator.comma.reqit", "match": "," },
+        { "name": "punctuation.separator.colon.reqit", "match": ":" }
+      ]
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "name": "reqit",
+  "displayName": "Reqit DSL",
+  "description": "Syntax highlighting for the Reqit academic requirements DSL",
+  "version": "0.1.0",
+  "publisher": "appiversity",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "reqit",
+        "aliases": [
+          "Reqit",
+          "reqit"
+        ],
+        "extensions": [
+          ".reqit"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "reqit",
+        "scopeName": "source.reqit",
+        "path": "./syntaxes/reqit.tmLanguage.json"
+      }
+    ]
+  }
+}
