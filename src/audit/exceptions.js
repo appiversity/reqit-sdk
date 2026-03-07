@@ -18,17 +18,20 @@ const { forEachChild } = require('../ast/children');
 const WAIVER_TARGET_KEYS = ['course', 'score', 'attainment', 'quantity', 'label'];
 
 class Waiver {
+  #id;
   #target;
   #reason;
   #metadata;
 
-  constructor(target, reason, metadata) {
+  constructor(target, reason, metadata, id) {
+    this.#id = id || null;
     this.#target = Object.freeze(target);
     this.#reason = reason;
     this.#metadata = metadata ? Object.freeze(metadata) : null;
     Object.freeze(this);
   }
 
+  get id() { return this.#id; }
   get kind() { return 'waiver'; }
   get target() { return this.#target; }
   get reason() { return this.#reason; }
@@ -36,6 +39,7 @@ class Waiver {
 
   toJSON() {
     const obj = { kind: 'waiver', reason: this.#reason };
+    if (this.#id) obj.id = this.#id;
     for (const key of WAIVER_TARGET_KEYS) {
       if (this.#target[key] !== undefined) {
         obj[key] = this.#target[key];
@@ -51,12 +55,14 @@ class Waiver {
 // ============================================================
 
 class Substitution {
+  #id;
   #original;
   #replacement;
   #reason;
   #metadata;
 
-  constructor(original, replacement, reason, metadata) {
+  constructor(original, replacement, reason, metadata, id) {
+    this.#id = id || null;
     this.#original = Object.freeze({ ...original });
     this.#replacement = Object.freeze({ ...replacement });
     this.#reason = reason;
@@ -64,6 +70,7 @@ class Substitution {
     Object.freeze(this);
   }
 
+  get id() { return this.#id; }
   get kind() { return 'substitution'; }
   get original() { return this.#original; }
   get replacement() { return this.#replacement; }
@@ -73,10 +80,11 @@ class Substitution {
   toJSON() {
     const obj = {
       kind: 'substitution',
+      reason: this.#reason,
       original: { ...this.#original },
       replacement: { ...this.#replacement },
-      reason: this.#reason,
     };
+    if (this.#id) obj.id = this.#id;
     if (this.#metadata) obj.metadata = this.#metadata;
     return obj;
   }
@@ -104,7 +112,7 @@ function waiver(opts) {
     throw new Error('waiver() requires an options object');
   }
 
-  const { reason, metadata, ...rest } = opts;
+  const { reason, metadata, id, ...rest } = opts;
 
   if (!reason || typeof reason !== 'string' || reason.trim() === '') {
     throw new Error('waiver() requires a non-empty reason string');
@@ -143,7 +151,7 @@ function waiver(opts) {
     ? { subject: targetValue.subject, number: targetValue.number }
     : targetValue;
 
-  return new Waiver(target, reason.trim(), metadata || null);
+  return new Waiver(target, reason.trim(), metadata || null, id || null);
 }
 
 /**
@@ -161,7 +169,7 @@ function substitution(opts) {
     throw new Error('substitution() requires an options object');
   }
 
-  const { original, replacement, reason, metadata } = opts;
+  const { original, replacement, reason, metadata, id } = opts;
 
   if (!reason || typeof reason !== 'string' || reason.trim() === '') {
     throw new Error('substitution() requires a non-empty reason string');
@@ -180,6 +188,7 @@ function substitution(opts) {
     { subject: replacement.subject, number: replacement.number },
     reason.trim(),
     metadata || null,
+    id || null,
   );
 }
 

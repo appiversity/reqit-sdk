@@ -2418,3 +2418,161 @@ describe('Transcript duplicatePolicy', () => {
     expect(result.items.satisfiedBy.grade).toBe('B'); // first wins
   });
 });
+
+// ============================================================
+// External IDs on SDK entities (#13)
+// ============================================================
+
+describe('External IDs on entities', () => {
+  // -- TranscriptCourse --
+
+  test('TranscriptCourse.id returns id when provided', () => {
+    const tc = new api.TranscriptCourse({ id: 'tc-001', subject: 'MATH', number: '151', grade: 'A', credits: 4 });
+    expect(tc.id).toBe('tc-001');
+  });
+
+  test('TranscriptCourse.id returns null when not provided', () => {
+    const tc = new api.TranscriptCourse({ subject: 'MATH', number: '151' });
+    expect(tc.id).toBeNull();
+  });
+
+  test('TranscriptCourse.id round-trips through toJSON', () => {
+    const tc = new api.TranscriptCourse({ id: 'tc-001', subject: 'MATH', number: '151', grade: 'A', credits: 4 });
+    const json = tc.toJSON();
+    expect(json.id).toBe('tc-001');
+    const tc2 = new api.TranscriptCourse(json);
+    expect(tc2.id).toBe('tc-001');
+  });
+
+  // -- Degree --
+
+  test('Degree.id returns id when provided', () => {
+    const d = api.degree({ id: 'deg-001', code: 'BS', type: 'B.S.', level: 'undergraduate' });
+    expect(d.id).toBe('deg-001');
+  });
+
+  test('Degree.id returns null when not provided', () => {
+    const d = api.degree({ code: 'BS', type: 'B.S.', level: 'undergraduate' });
+    expect(d.id).toBeNull();
+  });
+
+  test('Degree.id round-trips through toJSON', () => {
+    const d = api.degree({ id: 'deg-001', code: 'BS', type: 'B.S.', level: 'undergraduate', name: 'Bachelor of Science' });
+    const json = d.toJSON();
+    expect(json.id).toBe('deg-001');
+    const d2 = api.degree(json);
+    expect(d2.id).toBe('deg-001');
+  });
+
+  // -- Waiver --
+
+  test('Waiver.id returns id when provided', () => {
+    const w = api.waiver({ id: 'w-001', course: { subject: 'CMPS', number: '310' }, reason: 'Transfer' });
+    expect(w.id).toBe('w-001');
+  });
+
+  test('Waiver.id returns null when not provided', () => {
+    const w = api.waiver({ course: { subject: 'CMPS', number: '310' }, reason: 'Transfer' });
+    expect(w.id).toBeNull();
+  });
+
+  test('Waiver.id round-trips through toJSON', () => {
+    const w = api.waiver({ id: 'w-001', course: { subject: 'CMPS', number: '310' }, reason: 'Transfer' });
+    const json = w.toJSON();
+    expect(json.id).toBe('w-001');
+  });
+
+  test('Waiver toJSON omits id when null', () => {
+    const w = api.waiver({ course: { subject: 'CMPS', number: '310' }, reason: 'Transfer' });
+    const json = w.toJSON();
+    expect(json).not.toHaveProperty('id');
+  });
+
+  test('removeWaiver by id', () => {
+    const tx = api.transcript({ courses: [] });
+    const w = api.waiver({ id: 'w-001', course: { subject: 'MATH', number: '151' }, reason: 'Transfer' });
+    const tx2 = tx.addWaiver(w);
+    expect(tx2.waivers).toHaveLength(1);
+    const tx3 = tx2.removeWaiver('w-001');
+    expect(tx3.waivers).toHaveLength(0);
+  });
+
+  // -- Substitution --
+
+  test('Substitution.id returns id when provided', () => {
+    const s = api.substitution({
+      id: 's-001',
+      original: { subject: 'MATH', number: '250' },
+      replacement: { subject: 'MATH', number: '241' },
+      reason: 'Transfer',
+    });
+    expect(s.id).toBe('s-001');
+  });
+
+  test('Substitution.id returns null when not provided', () => {
+    const s = api.substitution({
+      original: { subject: 'MATH', number: '250' },
+      replacement: { subject: 'MATH', number: '241' },
+      reason: 'Transfer',
+    });
+    expect(s.id).toBeNull();
+  });
+
+  test('Substitution.id round-trips through toJSON', () => {
+    const s = api.substitution({
+      id: 's-001',
+      original: { subject: 'MATH', number: '250' },
+      replacement: { subject: 'MATH', number: '241' },
+      reason: 'Transfer',
+    });
+    const json = s.toJSON();
+    expect(json.id).toBe('s-001');
+  });
+
+  test('Substitution toJSON omits id when null', () => {
+    const s = api.substitution({
+      original: { subject: 'MATH', number: '250' },
+      replacement: { subject: 'MATH', number: '241' },
+      reason: 'Transfer',
+    });
+    const json = s.toJSON();
+    expect(json).not.toHaveProperty('id');
+  });
+
+  test('removeSubstitution by id', () => {
+    const tx = api.transcript({ courses: [] });
+    const s = api.substitution({
+      id: 's-001',
+      original: { subject: 'MATH', number: '250' },
+      replacement: { subject: 'MATH', number: '241' },
+      reason: 'Transfer',
+    });
+    const tx2 = tx.addSubstitution(s);
+    expect(tx2.substitutions).toHaveLength(1);
+    const tx3 = tx2.removeSubstitution('s-001');
+    expect(tx3.substitutions).toHaveLength(0);
+  });
+
+  // -- Existing removal still works --
+
+  test('removeWaiver by domain fields still works with id present', () => {
+    const tx = api.transcript({ courses: [] });
+    const w = api.waiver({ id: 'w-001', course: { subject: 'MATH', number: '151' }, reason: 'Transfer' });
+    const tx2 = tx.addWaiver(w);
+    const tx3 = tx2.removeWaiver({ subject: 'MATH', number: '151' });
+    expect(tx3.waivers).toHaveLength(0);
+  });
+
+  test('removeSubstitution by domain fields still works with id present', () => {
+    const tx = api.transcript({ courses: [] });
+    const s = api.substitution({
+      id: 's-001',
+      original: { subject: 'MATH', number: '250' },
+      replacement: { subject: 'MATH', number: '241' },
+      reason: 'Transfer',
+    });
+    const tx2 = tx.addSubstitution(s);
+    const tx3 = tx2.removeSubstitution({ subject: 'MATH', number: '250' });
+    expect(tx3.substitutions).toHaveLength(0);
+  });
+});

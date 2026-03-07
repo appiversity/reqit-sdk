@@ -354,6 +354,7 @@ class Degree {
     this.#data = Object.freeze({ ...data });
   }
 
+  get id() { return this.#data.id || null; }
   get code() { return this.#data.code; }
   get name() { return this.#data.name || null; }
   get type() { return this.#data.type; }
@@ -593,6 +594,7 @@ class TranscriptCourse {
     this.#data = Object.freeze(data);
   }
 
+  get id() { return this.#data.id || null; }
   get subject() { return this.#data.subject; }
   get number() { return this.#data.number; }
   get grade() { return this.#data.grade ?? null; }
@@ -740,7 +742,7 @@ class Transcript {
 /**
  * Match a waiver against a removal target.
  * Target can be a course { subject, number }, or a string matching
- * the score/attainment/quantity/label target value.
+ * the waiver's id or the score/attainment/quantity/label target value.
  */
 function matchesWaiverTarget(waiver, target) {
   const t = waiver.target;
@@ -748,6 +750,7 @@ function matchesWaiverTarget(waiver, target) {
     return t.course && t.course.subject === target.subject && t.course.number === target.number;
   }
   if (typeof target === 'string') {
+    if (waiver.id && waiver.id === target) return true;
     return t.score === target || t.attainment === target || t.quantity === target || t.label === target;
   }
   return false;
@@ -755,11 +758,15 @@ function matchesWaiverTarget(waiver, target) {
 
 /**
  * Match a substitution against a removal target.
- * Target is { subject, number } matching the original course.
+ * Target is { subject, number } matching the original course,
+ * or a string matching the substitution's id.
  */
 function matchesSubstitutionTarget(sub, target) {
   if (typeof target === 'object' && target.subject && target.number) {
     return sub.original.subject === target.subject && sub.original.number === target.number;
+  }
+  if (typeof target === 'string' && sub.id && sub.id === target) {
+    return true;
   }
   return false;
 }
