@@ -20,12 +20,27 @@ const { courseKey } = require('../render/shared');
 const { isAuditableGrade } = require('../grade');
 
 /**
+ * Build a grade → points lookup from a gradeConfig scale.
+ * @param {object} gradeConfig
+ * @returns {Map<string, number>}
+ */
+function buildGradePointsMap(gradeConfig) {
+  const map = new Map();
+  if (gradeConfig && gradeConfig.scale) {
+    for (const entry of gradeConfig.scale) {
+      map.set(entry.grade, entry.points);
+    }
+  }
+  return map;
+}
+
+/**
  * Normalize and index a transcript for O(1) audit lookup.
  *
  * Steps:
  *   1. Filter out withdrawn entries
  *   2. Filter out entries with audit:false grades
- *   3. Deduplicate by courseKey — keep last (most recent) auditable entry
+ *   3. Deduplicate by courseKey using the specified policy
  *   4. Build courseKey → entry Map
  *   5. Build crossListGroup → entries Map (using catalog cross-list info)
  *
@@ -33,16 +48,22 @@ const { isAuditableGrade } = require('../grade');
  * @param {object} gradeConfig - Institution grade configuration
  * @param {object} [catalogIndex] - Optional catalog courseKey → course Map
  *   for cross-list group resolution
+ * @param {object} [options] - Normalization options
+ * @param {string} [options.duplicatePolicy='latest'] - How to handle repeated
+ *   courses: 'latest' (last entry wins), 'best-grade' (highest grade points
+ *   wins), or 'first' (first entry wins)
  * @returns {{
  *   byKey: Map<string, object>,
  *   byCrossListGroup: Map<string, object[]>,
  *   courses: object[]
  * }}
  */
-function normalizeTranscript(courses, gradeConfig, catalogIndex) {
+function normalizeTranscript(courses, gradeConfig, catalogIndex, options) {
   if (!courses || !Array.isArray(courses)) {
     return { byKey: new Map(), byCrossListGroup: new Map(), courses: [] };
   }
+
+  const policy = (options && options.duplicatePolicy) || 'latest';
 
   // Step 1+2: filter withdrawn and non-auditable
   const auditable = [];
@@ -52,11 +73,36 @@ function normalizeTranscript(courses, gradeConfig, catalogIndex) {
     auditable.push(entry);
   }
 
-  // Step 3: deduplicate by courseKey — last entry wins (most recent)
+  // Step 3: deduplicate by courseKey using the specified policy
   const byKey = new Map();
-  for (const entry of auditable) {
-    const key = courseKey(entry);
-    byKey.set(key, entry);
+  if (policy === 'best-grade') {
+    const gradePoints = buildGradePointsMap(gradeConfig);
+    for (const entry of auditable) {
+      const key = courseKey(entry);
+      const existing = byKey.get(key);
+      if (!existing) {
+        byKey.set(key, entry);
+      } else {
+        const existingPoints = gradePoints.get(existing.grade) ?? -1;
+        const newPoints = gradePoints.get(entry.grade) ?? -1;
+        if (newPoints > existingPoints) {
+          byKey.set(key, entry);
+        }
+      }
+    }
+  } else if (policy === 'first') {
+    for (const entry of auditable) {
+      const key = courseKey(entry);
+      if (!byKey.has(key)) {
+        byKey.set(key, entry);
+      }
+    }
+  } else {
+    // 'latest' — last entry wins (default)
+    for (const entry of auditable) {
+      const key = courseKey(entry);
+      byKey.set(key, entry);
+    }
   }
 
   // Step 5: build crossListGroup index (if catalog provides cross-list info)

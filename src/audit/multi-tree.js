@@ -171,7 +171,7 @@ function auditMulti(trees, catalog, transcript, options) {
   for (const p of norm.programs || []) {
     programIndex.set(p.code, p);
   }
-  const normTranscript = normalizeTranscript(transcript, gradeConfig, catalogIndex);
+  const normTranscript = normalizeTranscript(transcript, gradeConfig, catalogIndex, opts);
 
   // Build exception context once, share across all tree audits
   const exceptions = opts.exceptions || [];

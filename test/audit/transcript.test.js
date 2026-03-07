@@ -121,6 +121,81 @@ describe('normalizeTranscript', () => {
     const norm = normalizeTranscript(complete, gradeConfig);
     expect(norm.byCrossListGroup.size).toBe(0);
   });
+
+  // -- duplicatePolicy --
+
+  test('duplicatePolicy "latest" keeps last entry (default behavior)', () => {
+    const entries = [
+      { subject: 'MATH', number: '101', grade: 'D', credits: 3, term: 'Fall 2023', status: 'completed' },
+      { subject: 'MATH', number: '101', grade: 'B', credits: 3, term: 'Spring 2024', status: 'completed' },
+    ];
+    const norm = normalizeTranscript(entries, gradeConfig, null, { duplicatePolicy: 'latest' });
+    expect(norm.byKey.size).toBe(1);
+    expect(norm.byKey.get('MATH:101').grade).toBe('B');
+    expect(norm.byKey.get('MATH:101').term).toBe('Spring 2024');
+  });
+
+  test('duplicatePolicy "first" keeps first entry', () => {
+    const entries = [
+      { subject: 'MATH', number: '101', grade: 'A', credits: 3, term: 'Fall 2023', status: 'completed' },
+      { subject: 'MATH', number: '101', grade: 'B', credits: 3, term: 'Spring 2024', status: 'completed' },
+    ];
+    const norm = normalizeTranscript(entries, gradeConfig, null, { duplicatePolicy: 'first' });
+    expect(norm.byKey.size).toBe(1);
+    expect(norm.byKey.get('MATH:101').grade).toBe('A');
+    expect(norm.byKey.get('MATH:101').term).toBe('Fall 2023');
+  });
+
+  test('duplicatePolicy "best-grade" keeps entry with highest grade points', () => {
+    const entries = [
+      { subject: 'MATH', number: '101', grade: 'D', credits: 3, term: 'Fall 2023', status: 'completed' },
+      { subject: 'MATH', number: '101', grade: 'A', credits: 3, term: 'Spring 2024', status: 'completed' },
+      { subject: 'MATH', number: '101', grade: 'C', credits: 3, term: 'Fall 2024', status: 'completed' },
+    ];
+    const norm = normalizeTranscript(entries, gradeConfig, null, { duplicatePolicy: 'best-grade' });
+    expect(norm.byKey.size).toBe(1);
+    expect(norm.byKey.get('MATH:101').grade).toBe('A');
+    expect(norm.byKey.get('MATH:101').term).toBe('Spring 2024');
+  });
+
+  test('duplicatePolicy "best-grade" keeps higher grade when first attempt is better', () => {
+    const entries = [
+      { subject: 'CMPS', number: '230', grade: 'B+', credits: 3, term: 'Fall 2023', status: 'completed' },
+      { subject: 'CMPS', number: '230', grade: 'C-', credits: 3, term: 'Spring 2024', status: 'completed' },
+    ];
+    const norm = normalizeTranscript(entries, gradeConfig, null, { duplicatePolicy: 'best-grade' });
+    expect(norm.byKey.get('CMPS:230').grade).toBe('B+');
+  });
+
+  test('duplicatePolicy "best-grade" handles single entry correctly', () => {
+    const entries = [
+      { subject: 'MATH', number: '101', grade: 'C', credits: 3, term: 'Fall 2023', status: 'completed' },
+    ];
+    const norm = normalizeTranscript(entries, gradeConfig, null, { duplicatePolicy: 'best-grade' });
+    expect(norm.byKey.size).toBe(1);
+    expect(norm.byKey.get('MATH:101').grade).toBe('C');
+  });
+
+  test('duplicatePolicy defaults to "latest" when not specified', () => {
+    const entries = [
+      { subject: 'MATH', number: '101', grade: 'A', credits: 3, term: 'Fall 2023', status: 'completed' },
+      { subject: 'MATH', number: '101', grade: 'C', credits: 3, term: 'Spring 2024', status: 'completed' },
+    ];
+    const norm = normalizeTranscript(entries, gradeConfig);
+    expect(norm.byKey.get('MATH:101').grade).toBe('C'); // last wins
+  });
+
+  test('duplicatePolicy with multiple courses only deduplicates same courseKey', () => {
+    const entries = [
+      { subject: 'MATH', number: '101', grade: 'D', credits: 3, term: 'Fall 2023', status: 'completed' },
+      { subject: 'CMPS', number: '130', grade: 'B', credits: 3, term: 'Fall 2023', status: 'completed' },
+      { subject: 'MATH', number: '101', grade: 'A', credits: 3, term: 'Spring 2024', status: 'completed' },
+    ];
+    const norm = normalizeTranscript(entries, gradeConfig, null, { duplicatePolicy: 'best-grade' });
+    expect(norm.byKey.size).toBe(2);
+    expect(norm.byKey.get('MATH:101').grade).toBe('A');
+    expect(norm.byKey.get('CMPS:130').grade).toBe('B');
+  });
 });
 
 // ============================================================

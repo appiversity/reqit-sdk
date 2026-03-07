@@ -125,6 +125,7 @@ function extractTranscriptOptions(t) {
   for (const w of t.waivers) exceptions.push(w);
   for (const s of t.substitutions) exceptions.push(s);
   if (exceptions.length > 0) opts.exceptions = exceptions;
+  if (t.duplicatePolicy) opts.duplicatePolicy = t.duplicatePolicy;
   return opts;
 }
 
@@ -616,6 +617,7 @@ class Transcript {
   #waivers;
   #substitutions;
   #level;
+  #duplicatePolicy;
 
   constructor(data) {
     if (Array.isArray(data)) {
@@ -638,6 +640,7 @@ class Transcript {
       (data.substitutions || []).map(s => s instanceof Substitution ? s : null).filter(Boolean)
     );
     this.#level = data.level || null;
+    this.#duplicatePolicy = data.duplicatePolicy || null;
   }
 
   get courses() { return this.#courses; }
@@ -646,6 +649,7 @@ class Transcript {
   get waivers() { return this.#waivers; }
   get substitutions() { return this.#substitutions; }
   get level() { return this.#level; }
+  get duplicatePolicy() { return this.#duplicatePolicy; }
 
   // -- Immutable course mutations --
 
@@ -731,6 +735,7 @@ class Transcript {
       waivers: overrides.waivers || [...this.#waivers],
       substitutions: overrides.substitutions || [...this.#substitutions],
       level: this.#level,
+      duplicatePolicy: this.#duplicatePolicy,
     };
   }
 }

@@ -52,7 +52,7 @@ function prepareAudit(ast, catalog) {
   return {
     run(transcript, options) {
       const opts = options || {};
-      const normTranscript = normalizeTranscript(transcript, gradeConfig, catalogIndex);
+      const normTranscript = normalizeTranscript(transcript, gradeConfig, catalogIndex, opts);
 
       // Build exception context if exceptions provided
       const exceptions = opts.exceptions || [];

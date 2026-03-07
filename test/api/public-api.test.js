@@ -2282,3 +2282,76 @@ describe('labels — integration', () => {
     expect(result.items.label).toBe('Excluded');
   });
 });
+
+// ============================================================
+// 30. Transcript duplicatePolicy
+// ============================================================
+
+describe('Transcript duplicatePolicy', () => {
+  test('duplicatePolicy getter returns null by default', () => {
+    const tx = api.transcript({ courses: [{ subject: 'MATH', number: '151', grade: 'A', credits: 4 }] });
+    expect(tx.duplicatePolicy).toBeNull();
+  });
+
+  test('duplicatePolicy getter returns set policy', () => {
+    const tx = api.transcript({
+      courses: [{ subject: 'MATH', number: '151', grade: 'A', credits: 4 }],
+      duplicatePolicy: 'best-grade',
+    });
+    expect(tx.duplicatePolicy).toBe('best-grade');
+  });
+
+  test('duplicatePolicy preserved through immutable mutations', () => {
+    const tx = api.transcript({
+      courses: [{ subject: 'MATH', number: '151', grade: 'A', credits: 4 }],
+      duplicatePolicy: 'first',
+    });
+    const tx2 = tx.addCourse({ subject: 'CMPS', number: '130', grade: 'B', credits: 3 });
+    expect(tx2.duplicatePolicy).toBe('first');
+    const tx3 = tx2.removeCourse('CMPS', '130');
+    expect(tx3.duplicatePolicy).toBe('first');
+  });
+
+  test('best-grade policy selects higher grade during audit', () => {
+    const req = api.parse('MATH 101');
+    const tx = api.transcript({
+      courses: [
+        { subject: 'MATH', number: '101', grade: 'D', credits: 3, term: 'Fall 2023', status: 'completed' },
+        { subject: 'MATH', number: '101', grade: 'A', credits: 3, term: 'Spring 2024', status: 'completed' },
+        { subject: 'MATH', number: '101', grade: 'C', credits: 3, term: 'Fall 2024', status: 'completed' },
+      ],
+      duplicatePolicy: 'best-grade',
+    });
+    const result = req.audit(minimalCatalog, tx);
+    expect(result.status).toBe('met');
+    // The A grade should be selected
+    expect(result.items.satisfiedBy.grade).toBe('A');
+  });
+
+  test('latest policy uses last entry during audit (default)', () => {
+    const req = api.parse('MATH 101');
+    const tx = api.transcript({
+      courses: [
+        { subject: 'MATH', number: '101', grade: 'A', credits: 3, term: 'Fall 2023', status: 'completed' },
+        { subject: 'MATH', number: '101', grade: 'C', credits: 3, term: 'Spring 2024', status: 'completed' },
+      ],
+    });
+    const result = req.audit(minimalCatalog, tx);
+    expect(result.status).toBe('met');
+    expect(result.items.satisfiedBy.grade).toBe('C'); // last wins
+  });
+
+  test('first policy uses first entry during audit', () => {
+    const req = api.parse('MATH 101');
+    const tx = api.transcript({
+      courses: [
+        { subject: 'MATH', number: '101', grade: 'B', credits: 3, term: 'Fall 2023', status: 'completed' },
+        { subject: 'MATH', number: '101', grade: 'A', credits: 3, term: 'Spring 2024', status: 'completed' },
+      ],
+      duplicatePolicy: 'first',
+    });
+    const result = req.audit(minimalCatalog, tx);
+    expect(result.status).toBe('met');
+    expect(result.items.satisfiedBy.grade).toBe('B'); // first wins
+  });
+});
