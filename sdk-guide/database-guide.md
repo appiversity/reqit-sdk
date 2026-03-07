@@ -241,7 +241,7 @@ CREATE TABLE substitutions (
 
 You have two options for storing requirement text in `program_requirements`:
 
-**Option A: reqit DSL text (recommended)**
+**Option A: reqit DSL text**
 
 Store the human-readable reqit source. Parse at load time.
 
@@ -249,7 +249,7 @@ Store the human-readable reqit source. Parse at load time.
 requirement_text TEXT NOT NULL  -- 'all of (MATH 151, CMPS 130) with grade >= "C"'
 ```
 
-Advantages: human-readable, diffable, version-control friendly, compact. Registrars and department chairs can read and edit the requirement text directly.
+Advantages: human-readable, diffable, version-control friendly, compact. Registrars and department chairs can read and edit the requirement text directly. A typical parse takes under 1ms, so the parse-at-load-time cost is negligible.
 
 **Option B: Serialized AST (JSON)**
 
@@ -259,9 +259,20 @@ Store the parsed AST as JSON.
 requirement_ast JSONB NOT NULL  -- { "type": "all-of", "items": [...] }
 ```
 
-Advantages: no parse step at load time, can query AST structure via JSONB operators.
+Advantages: no parse step at load time, can query AST structure via JSONB operators (e.g., find all programs that reference a specific course). The AST is the SDK's internal representation, so loading it skips parsing entirely.
 
-We recommend storing DSL text as the source of truth. A typical parse takes under 1ms, so the parse-at-load-time cost is negligible. If you do need to avoid repeated parsing (e.g., in a high-throughput batch pipeline), cache parsed ASTs in memory or in a separate JSONB column — but keep the DSL text as the authoritative version.
+**Option C: Both**
+
+Store DSL text as the human-readable source and cache the parsed AST alongside it:
+
+```sql
+requirement_text TEXT NOT NULL,
+requirement_ast JSONB NOT NULL
+```
+
+This gives you the readability of DSL text and the query/load advantages of JSON. The tradeoff is keeping both in sync — if you update one, you must regenerate the other.
+
+Either approach works well. Choose based on your workflow: if requirements are authored and edited as text (e.g., by registrars or in version-controlled files), DSL text is a natural source of truth. If requirements are built programmatically or through a UI that produces AST directly, JSON may be simpler. Many applications store both.
 
 ---
 
