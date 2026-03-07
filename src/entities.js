@@ -290,6 +290,10 @@ class AuditResult {
     return toHTML(this.#ast, unwrapCatalog(catalog), this.#raw.result);
   }
 
+  toOutline(catalog, options) {
+    return toOutline(this.#ast, unwrapCatalog(catalog), this.#raw.result, options);
+  }
+
   export(catalog, opts) {
     return exportAudit(this.#raw.result, unwrapCatalog(catalog), opts);
   }
