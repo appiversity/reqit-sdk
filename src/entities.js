@@ -890,6 +890,10 @@ class AuditResult {
     return buildSummary(statuses);
   }
 
+  /**
+   * Walk the audit result tree depth-first, calling callback for each node.
+   * @param {(node: object, path: string[], parent: object|null, depth: number) => void} callback
+   */
   walk(callback) { walkResult(this.#raw.result, callback); }
 
   findUnmet() { return findUnmet(this.#raw.result); }

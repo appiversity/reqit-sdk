@@ -7,7 +7,7 @@
  * CSS class prefix: `reqit-` (e.g. `.reqit-course`, `.reqit-label`).
  */
 
-const { OP_SYMBOLS, comparisonPhrase, lookupTitle, renderFilterPhrase, unwrapCreditsSource, lookupAttributeName } = require('./shared');
+const { OP_SYMBOLS, comparisonPhrase, lookupTitle, renderFilterPhrase, unwrapCreditsSource, lookupAttributeName, courseKey } = require('./shared');
 
 /**
  * HTML-escape a string (guards against XSS in user-supplied values).
@@ -110,6 +110,13 @@ function renderNode(node, catalog, pfx, opts) {
       }
       if (node.concurrentAllowed) {
         html += ` <span class="${pfx}concurrent">(concurrent)</span>`;
+      }
+      if (opts.annotations) {
+        const key = courseKey(node);
+        const annots = opts.annotations.get(key);
+        if (annots && annots.length > 0) {
+          html += ` <span class="${pfx}annotation">(${esc(annots.join(', '))})</span>`;
+        }
       }
       html += '</span>';
       return html;
@@ -242,10 +249,16 @@ function renderNode(node, catalog, pfx, opts) {
 function toHTML(ast, catalog, auditResult, options) {
   const opts = options || {};
   const pfx = opts.classPrefix || 'reqit-';
+  let html;
   if (!auditResult) {
-    return renderNode(ast, catalog || null, pfx, opts);
+    html = renderNode(ast, catalog || null, pfx, opts);
+  } else {
+    html = renderNodeWithAudit(ast, catalog || null, auditResult, pfx, opts);
   }
-  return renderNodeWithAudit(ast, catalog || null, auditResult, pfx, opts);
+  if (opts.wrapperTag) {
+    html = `<${esc(opts.wrapperTag)} class="${pfx}root">${html}</${esc(opts.wrapperTag)}>`;
+  }
+  return html;
 }
 
 /**
@@ -313,6 +326,14 @@ function renderNodeWithAudit(node, catalog, auditNode, pfx, opts) {
         }
         if (entry.term) {
           html += ` <span class="${pfx}term">${esc(entry.term)}</span>`;
+        }
+      }
+      // Add annotation from options
+      if (opts.annotations) {
+        const key = courseKey(node);
+        const annots = opts.annotations.get(key);
+        if (annots && annots.length > 0) {
+          html += ` <span class="${pfx}annotation">(${esc(annots.join(', '))})</span>`;
         }
       }
       html += '</span>';

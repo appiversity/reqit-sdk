@@ -317,3 +317,71 @@ describe('entity methods forward options', () => {
     expect(result).not.toContain('reqit-');
   });
 });
+
+// ============================================================
+// toHTML — annotations
+// ============================================================
+
+describe('toHTML — annotations option', () => {
+  test('annotations appear on matching course in non-audit mode', () => {
+    const ast = { type: 'course', subject: 'MATH', number: '151' };
+    const annotations = new Map([['MATH:151', ['shared']]]);
+    const result = toHTML(ast, catalog, null, { annotations });
+    expect(result).toContain('class="reqit-annotation"');
+    expect(result).toContain('(shared)');
+  });
+
+  test('annotations appear on matching course in audit mode', () => {
+    const ast = { type: 'course', subject: 'MATH', number: '151' };
+    const auditNode = { type: 'course', status: 'met', satisfiedBy: { grade: 'A' } };
+    const annotations = new Map([['MATH:151', ['shared', 'gen-ed']]]);
+    const result = toHTML(ast, catalog, auditNode, { annotations });
+    expect(result).toContain('class="reqit-annotation"');
+    expect(result).toContain('(shared, gen-ed)');
+  });
+
+  test('no annotation span when course has no entry in Map', () => {
+    const ast = { type: 'course', subject: 'MATH', number: '152' };
+    const annotations = new Map([['MATH:151', ['shared']]]);
+    const result = toHTML(ast, catalog, null, { annotations });
+    expect(result).not.toContain('annotation');
+  });
+
+  test('annotation respects custom classPrefix', () => {
+    const ast = { type: 'course', subject: 'MATH', number: '151' };
+    const annotations = new Map([['MATH:151', ['shared']]]);
+    const result = toHTML(ast, catalog, null, { annotations, classPrefix: 'my-' });
+    expect(result).toContain('class="my-annotation"');
+  });
+});
+
+// ============================================================
+// toHTML — wrapperTag
+// ============================================================
+
+describe('toHTML — wrapperTag option', () => {
+  test('wraps output in specified tag in non-audit mode', () => {
+    const ast = { type: 'course', subject: 'MATH', number: '151' };
+    const result = toHTML(ast, catalog, null, { wrapperTag: 'div' });
+    expect(result).toMatch(/^<div class="reqit-root">.*<\/div>$/);
+  });
+
+  test('wraps output in specified tag in audit mode', () => {
+    const ast = { type: 'course', subject: 'MATH', number: '151' };
+    const auditNode = { type: 'course', status: 'met', satisfiedBy: { grade: 'A' } };
+    const result = toHTML(ast, catalog, auditNode, { wrapperTag: 'section' });
+    expect(result).toMatch(/^<section class="reqit-root">.*<\/section>$/);
+  });
+
+  test('wrapperTag respects custom classPrefix', () => {
+    const ast = { type: 'course', subject: 'MATH', number: '151' };
+    const result = toHTML(ast, catalog, null, { wrapperTag: 'div', classPrefix: 'x-' });
+    expect(result).toMatch(/^<div class="x-root">.*<\/div>$/);
+  });
+
+  test('no wrapper when wrapperTag is not set', () => {
+    const ast = { type: 'course', subject: 'MATH', number: '151' };
+    const result = toHTML(ast, catalog);
+    expect(result).not.toContain('reqit-root');
+  });
+});

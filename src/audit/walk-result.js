@@ -11,25 +11,26 @@
 const { forEachChild } = require('../ast/children');
 
 /**
- * Walk an audit result tree depth-first, calling callback(node, path) for each node.
+ * Walk an audit result tree depth-first, calling callback(node, path, parent, depth)
+ * for each node.
  *
  * @param {object} root - The root audit result node
- * @param {(node: object, path: string[]) => void} callback
+ * @param {(node: object, path: string[], parent: object|null, depth: number) => void} callback
  */
 function walkResult(root, callback) {
-  function visit(node, path) {
+  function visit(node, path, parent, depth) {
     if (!node || typeof node !== 'object') return;
-    callback(node, path);
+    callback(node, path, parent, depth);
     forEachChild(node, (child, key) => {
       const prop = node[key];
       if (Array.isArray(prop)) {
-        visit(child, [...path, `${key}[${prop.indexOf(child)}]`]);
+        visit(child, [...path, `${key}[${prop.indexOf(child)}]`], node, depth + 1);
       } else {
-        visit(child, [...path, key]);
+        visit(child, [...path, key], node, depth + 1);
       }
     });
   }
-  visit(root, []);
+  visit(root, [], null, 0);
 }
 
 module.exports = { walkResult };

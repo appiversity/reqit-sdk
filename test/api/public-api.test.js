@@ -1564,6 +1564,26 @@ describe('AuditResult.walk', () => {
     const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     expect(typeof result.walk).toBe('function');
   });
+
+  test('walk provides parent and depth', () => {
+    const req = api.parse('all of (MATH 151, CMPS 130)');
+    const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
+    const visited = [];
+    result.walk((node, path, parent, depth) => {
+      visited.push({ type: node.type, parent, depth });
+    });
+    // Root: parent is null, depth is 0
+    expect(visited[0].parent).toBeNull();
+    expect(visited[0].depth).toBe(0);
+    // Children: parent is the root all-of, depth is 1
+    const children = visited.filter(v => v.type === 'course');
+    expect(children).toHaveLength(2);
+    children.forEach(c => {
+      expect(c.parent).not.toBeNull();
+      expect(c.parent.type).toBe('all-of');
+      expect(c.depth).toBe(1);
+    });
+  });
 });
 
 // ============================================================
