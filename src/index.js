@@ -10,6 +10,7 @@ const {
   DegreeType,
   Requirement,
   Catalog,
+  Degree,
   TranscriptCourse,
   Transcript,
   ResolutionResult,
@@ -45,6 +46,10 @@ function catalog(data) {
 
 function transcript(data) {
   return new Transcript(data);
+}
+
+function degree(data) {
+  return new Degree(data);
 }
 
 // ============================================================
@@ -104,12 +109,14 @@ module.exports = {
   fromAST,
   catalog,
   transcript,
+  degree,
   // Exception factories
   waiver: waiverFactory,
   substitution: substitutionFactory,
   // Entity classes (for instanceof checks)
   Requirement,
   Catalog,
+  Degree,
   Transcript,
   TranscriptCourse,
   ResolutionResult,

@@ -18,9 +18,9 @@ const inProgressTx = require('../fixtures/transcripts/minimal/in-progress.json')
 // ============================================================
 
 describe('public API — structural guards', () => {
-  const expectedFactories = ['parse', 'fromAST', 'catalog', 'transcript', 'waiver', 'substitution'];
+  const expectedFactories = ['parse', 'fromAST', 'catalog', 'transcript', 'degree', 'waiver', 'substitution'];
   const expectedClasses = [
-    'Requirement', 'Catalog', 'Transcript', 'TranscriptCourse',
+    'Requirement', 'Catalog', 'Degree', 'Transcript', 'TranscriptCourse',
     'ResolutionResult', 'AuditResult', 'MultiAuditResult',
     'Waiver', 'Substitution',
   ];
@@ -1578,6 +1578,114 @@ describe('Catalog course discovery methods', () => {
     expect(equiv).toHaveLength(1);
     expect(equiv[0].subject).toBe('MATH');
     expect(equiv[0].number).toBe('340');
+  });
+});
+
+// ============================================================
+// 25d. Degree entity and catalog degree queries (Issue 5)
+// ============================================================
+
+describe('Degree entity', () => {
+  test('degree() creates Degree instance', () => {
+    const d = api.degree({ code: 'BS', name: 'Bachelor of Science', type: 'B.S.', level: 'undergraduate' });
+    expect(d).toBeInstanceOf(api.Degree);
+    expect(d.code).toBe('BS');
+    expect(d.name).toBe('Bachelor of Science');
+    expect(d.type).toBe('B.S.');
+    expect(d.level).toBe('undergraduate');
+  });
+
+  test('Degree requires code', () => {
+    expect(() => api.degree({ type: 'B.S.', level: 'undergraduate' })).toThrow('code');
+  });
+
+  test('Degree requires type', () => {
+    expect(() => api.degree({ code: 'BS', level: 'undergraduate' })).toThrow('type');
+  });
+
+  test('Degree requires level', () => {
+    expect(() => api.degree({ code: 'BS', type: 'B.S.' })).toThrow('level');
+  });
+
+  test('name defaults to null', () => {
+    const d = api.degree({ code: 'BS', type: 'B.S.', level: 'undergraduate' });
+    expect(d.name).toBeNull();
+  });
+
+  test('requirements defaults to null', () => {
+    const d = api.degree({ code: 'BS', type: 'B.S.', level: 'undergraduate' });
+    expect(d.requirements).toBeNull();
+  });
+
+  test('toJSON round-trips', () => {
+    const data = { code: 'BS', name: 'Bachelor of Science', type: 'B.S.', level: 'undergraduate' };
+    const d = api.degree(data);
+    expect(d.toJSON()).toEqual(data);
+  });
+
+  test('data accessor returns frozen data', () => {
+    const d = api.degree({ code: 'BS', type: 'B.S.', level: 'undergraduate' });
+    expect(Object.isFrozen(d.data)).toBe(true);
+  });
+});
+
+describe('Catalog degree queries', () => {
+  const cat = api.catalog(minimalCatalog);
+
+  test('degrees getter returns degrees array', () => {
+    expect(cat.degrees).toHaveLength(3);
+  });
+
+  test('findDegree returns matching degree', () => {
+    const d = cat.findDegree('BS');
+    expect(d).toBeDefined();
+    expect(d.code).toBe('BS');
+    expect(d.name).toBe('Bachelor of Science');
+  });
+
+  test('findDegree returns undefined for unknown code', () => {
+    expect(cat.findDegree('FAKE')).toBeUndefined();
+  });
+
+  test('findDegree uses memoized index', () => {
+    const d1 = cat.findDegree('BS');
+    const d2 = cat.findDegree('BS');
+    expect(d1).toBe(d2);
+  });
+
+  test('findDegrees with no filter returns all', () => {
+    expect(cat.findDegrees()).toHaveLength(3);
+  });
+
+  test('findDegrees by type', () => {
+    const bs = cat.findDegrees({ type: 'B.S.' });
+    expect(bs).toHaveLength(1);
+    expect(bs[0].code).toBe('BS');
+  });
+
+  test('findDegrees by level', () => {
+    const undergrad = cat.findDegrees({ level: 'undergraduate' });
+    expect(undergrad).toHaveLength(2);
+    const grad = cat.findDegrees({ level: 'graduate' });
+    expect(grad).toHaveLength(1);
+    expect(grad[0].code).toBe('MS');
+  });
+
+  test('findDegrees by type and level', () => {
+    const result = cat.findDegrees({ type: 'B.A.', level: 'undergraduate' });
+    expect(result).toHaveLength(1);
+    expect(result[0].code).toBe('BA');
+  });
+
+  test('degrees defaults to empty array when catalog has none', () => {
+    const cat2 = api.catalog({
+      institution: 'test',
+      ay: '2025-2026',
+      courses: [{ id: 1, subject: 'X', number: '1', title: 'X', creditsMin: 1, creditsMax: 1 }],
+    });
+    expect(cat2.degrees).toEqual([]);
+    expect(cat2.findDegrees()).toEqual([]);
+    expect(cat2.findDegree('BS')).toBeUndefined();
   });
 });
 

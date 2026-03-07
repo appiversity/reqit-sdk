@@ -217,6 +217,38 @@ class Requirement {
 }
 
 // ============================================================
+// Degree
+// ============================================================
+
+/**
+ * A Degree represents a credential (B.S., B.A., M.A., Ph.D., etc.).
+ * It sits above programs in the hierarchy — a student earns a degree
+ * by completing one or more programs (major, minor) plus degree-level
+ * requirements (gen-ed, total credits, GPA, etc.).
+ */
+class Degree {
+  #data;
+
+  constructor(data) {
+    if (!data || !data.code) throw new Error('Degree requires a code');
+    if (!data.type) throw new Error('Degree requires a type');
+    if (!data.level) throw new Error('Degree requires a level');
+    this.#data = Object.freeze({ ...data });
+  }
+
+  get code() { return this.#data.code; }
+  get name() { return this.#data.name || null; }
+  get type() { return this.#data.type; }
+  get level() { return this.#data.level; }
+  get requirements() { return this.#data.requirements || null; }
+  get data() { return this.#data; }
+
+  toJSON() {
+    return { ...this.#data };
+  }
+}
+
+// ============================================================
 // Catalog
 // ============================================================
 
@@ -225,6 +257,7 @@ class Catalog {
   #courseIndex;
   #programIndex;
   #attributeIndex;
+  #degreeIndex;
 
   constructor(data) {
     if (!data || !data.courses) throw new Error('Catalog requires courses');
@@ -238,6 +271,7 @@ class Catalog {
   get courses() { return this.#data.courses; }
   get programs() { return this.#data.programs; }
   get attributes() { return this.#data.attributes || []; }
+  get degrees() { return this.#data.degrees || []; }
   get gradeConfig() { return this.#data.gradeConfig; }
 
   findCourse(subject, number) {
@@ -327,6 +361,37 @@ class Catalog {
       c.crossListGroup === course.crossListGroup &&
       !(c.subject === subject && c.number === number)
     );
+  }
+
+  /**
+   * Find a degree by code.
+   * @param {string} code
+   * @returns {Object|undefined}
+   */
+  findDegree(code) {
+    if (!this.#degreeIndex) {
+      this.#degreeIndex = new Map();
+      for (const d of (this.#data.degrees || [])) {
+        this.#degreeIndex.set(d.code, d);
+      }
+    }
+    return this.#degreeIndex.get(code);
+  }
+
+  /**
+   * Find degrees matching a filter object.
+   * Supports `type` and `level` filters.
+   * @param {{ type?: string, level?: string }} [filter]
+   * @returns {Array<Object>}
+   */
+  findDegrees(filter) {
+    const degrees = this.#data.degrees || [];
+    if (!filter || Object.keys(filter).length === 0) return [...degrees];
+    return degrees.filter(d => {
+      if (filter.type && d.type !== filter.type) return false;
+      if (filter.level && d.level !== filter.level) return false;
+      return true;
+    });
   }
 
   withPrograms(programMap) {
@@ -641,6 +706,7 @@ module.exports = {
   DegreeType,
   Requirement,
   Catalog,
+  Degree,
   TranscriptCourse,
   Transcript,
   ResolutionResult,

@@ -60,6 +60,11 @@
     { "code": "SCI", "name": "Natural Science" },
     { "code": "FA", "name": "Fine Arts" }
   ],
+  "degrees": [
+    { "code": "BS", "name": "Bachelor of Science", "type": "B.S.", "level": "undergraduate" },
+    { "code": "BA", "name": "Bachelor of Arts", "type": "B.A.", "level": "undergraduate" },
+    { "code": "MS", "name": "Master of Science", "type": "M.S.", "level": "graduate" }
+  ],
   "attainments": [
     { "id": 1, "code": "SAT", "name": "SAT", "kind": "score" },
     { "id": 2, "code": "PRAXIS", "name": "Praxis Certification", "kind": "boolean" }
