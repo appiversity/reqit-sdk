@@ -8,6 +8,8 @@
  */
 
 const { courseKey } = require('../render/shared');
+const { WAIVED } = require('./status');
+const { forEachChild } = require('../ast/children');
 
 // ============================================================
 // Waiver
@@ -258,8 +260,6 @@ function findLeafWaiver(node, ctx) {
  * @returns {object} Audit result node with status 'waived'
  */
 function buildWaivedResult(node, waiverObj, ctx) {
-  const { WAIVED } = require('./status');
-
   const result = { type: node.type, status: WAIVED, waiver: waiverObj.toJSON() };
 
   switch (node.type) {
@@ -302,8 +302,6 @@ function buildWaivedResult(node, waiverObj, ctx) {
  * @returns {object} Audit result node with status 'waived'
  */
 function buildGroupWaivedResult(node, waiverObj, ctx) {
-  const { WAIVED } = require('./status');
-
   const result = {
     type: node.type,
     status: WAIVED,
@@ -324,13 +322,15 @@ function buildGroupWaivedResult(node, waiverObj, ctx) {
  * Walk an AST subtree and sum catalog credits for all course nodes.
  * Used when a labeled group is waived to provide credit information.
  *
+ * Note: course-filter nodes are not resolved against the catalog and
+ * contribute zero credits. This is acceptable because waived groups
+ * with filter-only children are rare, and the credit count is informational.
+ *
  * @param {object} node - AST node
  * @param {object} ctx - Audit context with catalogIndex
  * @returns {number} Total credits
  */
 function resolveWaivedCredits(node, ctx) {
-  const { forEachChild } = require('../ast/children');
-
   let total = 0;
 
   function walk(n) {
@@ -426,7 +426,6 @@ function isExceptionApplied(ex, result, normTranscript) {
 }
 
 function wasWaiverApplied(waiverObj, result) {
-  const { WAIVED } = require('./status');
   let found = false;
 
   function walk(node) {
@@ -438,7 +437,6 @@ function wasWaiverApplied(waiverObj, result) {
         return;
       }
     }
-    const { forEachChild } = require('../ast/children');
     forEachChild(node, walk);
   }
 

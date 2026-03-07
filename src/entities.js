@@ -18,6 +18,7 @@ const { toOutline } = require('./render/to-outline');
 const { walk, transform } = require('./ast/walk');
 const { extractCourses, extractAllReferences } = require('./ast/extract');
 const { diff } = require('./ast/diff');
+const { courseKey } = require('./render/shared');
 const { expand } = require('./ast/expand');
 const { exportProgramChecklist } = require('./export/program-checklist');
 const { exportAudit } = require('./export/audit-export');
@@ -131,10 +132,10 @@ class Catalog {
     if (!this.#courseIndex) {
       this.#courseIndex = new Map();
       for (const c of this.#data.courses) {
-        this.#courseIndex.set(`${c.subject}:${c.number}`, c);
+        this.#courseIndex.set(courseKey(c), c);
       }
     }
-    return this.#courseIndex.get(`${subject}:${number}`);
+    return this.#courseIndex.get(courseKey({ subject, number }));
   }
 
   findProgram(code) {

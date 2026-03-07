@@ -1339,6 +1339,32 @@ describe('Audit with exceptions (public API)', () => {
     const result = req.audit(minimalCatalog, completeTx);
     expect(result.exceptions).toBeNull();
   });
+
+  test('score waiver through public API', () => {
+    const req = api.parse('score SAT_MATH >= 580');
+    const w = api.waiver({ score: 'SAT_MATH', reason: 'Documented accommodation' });
+    const result = req.audit(minimalCatalog, [], { exceptions: [w] });
+    expect(result.status).toBe(api.AuditStatus.WAIVED);
+    expect(result.exceptions.applied).toHaveLength(1);
+  });
+
+  test('label waiver through public API', () => {
+    const req = api.parse('"CS Core": all of (CMPS 130, CMPS 148)');
+    const w = api.waiver({ label: 'CS Core', reason: 'Transfer equivalency' });
+    const result = req.audit(minimalCatalog, [], { exceptions: [w] });
+    expect(result.status).toBe(api.AuditStatus.WAIVED);
+    expect(result.exceptions.applied).toHaveLength(1);
+  });
+
+  test('label waiver targeting non-existent label is unused', () => {
+    const req = api.parse('"CS Core": all of (CMPS 130, CMPS 148)');
+    const w = api.waiver({ label: 'NonExistent', reason: 'Should not match' });
+    const result = req.audit(minimalCatalog, [], { exceptions: [w] });
+    expect(result.status).not.toBe(api.AuditStatus.WAIVED);
+    expect(result.exceptions.applied).toHaveLength(0);
+    expect(result.exceptions.unused).toHaveLength(1);
+    expect(result.exceptions.unused[0].reason).toBe('Should not match');
+  });
 });
 
 describe('Multi-tree audit with exceptions', () => {
