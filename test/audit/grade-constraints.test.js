@@ -1,6 +1,6 @@
 'use strict';
 
-const { audit, MET, IN_PROGRESS, NOT_MET } = require('../../src/audit');
+const { audit, MET, PROVISIONAL_MET, NOT_MET } = require('../../src/audit');
 const minimalCatalog = require('../fixtures/catalogs/minimal.json');
 
 const complete = require('../fixtures/transcripts/minimal/complete.json');
@@ -79,7 +79,7 @@ describe('with-constraint min-grade', () => {
     expect(status).toBe(MET);
   });
 
-  test('all in-progress → min-grade constraint vacuously met, overall IN_PROGRESS', () => {
+  test('all in-progress → min-grade constraint vacuously met, overall PROVISIONAL_MET', () => {
     const transcript = [
       { subject: 'MATH', number: '101', grade: null, credits: 3,
         term: 'Fall 2023', status: 'in-progress' },
@@ -98,7 +98,7 @@ describe('with-constraint min-grade', () => {
       },
     };
     const { status, result } = audit(ast, minimalCatalog, transcript);
-    expect(status).toBe(IN_PROGRESS);
+    expect(status).toBe(PROVISIONAL_MET);
     expect(result.constraintResult.met).toBe(true);
     expect(result.constraintResult.gradedCount).toBe(0);
   });
@@ -118,7 +118,7 @@ describe('with-constraint min-grade', () => {
     };
     const { status, result } = audit(ast, minimalCatalog, inProgress);
     // Inner is in-progress (mix of met + ip), constraint passes on graded entries
-    expect(status).toBe(IN_PROGRESS);
+    expect(status).toBe(PROVISIONAL_MET);
     expect(result.constraintResult.met).toBe(true);
   });
 });
@@ -196,7 +196,7 @@ describe('with-constraint min-gpa', () => {
     expect(result.constraintResult.actual).toBe(2.0);
   });
 
-  test('all in-progress → min-gpa constraint vacuously met, overall IN_PROGRESS', () => {
+  test('all in-progress → min-gpa constraint vacuously met, overall PROVISIONAL_MET', () => {
     const transcript = [
       { subject: 'MATH', number: '101', grade: null, credits: 3,
         term: 'Fall 2023', status: 'in-progress' },
@@ -215,7 +215,7 @@ describe('with-constraint min-gpa', () => {
       },
     };
     const { status, result } = audit(ast, minimalCatalog, transcript);
-    expect(status).toBe(IN_PROGRESS);
+    expect(status).toBe(PROVISIONAL_MET);
     expect(result.constraintResult.met).toBe(true);
     expect(result.constraintResult.actual).toBe(0);
     expect(result.constraintResult.gradedCount).toBe(0);
@@ -253,7 +253,7 @@ describe('with-constraint min-gpa', () => {
     };
     const { status } = audit(ast, minimalCatalog, transcript);
     // Inner status is in-progress (met + ip), GPA is below 3.0 but could change
-    expect(status).toBe(IN_PROGRESS);
+    expect(status).toBe(PROVISIONAL_MET);
   });
 
   test('constraintResult includes minGpa and actual', () => {

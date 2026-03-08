@@ -31,9 +31,9 @@ describe('toOutline audit — status icons', () => {
     expect(result).toBe('\u2717 MATH 253 - Calculus III');
   });
 
-  test('in-progress course shows ◕', () => {
+  test('provisional-met course shows ◕', () => {
     const ast = { type: 'course', subject: 'MATH', number: '152' };
-    const auditNode = { type: 'course', status: 'in-progress' };
+    const auditNode = { type: 'course', status: 'provisional-met' };
     const result = toOutline(ast, catalog, auditNode);
     expect(result).toBe('\u25D5 MATH 152 - Calculus II');
   });
@@ -52,9 +52,9 @@ describe('toOutline audit — status icons', () => {
     expect(result).toBe('\u21C4 MATH 151 - Calculus I');
   });
 
-  test('partial-progress shows ◔', () => {
+  test('in-progress shows ◔', () => {
     const ast = { type: 'course', subject: 'MATH', number: '151' };
-    const auditNode = { type: 'course', status: 'partial-progress' };
+    const auditNode = { type: 'course', status: 'in-progress' };
     const result = toOutline(ast, catalog, auditNode);
     expect(result).toBe('\u25D4 MATH 151 - Calculus I');
   });
@@ -99,7 +99,7 @@ describe('toOutline audit — composite summary', () => {
     };
     const auditNode = {
       type: 'all-of', status: 'not-met',
-      summary: { met: 2, waived: 0, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 1, total: 3 },
+      summary: { met: 2, waived: 0, substituted: 0, provisionalMet: 0, inProgress: 0, notMet: 1, total: 3 },
       items: [
         { type: 'course', status: 'met', satisfiedBy: { grade: 'A', term: 'Fall 2023' } },
         { type: 'course', status: 'met', satisfiedBy: { grade: 'B+', term: 'Spring 2024' } },
@@ -124,7 +124,7 @@ describe('toOutline audit — composite summary', () => {
     };
     const auditNode = {
       type: 'all-of', status: 'met',
-      summary: { met: 2, waived: 0, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 0, total: 2 },
+      summary: { met: 2, waived: 0, substituted: 0, provisionalMet: 0, inProgress: 0, notMet: 0, total: 2 },
       items: [
         { type: 'course', status: 'met', satisfiedBy: { grade: 'A', term: 'Fall 2023' } },
         { type: 'course', status: 'met', satisfiedBy: { grade: 'B', term: 'Spring 2024' } },
@@ -144,7 +144,7 @@ describe('toOutline audit — composite summary', () => {
     };
     const auditNode = {
       type: 'all-of', status: 'met',
-      summary: { met: 1, waived: 1, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 0, total: 2 },
+      summary: { met: 1, waived: 1, substituted: 0, provisionalMet: 0, inProgress: 0, notMet: 0, total: 2 },
       items: [
         { type: 'course', status: 'met', satisfiedBy: { grade: 'A' } },
         { type: 'course', status: 'waived' },
@@ -189,7 +189,7 @@ describe('toOutline audit — variable-ref resolved', () => {
       type: 'variable-ref', name: 'core', status: 'not-met',
       resolved: {
         type: 'all-of', status: 'not-met',
-        summary: { met: 1, waived: 0, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 1, total: 2 },
+        summary: { met: 1, waived: 0, substituted: 0, provisionalMet: 0, inProgress: 0, notMet: 1, total: 2 },
         items: [
           { type: 'course', status: 'met', satisfiedBy: { grade: 'A' } },
           { type: 'course', status: 'not-met' },
@@ -221,7 +221,7 @@ describe('toOutline audit — program-ref', () => {
       type: 'program-ref', code: 'MATH-MINOR', status: 'met',
       result: {
         type: 'all-of', status: 'met',
-        summary: { met: 2, waived: 0, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 0, total: 2 },
+        summary: { met: 2, waived: 0, substituted: 0, provisionalMet: 0, inProgress: 0, notMet: 0, total: 2 },
         items: [
           { type: 'course', subject: 'MATH', number: '151', status: 'met', satisfiedBy: { grade: 'A', term: 'Fall 2023' } },
           { type: 'course', subject: 'MATH', number: '152', status: 'met', satisfiedBy: { grade: 'B+', term: 'Spring 2024' } },
@@ -259,13 +259,13 @@ describe('toOutline audit — program-filter', () => {
     };
     const auditNode = {
       type: 'program-filter', quantifier: 'any', status: 'met',
-      summary: { met: 1, waived: 0, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 0, total: 1 },
+      summary: { met: 1, waived: 0, substituted: 0, provisionalMet: 0, inProgress: 0, notMet: 0, total: 1 },
       items: [
         {
           type: 'program-ref', code: 'MATH-MINOR', status: 'met',
           result: {
             type: 'all-of', status: 'met',
-            summary: { met: 1, waived: 0, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 0, total: 1 },
+            summary: { met: 1, waived: 0, substituted: 0, provisionalMet: 0, inProgress: 0, notMet: 0, total: 1 },
             items: [
               { type: 'course', subject: 'MATH', number: '151', status: 'met', satisfiedBy: { grade: 'A' } },
             ],
@@ -326,7 +326,7 @@ describe('toOutline audit — with-constraint', () => {
       type: 'with-constraint', status: 'met',
       requirement: {
         type: 'all-of', status: 'met',
-        summary: { met: 2, waived: 0, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 0, total: 2 },
+        summary: { met: 2, waived: 0, substituted: 0, provisionalMet: 0, inProgress: 0, notMet: 0, total: 2 },
         items: [
           { type: 'course', status: 'met', satisfiedBy: { grade: 'A' } },
           { type: 'course', status: 'met', satisfiedBy: { grade: 'B' } },
@@ -505,12 +505,12 @@ describe('toOutline audit — nested composites', () => {
     };
     const auditNode = {
       type: 'all-of', status: 'met',
-      summary: { met: 2, waived: 0, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 0, total: 2 },
+      summary: { met: 2, waived: 0, substituted: 0, provisionalMet: 0, inProgress: 0, notMet: 0, total: 2 },
       items: [
         { type: 'course', status: 'met', satisfiedBy: { grade: 'A' } },
         {
           type: 'any-of', status: 'met',
-          summary: { met: 1, waived: 0, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 1, total: 2 },
+          summary: { met: 1, waived: 0, substituted: 0, provisionalMet: 0, inProgress: 0, notMet: 1, total: 2 },
           items: [
             { type: 'course', status: 'met', satisfiedBy: { grade: 'B+' } },
             { type: 'course', status: 'not-met' },
@@ -594,7 +594,7 @@ describe('AuditResult.toOutline()', () => {
       warnings: [],
       result: {
         type: 'all-of', status: 'not-met',
-        summary: { met: 1, waived: 0, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 1, total: 2 },
+        summary: { met: 1, waived: 0, substituted: 0, provisionalMet: 0, inProgress: 0, notMet: 1, total: 2 },
         items: [
           { type: 'course', status: 'met', satisfiedBy: { grade: 'A', term: 'Fall 2023' } },
           { type: 'course', status: 'not-met' },

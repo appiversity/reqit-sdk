@@ -467,7 +467,7 @@ describe('applySubstitutions()', () => {
 
 describe('status functions with WAIVED/SUBSTITUTED', () => {
   const {
-    MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET, WAIVED, SUBSTITUTED,
+    MET, PROVISIONAL_MET, IN_PROGRESS, NOT_MET, WAIVED, SUBSTITUTED,
     allOf, anyOf, nOf, buildSummary,
   } = require('../../src/audit/status');
 
@@ -484,7 +484,7 @@ describe('status functions with WAIVED/SUBSTITUTED', () => {
   });
 
   test('allOf with waived + not-met → partial-progress', () => {
-    expect(allOf([WAIVED, NOT_MET])).toBe(PARTIAL_PROGRESS);
+    expect(allOf([WAIVED, NOT_MET])).toBe(IN_PROGRESS);
   });
 
   test('anyOf with waived → met', () => {
@@ -496,13 +496,13 @@ describe('status functions with WAIVED/SUBSTITUTED', () => {
   });
 
   test('buildSummary reports waived and substituted separately', () => {
-    const summary = buildSummary([MET, WAIVED, SUBSTITUTED, IN_PROGRESS, NOT_MET]);
+    const summary = buildSummary([MET, WAIVED, SUBSTITUTED, PROVISIONAL_MET, NOT_MET]);
     expect(summary).toEqual({
       met: 1,
       waived: 1,
       substituted: 1,
-      inProgress: 1,
-      partialProgress: 0,
+      provisionalMet: 1,
+      inProgress: 0,
       notMet: 1,
       total: 5,
     });

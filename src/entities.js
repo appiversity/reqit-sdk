@@ -31,6 +31,10 @@ const { buildPrereqGraph } = require('./export/prereq-graph');
 // Helpers (not exported)
 // ============================================================
 
+function presentOrNull(value) {
+  return value !== undefined && value !== null ? value : null;
+}
+
 function unwrapCatalog(c) {
   if (!(c instanceof Catalog)) return c;
   const d = c.data;
@@ -160,8 +164,8 @@ function deriveProgramContext(t) {
 
 const AuditStatus = Object.freeze({
   MET: 'met',
+  PROVISIONAL_MET: 'provisional-met',
   IN_PROGRESS: 'in-progress',
-  PARTIAL_PROGRESS: 'partial-progress',
   NOT_MET: 'not-met',
   WAIVED: 'waived',
   SUBSTITUTED: 'substituted',
@@ -234,6 +238,7 @@ const DegreeType = Object.freeze({
 
 const PROGRAM_TYPE_VALUES = new Set(Object.values(ProgramType));
 const PROGRAM_LEVEL_VALUES = new Set(Object.values(ProgramLevel));
+const DEGREE_TYPE_VALUES = new Set(Object.values(DegreeType));
 
 class DeclaredProgram {
   #data;
@@ -250,7 +255,7 @@ class DeclaredProgram {
     this.#data = Object.freeze({ ...data });
   }
 
-  get id() { return this.#data.id ?? null; }
+  get id() { return presentOrNull(this.#data.id); }
   get code() { return this.#data.code; }
   get type() { return this.#data.type; }
   get level() { return this.#data.level || null; }
@@ -261,14 +266,14 @@ class DeclaredProgram {
 }
 
 // ============================================================
-// ReqitVariable
+// SharedDefinition
 // ============================================================
 
-class ReqitVariable {
+class SharedDefinition {
   #data;
   constructor(data) {
-    if (!data || !data.name) throw new Error('ReqitVariable requires a name');
-    if (!data.requirement) throw new Error('ReqitVariable requires a requirement');
+    if (!data || !data.name) throw new Error('SharedDefinition requires a name');
+    if (!data.requirement) throw new Error('SharedDefinition requires a requirement');
     let requirement = data.requirement;
     if (typeof requirement === 'string') {
       requirement = new Requirement(internalParse(requirement));
@@ -285,17 +290,17 @@ class ReqitVariable {
 }
 
 // ============================================================
-// normalizeSharedDefs (converts user-facing formats to Map<string, ast>)
+// normalizeSharedDefinitions (converts user-facing formats to Map<string, ast>)
 // ============================================================
 
-function normalizeSharedDefs(input) {
+function normalizeSharedDefinitions(input) {
   if (!input) return undefined;
-  // Array of ReqitVariable instances (or duck-typed { name, requirement|ast })
+  // Array of SharedDefinition instances (or duck-typed { name, requirement|ast })
   if (Array.isArray(input)) {
     const map = new Map();
     for (const v of input) {
-      const name = v instanceof ReqitVariable ? v.name : v.name;
-      const ast = v instanceof ReqitVariable ? v.ast
+      const name = v instanceof SharedDefinition ? v.name : v.name;
+      const ast = v instanceof SharedDefinition ? v.ast
         : v.requirement instanceof Requirement ? v.requirement.ast
         : v.requirement;
       map.set(name, ast);
@@ -343,14 +348,14 @@ class Requirement {
 
   resolve(catalog, opts) {
     const options = opts ? { ...opts } : undefined;
-    if (options && options.sharedDefs) options.sharedDefs = normalizeSharedDefs(options.sharedDefs);
+    if (options && options.sharedDefinitions) options.sharedDefinitions = normalizeSharedDefinitions(options.sharedDefinitions);
     return new ResolutionResult(resolve(this.#ast, unwrapCatalog(catalog), options));
   }
 
   audit(catalog, transcript, opts) {
     const txOpts = extractTranscriptOptions(transcript);
     const merged = { ...txOpts, ...opts };
-    if (merged.sharedDefs) merged.sharedDefs = normalizeSharedDefs(merged.sharedDefs);
+    if (merged.sharedDefinitions) merged.sharedDefinitions = normalizeSharedDefinitions(merged.sharedDefinitions);
     const raw = audit(this.#ast, unwrapCatalog(catalog), unwrapTranscript(transcript), merged);
     return new AuditResult(raw, this.#ast);
   }
@@ -374,6 +379,8 @@ class Requirement {
   exportChecklist(catalog, opts) {
     return exportProgramChecklist(this.#ast, unwrapCatalog(catalog), opts);
   }
+
+  toJSON() { return { ast: this.#ast }; }
 }
 
 // ============================================================
@@ -465,7 +472,7 @@ class Course {
     });
   }
 
-  get id() { return this.#data.id ?? null; }
+  get id() { return presentOrNull(this.#data.id); }
   get subject() { return this.#data.subject; }
   get number() { return this.#data.number; }
   get title() { return this.#data.title || null; }
@@ -491,10 +498,16 @@ class Program {
     if (!data || !data.code) throw new Error('Program requires a code');
     if (!data.type) throw new Error('Program requires a type');
     if (!data.level) throw new Error('Program requires a level');
+    if (!PROGRAM_TYPE_VALUES.has(data.type)) {
+      throw new Error(`Program type must be one of: ${[...PROGRAM_TYPE_VALUES].join(', ')}`);
+    }
+    if (!PROGRAM_LEVEL_VALUES.has(data.level)) {
+      throw new Error(`Program level must be one of: ${[...PROGRAM_LEVEL_VALUES].join(', ')}`);
+    }
     this.#data = Object.freeze({ ...data });
   }
 
-  get id() { return this.#data.id ?? null; }
+  get id() { return presentOrNull(this.#data.id); }
   get code() { return this.#data.code; }
   get name() { return this.#data.name || null; }
   get type() { return this.#data.type; }
@@ -517,7 +530,7 @@ class Attribute {
     this.#data = Object.freeze({ ...data });
   }
 
-  get id() { return this.#data.id ?? null; }
+  get id() { return presentOrNull(this.#data.id); }
   get code() { return this.#data.code; }
   get name() { return this.#data.name || null; }
   get data() { return this.#data; }
@@ -542,10 +555,16 @@ class Degree {
     if (!data || !data.code) throw new Error('Degree requires a code');
     if (!data.type) throw new Error('Degree requires a type');
     if (!data.level) throw new Error('Degree requires a level');
+    if (!DEGREE_TYPE_VALUES.has(data.type)) {
+      throw new Error(`Degree type must be one of: ${[...DEGREE_TYPE_VALUES].join(', ')}`);
+    }
+    if (!PROGRAM_LEVEL_VALUES.has(data.level)) {
+      throw new Error(`Degree level must be one of: ${[...PROGRAM_LEVEL_VALUES].join(', ')}`);
+    }
     this.#data = Object.freeze({ ...data });
   }
 
-  get id() { return this.#data.id || null; }
+  get id() { return presentOrNull(this.#data.id); }
   get code() { return this.#data.code; }
   get name() { return this.#data.name || null; }
   get type() { return this.#data.type; }
@@ -603,7 +622,7 @@ class Catalog {
         this.#courseIndex.set(courseKey(c), c);
       }
     }
-    return this.#courseIndex.get(courseKey({ subject, number }));
+    return this.#courseIndex.get(courseKey({ subject, number })) ?? null;
   }
 
   findProgram(code) {
@@ -613,7 +632,7 @@ class Catalog {
         this.#programIndex.set(p.code, p);
       }
     }
-    return this.#programIndex.get(code);
+    return this.#programIndex.get(code) ?? null;
   }
 
   findPrograms(filter) {
@@ -697,7 +716,7 @@ class Catalog {
         this.#degreeIndex.set(d.code, d);
       }
     }
-    return this.#degreeIndex.get(code);
+    return this.#degreeIndex.get(code) ?? null;
   }
 
   /**
@@ -782,12 +801,15 @@ class Catalog {
     return new Catalog({ ...this.#toPlainData(), programs });
   }
 
+  toJSON() { return this.#toPlainData(); }
+
   #toPlainData() {
     return {
       ...this.#data,
       courses: this.#data.courses.map(c => c instanceof Course ? c.toJSON() : c),
       programs: (this.#data.programs || []).map(p => p instanceof Program ? p.toJSON() : p),
       attributes: (this.#data.attributes || []).map(a => a instanceof Attribute ? a.toJSON() : a),
+      degrees: (this.#data.degrees || []).map(d => d instanceof Degree ? d.toJSON() : d),
     };
   }
 }
@@ -806,7 +828,7 @@ class TranscriptCourse {
     this.#data = Object.freeze(data);
   }
 
-  get id() { return this.#data.id || null; }
+  get id() { return presentOrNull(this.#data.id); }
   get subject() { return this.#data.subject; }
   get number() { return this.#data.number; }
   get grade() { return this.#data.grade ?? null; }
@@ -845,10 +867,16 @@ class Transcript {
       (data.declaredPrograms || []).map(dp => dp instanceof DeclaredProgram ? dp : new DeclaredProgram(dp))
     );
     this.#waivers = Object.freeze(
-      (data.waivers || []).map(w => w instanceof Waiver ? w : null).filter(Boolean)
+      (data.waivers || []).map(w => {
+        if (w instanceof Waiver) return w;
+        return new Waiver(w);
+      })
     );
     this.#substitutions = Object.freeze(
-      (data.substitutions || []).map(s => s instanceof Substitution ? s : null).filter(Boolean)
+      (data.substitutions || []).map(s => {
+        if (s instanceof Substitution) return s;
+        return new Substitution(s);
+      })
     );
     this.#level = data.level || null;
     this.#duplicatePolicy = data.duplicatePolicy || null;
@@ -935,6 +963,8 @@ class Transcript {
       substitutions: this.#substitutions.filter(s => !matchesSubstitutionTarget(s, target)),
     }));
   }
+
+  toJSON() { return this.#toData({}); }
 
   // -- Internal helper to build data object for new Transcript --
 
@@ -1068,6 +1098,14 @@ class ResolutionResult {
     }
     return subjects;
   }
+
+  toJSON() {
+    return {
+      courses: this.#raw.courses,
+      filters: this.#raw.filters,
+      warnings: this.warnings,
+    };
+  }
 }
 
 // ============================================================
@@ -1085,7 +1123,7 @@ class AuditResult {
 
   get status() { return this.#raw.status; }
 
-  get items() { return this.#raw.result; }
+  get results() { return this.#raw.result; }
 
   get warnings() { return this.#raw.warnings; }
 
@@ -1132,6 +1170,16 @@ class AuditResult {
   export(catalog, opts) {
     return exportAudit(this.#raw.result, unwrapCatalog(catalog), opts);
   }
+
+  toJSON() {
+    return {
+      status: this.status,
+      results: this.results,
+      summary: this.summary,
+      warnings: this.warnings,
+      exceptions: this.exceptions,
+    };
+  }
 }
 
 // ============================================================
@@ -1164,6 +1212,19 @@ class MultiAuditResult {
   get courseAssignments() { return this.#raw.assignments; }
 
   get warnings() { return this.#raw.warnings; }
+
+  toJSON() {
+    const trees = {};
+    for (const [code, ar] of Object.entries(this.trees)) {
+      trees[code] = ar.toJSON();
+    }
+    return {
+      trees,
+      overlapResults: this.overlapResults,
+      courseAssignments: this.courseAssignments,
+      warnings: this.warnings,
+    };
+  }
 }
 
 // ============================================================
@@ -1180,7 +1241,7 @@ module.exports = {
   Program,
   Attribute,
   DeclaredProgram,
-  ReqitVariable,
+  SharedDefinition,
   Catalog,
   Degree,
   TranscriptCourse,
@@ -1192,5 +1253,5 @@ module.exports = {
   unwrapTranscript,
   extractTranscriptOptions,
   deriveProgramContext,
-  normalizeSharedDefs,
+  normalizeSharedDefinitions,
 };

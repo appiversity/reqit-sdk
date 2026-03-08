@@ -119,7 +119,11 @@ The simplest requirement is a single course. Combine them with `all of`, `any of
 ```javascript
 // A single course
 const req1 = reqit.parse('MATH 151');
+```
 
+`reqit.parse()` creates a `Requirement` from DSL text. Its complement is `reqit.fromAST()`, which creates a `Requirement` from a stored AST object — useful when loading requirements from a database where they've been saved as JSON. Both produce identical `Requirement` instances with the same methods.
+
+```javascript
 // All of these courses (student must complete every one)
 const req2 = reqit.parse('all of (MATH 151, MATH 152, CMPS 130)');
 
@@ -231,7 +235,7 @@ const csMajor = reqit.parse(`
 
 Labels (the quoted strings before the colon) give groups human-readable names that appear in audit output. The `except` clause excludes courses already counted in the core from the elective pool — without this, CMPS 310 could double-count.
 
-Variables are scoped to the requirement tree. If you need to share variables across multiple programs, see [Section 8: Shared Variables and Clusters](#8-shared-variables-and-clusters--reusing-requirements-across-programs).
+Variables are scoped to the requirement tree. If you need to share variables across multiple programs, see [Section 8: Shared Definitions and Clusters](#8-shared-definitions-and-clusters--reusing-requirements-across-programs).
 
 ### Rendering Requirements
 
@@ -261,6 +265,26 @@ console.log(csMajor.text);
 ```
 
 The same `toOutline()` and `toHTML()` methods work on audit results too, where they add status icons, grades, and progress counts. That's covered in Section 4.
+
+### Attaching Requirements to Programs
+
+When your catalog has programs, you can attach parsed requirements to them using `withPrograms()`. This makes the requirements available through the catalog's program lookup:
+
+```javascript
+const programMap = {
+  'BS-CMPS': reqit.parse(csRequirementText),
+  'GEN-ED': reqit.parse(genEdRequirementText),
+};
+const catalogWithReqs = catalog.withPrograms(programMap);
+
+// Now programs have requirements attached
+const program = catalogWithReqs.findProgram('BS-CMPS');
+// program.requirements is the AST (not a Requirement instance)
+// Use fromAST() to get back an auditable Requirement:
+const req = reqit.fromAST(program.requirements);
+```
+
+`withPrograms()` returns a new Catalog (catalogs are immutable). The programs store the AST form of the requirement, not the `Requirement` wrapper — use `reqit.fromAST()` to wrap it back when you need to audit or render.
 
 ---
 
@@ -316,6 +340,64 @@ const modified = transcript
   .addAttainment('CAREER_PATHWAYS', true);
 ```
 
+### Duplicate Policy
+
+When a student takes the same course more than once (e.g., retaking for a better grade), the `duplicatePolicy` option controls which attempt the audit uses:
+
+```javascript
+const tx = reqit.transcript({
+  courses: [
+    { subject: 'MATH', number: '151', grade: 'D', credits: 4, term: 'Fall 2023' },
+    { subject: 'MATH', number: '151', grade: 'B+', credits: 4, term: 'Spring 2024' },
+  ],
+  duplicatePolicy: 'best-grade',  // use the attempt with the highest grade
+});
+```
+
+| Policy | Behavior |
+|--------|----------|
+| `null` (default) | Uses the latest attempt (last in the array). |
+| `'best-grade'` | Uses the attempt with the highest grade per the catalog's grade scale. |
+| `'first'` | Uses the first attempt. |
+
+The choice is typically driven by institutional policy — most institutions use latest-wins or best-grade for GPA purposes.
+
+### Custom Grade Configuration
+
+The default grade scale is standard US letter grades (A+ through F). For institutions with different grading systems, customize via `gradeConfig` on the catalog:
+
+```javascript
+const catalog = reqit.catalog({
+  ay: '2025-2026',
+  courses: [ /* ... */ ],
+  gradeConfig: {
+    scale: [
+      { grade: 'A+', points: 4.0 },
+      { grade: 'A',  points: 4.0 },
+      { grade: 'A-', points: 3.7 },
+      { grade: 'B+', points: 3.3 },
+      { grade: 'B',  points: 3.0 },
+      { grade: 'B-', points: 2.7 },
+      { grade: 'C+', points: 2.3 },
+      { grade: 'C',  points: 2.0 },
+      { grade: 'C-', points: 1.7 },
+      { grade: 'D',  points: 1.0 },
+      { grade: 'F',  points: 0.0 },
+      // A grade with audit: false is invisible to the audit engine
+      { grade: 'AU', points: 0.0, audit: false },
+    ],
+    passFail: [
+      { grade: 'P', passing: true },
+      { grade: 'NP', passing: false },
+    ],
+    withdrawal: ['W', 'WP', 'WF'],
+    incomplete: ['I', 'IP'],
+  },
+});
+```
+
+The grade scale must be ordered highest to lowest. Pass/fail grades satisfy requirements but don't count toward GPA. Grades with `audit: false` are completely ignored by the audit engine — useful for audit/observer enrollment markers.
+
 ---
 
 ## 4. Running an Audit — Evaluating Progress
@@ -326,25 +408,25 @@ This is where everything comes together. An audit evaluates a requirement tree a
 const result = csMajor.audit(catalog, transcript);
 
 console.log(result.status);
-// → 'partial-progress'
+// → 'in-progress'
 ```
 
-### The Four-State Model
+### Audit Statuses
 
-Every node in the audit result carries one of four statuses:
+Every node in the audit result carries one of four primary statuses:
 
 | Status | Meaning |
 |--------|---------|
-| **`met`** | Fully satisfied. For a course, the student has completed it (with passing grade). For a composite, all children are met. |
-| **`in-progress`** | Will be satisfied once current work finishes. A course the student is currently enrolled in, or a composite where all unmet children are in-progress. |
-| **`partial-progress`** | Some progress made, but more work needed. A composite where some children are met but others are not-met (not just in-progress). |
-| **`not-met`** | No progress. The student hasn't started on this requirement. |
+| **`met`** | Fully satisfied. |
+| **`provisional-met`** | Will be satisfied once currently-enrolled courses complete. |
+| **`in-progress`** | Some progress made, but more work needed. A composite where some children are met but others are not yet. |
+| **`not-met`** | No progress. |
 
 Additionally, nodes can be **`waived`** or **`substituted`** when exceptions apply (see Section 6).
 
-Statuses **propagate upward** from leaves to the root. An `all of` is `met` only when every child is `met`. It's `in-progress` when all unmet children are themselves `in-progress`. It's `partial-progress` when there's a mix. An `any of` is `met` when at least one child is `met`.
+Statuses **propagate upward** from leaves to the root. An `all of` is `met` only when every child is `met`. It's `provisional-met` when all unmet children are themselves `provisional-met`. It's `in-progress` when there's a mix. An `any of` is `met` when at least one child is `met`.
 
-This propagation is why `result.status` gives you a single-value summary of the entire program — but you can always drill into `result.items` or use `result.walk()` to see the status at every level.
+This propagation is why `result.status` gives you a single-value summary of the entire program — but you can always drill into `result.results` or use `result.walk()` to see the status at every level.
 
 ### The Summary
 
@@ -356,8 +438,8 @@ console.log(result.summary);
 //     met: 2,              // groups fully satisfied
 //     waived: 0,           // groups waived
 //     substituted: 0,      // groups substituted
-//     inProgress: 0,       // groups that will be met when current courses finish
-//     partialProgress: 1,  // groups with mixed progress
+//     provisionalMet: 0,   // groups that will be met when current courses finish
+//     inProgress: 1,       // groups with mixed progress
 //     notMet: 0,           // groups with no progress
 //     total: 3             // total top-level children
 //   }
@@ -382,7 +464,7 @@ result.walk((node, path, parent, depth) => {
 
 The `walk()` callback receives four arguments:
 - **`node`** — the audit result node (with `type`, `status`, and type-specific fields)
-- **`path`** — a string path like `"items[0].items[1]"` identifying position in the tree
+- **`path`** — an array of keys and indices (e.g., `['items', 0, 'items', 1]`) identifying position in the tree
 - **`parent`** — the parent node (null for root)
 - **`depth`** — numeric depth (0 for root, 1 for direct children, etc.)
 
@@ -393,9 +475,9 @@ Two convenience methods save you from walking the tree yourself:
 ```javascript
 // All leaf requirements that aren't met — courses, scores, attainments, filters
 const unmet = result.findUnmet();
-for (const node of unmet) {
-  if (node.type === 'course') {
-    console.log(`Still need: ${node.subject} ${node.number}`);
+for (const item of unmet) {
+  if (item.node.type === 'course') {
+    console.log(`Still need: ${item.node.subject} ${item.node.number}`);
   }
 }
 
@@ -435,7 +517,7 @@ You can customize the outline icons and control what information is shown:
 ```javascript
 // Custom icons (e.g. for a terminal that doesn't support Unicode)
 result.toOutline(catalog, {
-  icons: { 'met': '[PASS]', 'not-met': '[NEED]', 'in-progress': '[WIP]', 'partial-progress': '[PART]' },
+  icons: { 'met': '[PASS]', 'not-met': '[NEED]', 'provisional-met': '[WIP]', 'in-progress': '[PART]' },
 });
 
 // Suppress grades and summary counts for a cleaner view
@@ -531,9 +613,25 @@ Waivers target specific things. You can waive a course, a test score, an attainm
 // Waive a test score requirement
 reqit.waiver({ score: 'SAT-MATH', reason: 'Exempt by policy' });
 
+// Waive an attainment milestone
+reqit.waiver({ attainment: 'PRAXIS', reason: 'Already certified' });
+
+// Waive a quantity requirement (e.g., clinical hours)
+reqit.waiver({ quantity: 'CLINICAL_HOURS', reason: 'Prior professional experience' });
+
 // Waive an entire named group (matches the label in the requirement)
 reqit.waiver({ label: 'Math Core', reason: 'AP credit covers all math' });
 ```
+
+Each waiver targets exactly one thing:
+
+| Target Type | What It Waives | Example |
+|-------------|---------------|---------|
+| `course` | A specific course requirement | Transfer credit for CMPS 310 |
+| `score` | A test score threshold | SAT exemption by policy |
+| `attainment` | A milestone or certification | Already holds teaching certification |
+| `quantity` | A numeric accumulation (hours, credits) | Prior professional experience |
+| `label` | An entire labeled requirement group | AP credit covers all math requirements |
 
 ### Substitutions
 
@@ -635,7 +733,7 @@ console.log(result.warnings);
 
 ---
 
-## 8. Shared Variables and Clusters — Reusing Requirements Across Programs
+## 8. Shared Definitions and Clusters — Reusing Requirements Across Programs
 
 When the same requirement appears in multiple programs (e.g. general education in every major), you don't want to duplicate it. The SDK offers two complementary approaches depending on whether the shared piece is independently auditable.
 
@@ -680,32 +778,32 @@ const tx = reqit.transcript({
 });
 ```
 
-### Shared Variables — Reusable Building Blocks
+### Shared Definitions — Reusable Building Blocks
 
-For smaller patterns that don't warrant their own program — a repeated course choice, a common sub-expression — use **shared variables**. Create them with `reqit.sharedVariable()` and inject via the `sharedDefs` option:
+For smaller patterns that don't warrant their own program — a repeated course choice, a common sub-expression — use **shared definitions**. Create them with `reqit.sharedDefinition()` and inject via the `sharedDefinitions` option:
 
 ```javascript
-const sharedVars = [
-  reqit.sharedVariable({
+const sharedDefs = [
+  reqit.sharedDefinition({
     name: 'discrete',
     requirement: 'any of (MATH 205, MATH 237)',
   }),
 ];
 
 // Single-tree audit
-const result = req.audit(catalog, transcript, { sharedDefs: sharedVars });
+const result = req.audit(catalog, transcript, { sharedDefinitions: sharedDefs });
 
 // Multi-tree audit
 const multi = reqit.auditMulti(catalog, transcript, {
   trees: { 'BS-CMPS': csMajor, 'BS-CYBER': cyberMajor },
-  sharedDefs: sharedVars,
+  sharedDefinitions: sharedDefs,
 });
 
 // Resolution
-const resolved = req.resolve(catalog, { sharedDefs: sharedVars });
+const resolved = req.resolve(catalog, { sharedDefinitions: sharedDefs });
 ```
 
-In the requirement file, reference the shared variable just like a local one:
+In the requirement file, reference the shared definition just like a local one:
 
 ```
 $math_required = "Math Requirements": all of (MATH 121, $discrete)
@@ -715,7 +813,7 @@ $math_required = "Math Requirements": all of (MATH 121, $discrete)
 
 ### When to Use Which
 
-| | Cluster Program | Shared Variable |
+| | Cluster Program | Shared Definition |
 |---|---|---|
 | **Auditable on its own** | Yes — has its own result tree | No — embedded in the referencing program's tree |
 | **Appears in audit output** | As a distinct, collapsible section | Inlined where referenced |
@@ -746,7 +844,7 @@ const multi = reqit.auditMulti(catalog, transcript, {
 });
 
 // Each tree gets its own AuditResult — all the same methods work
-console.log(multi.trees['CMPS'].status);    // 'partial-progress'
+console.log(multi.trees['CMPS'].status);    // 'in-progress'
 console.log(multi.trees['GEN-ED'].status);  // 'met'
 
 // See which courses were assigned to which programs
@@ -757,7 +855,7 @@ const assignments = multi.courseAssignments;
 
 ### Overlap Rules
 
-By default, courses can count toward any number of programs. To enforce policies that limit double-counting, pass overlap rules as AST nodes:
+By default, courses can count toward any number of programs. To enforce policies that limit double-counting, pass overlap rules to the `auditMulti()` options. Overlap rules describe relationships *between* programs — they configure multi-program audit behavior, not individual requirement trees. This is why they sit in the `auditMulti()` options rather than inside a requirement string. The rules are specified as AST objects:
 
 ```javascript
 const multi = reqit.auditMulti(catalog, transcript, {
@@ -828,8 +926,8 @@ if unmet.length > 0
   h3 Still Needed
   ul
     each item in unmet
-      if item.type === 'course'
-        li #{item.subject} #{item.number}
+      if item.node.type === 'course'
+        li #{item.node.subject} #{item.node.number}
 
 if eligible.length > 0
   h3 Can Take Next
@@ -992,6 +1090,64 @@ console.log(`GPA: ${gpa.toFixed(2)}`);
 
 ---
 
+## 12.5. Requirement Analysis — Validation, Diffing, and Transformation
+
+The SDK provides utilities for working with requirement trees beyond auditing.
+
+### Validation
+
+Validate requirement text before saving — useful for admin UIs where users author requirements:
+
+```javascript
+const req = reqit.parse(userInput);
+const { valid, errors } = req.validate();
+if (!valid) {
+  console.log('Validation errors:', errors);
+  // → ['Unknown node type at path items[2]', ...]
+}
+```
+
+### Diffing
+
+Compare two versions of a program's requirements to see what changed:
+
+```javascript
+const oldReq = reqit.parse(previousText);
+const newReq = reqit.parse(currentText);
+const changes = oldReq.diff(newReq);
+for (const change of changes) {
+  console.log(`${change.type} at ${change.path}: ${JSON.stringify(change.detail)}`);
+}
+// → 'added at items[3]: { type: "course", subject: "CMPS", number: "380" }'
+// → 'removed at items[1]: { type: "course", subject: "CMPS", number: "220" }'
+```
+
+### Transformation
+
+Programmatically modify an AST — returns a new Requirement (immutable):
+
+```javascript
+// Change all CMPS courses to CS (e.g., after a department rename)
+const transformed = req.transform((node) => {
+  if (node.type === 'course' && node.subject === 'CMPS') {
+    return { ...node, subject: 'CS' };
+  }
+  return node;
+});
+```
+
+### Expansion
+
+Inline all variable references for export or display:
+
+```javascript
+const expanded = req.expand();
+// All $variable references are replaced with their definitions
+console.log(expanded.text);
+```
+
+---
+
 ## 13. Exporting Data — Spreadsheet-Ready Output
 
 The SDK exports requirement and audit data as structured objects suitable for CSV or XLSX generation. These are useful for institutional reporting, advising printouts, and data exchange:
@@ -1076,12 +1232,12 @@ const tx = reqit.transcript({
 const result = req.audit(catalog, tx);
 
 // 5. Use the results
-console.log(`Status: ${result.status}`);              // 'partial-progress'
+console.log(`Status: ${result.status}`);              // 'in-progress'
 console.log(`Progress: ${result.summary.met}/${result.summary.total}`);
 
 // What's still needed?
-for (const node of result.findUnmet()) {
-  console.log(`Need: ${node.subject} ${node.number}`);
+for (const item of result.findUnmet()) {
+  console.log(`Need: ${item.node.subject} ${item.node.number}`);
 }
 // → Need: MATH 152
 // → Need: CMPS 310

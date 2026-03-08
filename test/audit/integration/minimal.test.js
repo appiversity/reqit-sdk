@@ -7,7 +7,7 @@
  * varied transcripts to verify end-to-end audit behavior.
  */
 
-const { audit, prepareAudit, findUnmet, MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET } = require('../../../src/audit');
+const { audit, prepareAudit, findUnmet, MET, PROVISIONAL_MET, IN_PROGRESS, NOT_MET } = require('../../../src/audit');
 const { parse } = require('../../../src/parser');
 const minimalCatalog = require('../../fixtures/catalogs/minimal.json');
 
@@ -157,23 +157,23 @@ describe('CS Major — end-to-end', () => {
 
   test('freshman transcript → partial-progress', () => {
     const { status, result } = audit(csMajorAst, minimalCatalog, freshman);
-    expect(status).toBe(PARTIAL_PROGRESS);
+    expect(status).toBe(IN_PROGRESS);
     // Math core: MATH 101 met, MATH 151 ip, MATH 152 & 250 not met → partial
     expect(result.items[0].status).not.toBe(MET);
   });
 
   test('missing capstone → partial-progress', () => {
     const { status, result } = audit(csMajorAst, minimalCatalog, missingCapstone);
-    expect(status).toBe(PARTIAL_PROGRESS);
+    expect(status).toBe(IN_PROGRESS);
     // Capstone is the unmet component
     expect(result.items[3].status).toBe(NOT_MET);
   });
 
   test('credit short → partial-progress', () => {
     const { status, result } = audit(csMajorAst, minimalCatalog, creditShort);
-    expect(status).toBe(PARTIAL_PROGRESS);
+    expect(status).toBe(IN_PROGRESS);
     // Science credits: only 4, need 12
-    expect(result.items[4].status).toBe(PARTIAL_PROGRESS);
+    expect(result.items[4].status).toBe(IN_PROGRESS);
     expect(result.items[4].creditsEarned).toBe(4);
   });
 
@@ -252,9 +252,9 @@ describe('Gen-ed distribution — end-to-end', () => {
       { subject: 'CMPS', number: '320', grade: 'B+', credits: 3, term: 'Fall 2024', status: 'completed' },
     ];
     const { status, result } = audit(genEdAst, minimalCatalog, transcript);
-    expect(status).toBe(PARTIAL_PROGRESS);
+    expect(status).toBe(IN_PROGRESS);
     // Distribution should be partial (HUM and SCI met, FA not met)
-    expect(result.items[1].status).toBe(PARTIAL_PROGRESS);
+    expect(result.items[1].status).toBe(IN_PROGRESS);
   });
 });
 
@@ -307,7 +307,7 @@ describe('grade constraint integration', () => {
       { subject: 'CMPS', number: '230', grade: null,  credits: 3, term: 'Spring 2024', status: 'in-progress' },
     ];
     const { status } = audit(constrainedAst, minimalCatalog, transcript);
-    expect(status).toBe(IN_PROGRESS);
+    expect(status).toBe(PROVISIONAL_MET);
   });
 });
 

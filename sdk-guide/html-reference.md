@@ -202,8 +202,10 @@ Added to the element's existing classes:
 |-------|---------|
 | `reqit-status-met` | Requirement satisfied. |
 | `reqit-status-not-met` | Requirement not satisfied. |
-| `reqit-status-in-progress` | Course currently being taken. |
-| `reqit-status-partial-progress` | Some children met, but not enough. |
+| `reqit-status-provisional-met` | Requirement will be met when current courses complete. |
+| `reqit-status-in-progress` | Some progress made, but more work needed. |
+| `reqit-status-waived` | Requirement waived. |
+| `reqit-status-substituted` | Requirement satisfied by substitution. |
 
 ```html
 <span class="reqit-course reqit-status-met">...</span>
@@ -217,8 +219,10 @@ A `<span>` with a Unicode checkmark/circle prepended to each node:
 ```html
 <span class="reqit-status-indicator">&#10003;</span>  <!-- ✓ met -->
 <span class="reqit-status-indicator">&#9675;</span>   <!-- ○ not-met -->
-<span class="reqit-status-indicator">&#9685;</span>   <!-- ◕ in-progress -->
-<span class="reqit-status-indicator">&#9681;</span>   <!-- ◑ partial-progress -->
+<span class="reqit-status-indicator">&#9685;</span>   <!-- ◕ provisional-met -->
+<span class="reqit-status-indicator">&#9681;</span>   <!-- ◔ in-progress -->
+<span class="reqit-status-indicator">&#8856;</span>   <!-- ⊘ waived -->
+<span class="reqit-status-indicator">&#8644;</span>   <!-- ⇄ substituted -->
 ```
 
 ### Grade and Term
@@ -245,6 +249,16 @@ For met courses, grade and term info from `satisfiedBy`:
 </span>
 ```
 
+### Filter Matched Courses
+
+In audit mode, `course-filter` nodes include a hidden `<ul class="reqit-filter-matches">` listing the courses that matched the filter. To show matched courses, add CSS:
+
+```css
+.reqit-filter-matches { display: block; }
+```
+
+This is useful for advising UIs where students need to see which courses satisfy an elective filter.
+
 ---
 
 ## Complete CSS Class Reference
@@ -267,6 +281,7 @@ For met courses, grade and term info from `satisfiedBy`:
 |-------|---------|-----------|
 | `reqit-course` | `<span>` | `course` |
 | `reqit-course-filter` | `<span>` | `course-filter` |
+| `reqit-filter-matches` | `<ul>` | List of matched courses inside a `course-filter` (audit mode only). Hidden by default. |
 | `reqit-score` | `<span>` | `score` |
 | `reqit-attainment` | `<span>` | `attainment` |
 | `reqit-quantity` | `<span>` | `quantity` |
@@ -303,9 +318,11 @@ For met courses, grade and term info from `satisfiedBy`:
 |-------|---------|-------------|
 | `reqit-status-met` | `<span>` or `<div>` | Added to the node's element when status is met. |
 | `reqit-status-not-met` | `<span>` or `<div>` | Status is not-met. |
-| `reqit-status-in-progress` | `<span>` or `<div>` | Status is in-progress. |
-| `reqit-status-partial-progress` | `<span>` or `<div>` | Status is partial-progress. |
-| `reqit-status-indicator` | `<span>` | Unicode status icon (✓, ○, ◕, ◑). |
+| `reqit-status-provisional-met` | `<span>` or `<div>` | Status is provisional-met (will be met when current courses complete). |
+| `reqit-status-in-progress` | `<span>` or `<div>` | Status is in-progress (some progress, more work needed). |
+| `reqit-status-waived` | `<span>` or `<div>` | Status is waived. |
+| `reqit-status-substituted` | `<span>` or `<div>` | Status is substituted. |
+| `reqit-status-indicator` | `<span>` | Unicode status icon (✓, ○, ◕, ◔, ⊘, ⇄). |
 | `reqit-grade` | `<span>` | Grade earned (e.g. "A"). |
 | `reqit-term` | `<span>` | Term completed (e.g. "Fall 2023"). |
 
@@ -336,20 +353,28 @@ For met courses, grade and term info from `satisfiedBy`:
 /* Audit status — background colors */
 .reqit-status-met { background-color: #f0fdf4; }
 .reqit-status-not-met { background-color: #fef2f2; }
-.reqit-status-in-progress { background-color: #fffbeb; }
-.reqit-status-partial-progress { background-color: #fefce8; }
+.reqit-status-provisional-met { background-color: #fffbeb; }
+.reqit-status-in-progress { background-color: #fefce8; }
+.reqit-status-waived { background-color: #f5f3ff; }
+.reqit-status-substituted { background-color: #eff6ff; }
 
 /* Audit status — icons */
 .reqit-status-indicator { font-weight: bold; margin-right: 0.25em; }
 .reqit-status-met > .reqit-status-indicator { color: #16a34a; }
 .reqit-status-not-met > .reqit-status-indicator { color: #dc2626; }
-.reqit-status-in-progress > .reqit-status-indicator { color: #d97706; }
+.reqit-status-provisional-met > .reqit-status-indicator { color: #d97706; }
+.reqit-status-in-progress > .reqit-status-indicator { color: #ca8a04; }
+.reqit-status-waived > .reqit-status-indicator { color: #7c3aed; }
+.reqit-status-substituted > .reqit-status-indicator { color: #2563eb; }
 
 /* Audit details */
 .reqit-grade { font-weight: 600; color: #166534; }
 .reqit-grade::before { content: '['; }
 .reqit-grade::after { content: ']'; }
 .reqit-term { color: #64748b; font-size: 0.85em; }
+
+/* Filter matched courses — hidden by default, show with display:block */
+.reqit-filter-matches { display: none; list-style: disc; padding-left: 2em; color: #64748b; font-size: 0.9em; }
 ```
 
 ---

@@ -30,24 +30,53 @@ const cat = reqit.catalog({
 | `degrees` | `Degree[]` | No | Credential types (B.S., B.A., M.A., etc.). |
 | `gradeConfig` | `GradeConfig` | No | Grade scale, pass/fail, withdrawal, and incomplete definitions. Defaults to the standard US letter grade scale (A+ through F). |
 
+### Catalog Getters
+
+| Getter | Returns | Description |
+|--------|---------|-------------|
+| `cat.institution` | `string\|undefined` | Institution identifier. |
+| `cat.ay` | `string` | Academic year. |
+| `cat.courses` | `Course[]` | All courses. |
+| `cat.programs` | `Program[]` | All programs. |
+| `cat.attributes` | `Attribute[]` | All attributes. |
+| `cat.degrees` | `Degree[]` | All degrees. |
+| `cat.gradeConfig` | `object` | Grade configuration (default US scale if not provided). |
+
 ### Catalog Methods
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `findCourse(subject, number)` | `Course \| undefined` | O(1) lookup by subject and number. |
+| `findCourse(subject, number)` | `Course \| null` | O(1) lookup by subject and number. |
 | `findCourses({ subject?, attribute? })` | `Course[]` | Filter courses by subject code or attribute. |
 | `getSubjects()` | `string[]` | All unique subject codes, sorted. |
-| `findProgram(code)` | `Program \| undefined` | O(1) lookup by program code. |
+| `findProgram(code)` | `Program \| null` | O(1) lookup by program code. |
 | `findPrograms({ type?, level?, code? })` | `Program[]` | Filter programs. |
 | `findAttribute(code)` | `Attribute \| null` | Lookup an attribute by code. |
 | `getAttributes()` | `Attribute[]` | All attributes, sorted by code. |
-| `findDegree(code)` | `Degree \| undefined` | Lookup a degree by code. |
+| `findDegree(code)` | `Degree \| null` | Lookup a degree by code. |
 | `findDegrees({ type?, level? })` | `Degree[]` | Filter degrees. |
 | `getCrossListEquivalents(subject, number)` | `Course[]` | Other courses in the same cross-list group. |
 | `prereqGraph()` | `PrereqGraph` | Prerequisite graph with forward/reverse lookups (lazily built). |
 | `findProgramsRequiring(subject, number)` | `Array<{ code, context }>` | Programs that reference this course. `context` is `'required'` or `'elective'`. |
 | `courseImpact(subject, number)` | `{ dependentCourses, programs }` | Impact analysis for retiring a course. |
 | `withPrograms(programMap)` | `Catalog` | Returns a new Catalog with requirement ASTs attached to programs. |
+
+---
+
+## PrereqGraph
+
+Returned by `catalog.prereqGraph()`. An analysis tool for exploring prerequisite relationships. Built lazily on first access and cached on the catalog instance. Course keys use the format `'SUBJECT:NUMBER'` (e.g., `'CMPS:310'`).
+
+```javascript
+const graph = catalog.prereqGraph();
+```
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `graph.directPrereqs(courseKey)` | `Set<string>` | Immediate prerequisites of a course. |
+| `graph.transitivePrereqs(courseKey)` | `Set<string>` | All prerequisites (direct + transitive). |
+| `graph.dependents(courseKey)` | `Set<string>` | Courses that directly require this course. |
+| `graph.transitiveDependents(courseKey)` | `Set<string>` | All courses that transitively depend on this course. |
 
 ---
 
@@ -178,6 +207,7 @@ const deg = reqit.degree({
 | `deg.name` | `string\|null` | Display name. |
 | `deg.type` | `string` | Abbreviated type. |
 | `deg.level` | `string` | Level. |
+| `deg.requirements` | `object\|undefined` | Requirement AST if attached. |
 | `deg.toJSON()` | `object` | Serializable copy. |
 
 ---
@@ -216,6 +246,18 @@ const tx = reqit.transcript({
 | `level` | `string` | No | Student's academic level. Should use `ProgramLevel` values (`'undergraduate'`, `'graduate'`, etc.). |
 | `duplicatePolicy` | `string` | No | When a course appears multiple times: `'last'` (default) uses the most recent; `'first'` uses the earliest. |
 
+### Transcript Getters
+
+| Getter | Returns | Description |
+|--------|---------|-------------|
+| `tx.courses` | `TranscriptCourse[]` | All transcript course entries. |
+| `tx.attainments` | `object` | Key-value attainments. |
+| `tx.declaredPrograms` | `DeclaredProgram[]` | Declared programs. |
+| `tx.waivers` | `Waiver[]` | Waiver exceptions. |
+| `tx.substitutions` | `Substitution[]` | Substitution exceptions. |
+| `tx.level` | `string\|null` | Student's academic level. |
+| `tx.duplicatePolicy` | `string\|null` | Duplicate course policy. |
+
 ### Transcript Methods
 
 All mutation methods return a **new** Transcript — the original is never modified.
@@ -232,6 +274,7 @@ All mutation methods return a **new** Transcript — the original is never modif
 | `removeWaiver(target)` | `Transcript` | Remove by course `{ subject, number }`, by string target name, or by ID string. |
 | `addSubstitution(sub)` | `Transcript` | Add a Substitution instance. |
 | `removeSubstitution(target)` | `Transcript` | Remove by original course `{ subject, number }` or by ID string. |
+| `tx.toJSON()` | `object` | Serializable copy. |
 
 ---
 
@@ -293,12 +336,12 @@ The `role` field identifies the student's primary program for each type. Set `ro
 
 ---
 
-## ReqitVariable
+## SharedDefinition
 
-Created via `reqit.sharedVariable()`. Represents a reusable variable definition that can be injected into any audit, multi-tree audit, or resolution via the `sharedDefs` option.
+Created via `reqit.sharedDefinition()`. Represents a reusable variable definition that can be injected into any audit, multi-tree audit, or resolution via the `sharedDefinitions` option.
 
 ```javascript
-const v = reqit.sharedVariable({
+const v = reqit.sharedDefinition({
   name: 'discrete',                      // string — variable name without $ prefix (required)
   requirement: 'any of (MATH 205, MATH 237)', // string | Requirement | AST (required)
 });
@@ -314,23 +357,23 @@ The `requirement` field accepts a string (auto-parsed), a `Requirement` instance
 | `v.data` | `object` | Frozen data object. |
 | `v.toJSON()` | `object` | `{ name, ast }` serializable form. |
 
-### sharedDefs Option
+### sharedDefinitions Option
 
-Pass an array of `ReqitVariable` instances (or a `Map<string, AST>`, or a plain object `{ name: AST }`) as the `sharedDefs` option to `audit()`, `auditMulti()`, or `resolve()`. Local variable definitions in the requirement tree always take precedence over shared definitions with the same name.
+Pass an array of `SharedDefinition` instances (or a `Map<string, AST>`, or a plain object `{ name: AST }`) as the `sharedDefinitions` option to `audit()`, `auditMulti()`, or `resolve()`. Local variable definitions in the requirement tree always take precedence over shared definitions with the same name.
 
 ```javascript
 const shared = [
-  reqit.sharedVariable({ name: 'discrete', requirement: 'any of (MATH 205, MATH 237)' }),
+  reqit.sharedDefinition({ name: 'discrete', requirement: 'any of (MATH 205, MATH 237)' }),
 ];
 
 // Single-tree audit
-const result = req.audit(catalog, transcript, { sharedDefs: shared });
+const result = req.audit(catalog, transcript, { sharedDefinitions: shared });
 
 // Multi-tree audit
-const multi = reqit.auditMulti(catalog, transcript, { trees, sharedDefs: shared });
+const multi = reqit.auditMulti(catalog, transcript, { trees, sharedDefinitions: shared });
 
 // Resolution
-const resolved = req.resolve(catalog, { sharedDefs: shared });
+const resolved = req.resolve(catalog, { sharedDefinitions: shared });
 ```
 
 ---
@@ -454,6 +497,7 @@ const req = reqit.parse('all of (MATH 151, CMPS 130)');
 | `req.extractAllReferences(catalog)` | `Course[]` | Explicit + filter-resolved references. |
 | `req.diff(other)` | `Change[]` | Structural diff against another AST. |
 | `req.exportChecklist(catalog, opts?)` | `object` | Program checklist as spreadsheet data. |
+| `req.toJSON()` | `object` | { ast } — serializable copy. |
 
 ---
 
@@ -474,6 +518,8 @@ const resolved = req.resolve(catalog);
 | `resolved.totalUniqueCourses` | `number` | Count of unique courses. |
 | `resolved.subjects` | `Set<string>` | Unique subject codes across all results. |
 | `resolved.filtersForCourse(subject, number)` | `Array<{ node, index }>` | Which filters matched a specific course. |
+| `resolved.coursesForFilter(index)` | `Course[]` | Courses matched by a specific filter (by index). |
+| `resolved.toJSON()` | `object` | Serializable copy with courses, filters, and warnings. |
 
 ---
 
@@ -487,9 +533,9 @@ const result = req.audit(catalog, transcript);
 
 | Property / Method | Returns | Description |
 |-------------------|---------|-------------|
-| `result.status` | `string` | Overall status: `'met'`, `'in-progress'`, `'partial-progress'`, `'not-met'`, `'waived'`, `'substituted'`. |
-| `result.items` | `object` | The audit result tree — a parallel structure to the requirement AST with status on every node. |
-| `result.summary` | `{ met, total, ... }` | Counts of met/not-met/in-progress/waived/substituted children. |
+| `result.status` | `string` | Overall status: `'met'`, `'provisional-met'`, `'in-progress'`, `'not-met'`, `'waived'`, `'substituted'`. |
+| `result.results` | `object` | The audit result tree — a parallel structure to the requirement AST with status on every node. |
+| `result.summary` | `{ met, provisionalMet, inProgress, notMet, waived, substituted, total }` | Counts of met/not-met/in-progress/waived/substituted children. |
 | `result.warnings` | `Array` | Audit warnings (unrecognized grades, ambiguous matches, etc.). |
 | `result.exceptions` | `{ applied, unused } \| null` | Which waivers/substitutions were used. `null` if none provided. |
 | `result.walk(callback)` | `void` | Depth-first traversal: `callback(node, path, parent, depth)`. |
@@ -498,6 +544,7 @@ const result = req.audit(catalog, transcript);
 | `result.toOutline(catalog, options?)` | `string` | Audit-aware text outline with status icons and grades. |
 | `result.toHTML(catalog, options?)` | `string` | Audit-aware HTML with status CSS classes. |
 | `result.export(catalog, opts?)` | `object` | Audit result as spreadsheet data. |
+| `result.toJSON()` | `object` | Serializable copy with status, results, summary, warnings, and exceptions. |
 
 ---
 
@@ -521,6 +568,23 @@ const multi = reqit.auditMulti(catalog, transcript, {
 | `multi.overlapResults` | `Array` | Results of overlap policy evaluation. |
 | `multi.courseAssignments` | `object` | Which courses were assigned to which programs. |
 | `multi.warnings` | `Array` | Combined warnings from all trees. |
+| `multi.toJSON()` | `object` | Serializable copy with trees, overlapResults, courseAssignments, and warnings. |
+
+---
+
+## CourseAssignmentMap
+
+Accessed via `multi.courseAssignments`. Tracks which programs claimed each course during a multi-program audit. Course keys use `'SUBJECT:NUMBER'` format.
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `getAssignments(courseKey)` | `string[]` | Program codes that used this course. |
+| `getSharedCourses()` | `string[]` | Course keys assigned to more than one program. |
+| `isAssigned(courseKey, programCode)` | `boolean` | Whether a course was used by a specific program. |
+| `getCoursesForProgram(programCode)` | `string[]` | All course keys assigned to a program. |
+| `entries()` | `Iterator<[string, string[]]>` | All course-to-programs mappings. |
+
+Useful for rendering shared-course indicators and verifying overlap policy enforcement.
 
 ---
 
@@ -530,8 +594,8 @@ const multi = reqit.auditMulti(catalog, transcript, {
 const { AuditStatus } = require('reqit');
 
 AuditStatus.MET              // 'met'
+AuditStatus.PROVISIONAL_MET  // 'provisional-met'
 AuditStatus.IN_PROGRESS      // 'in-progress'
-AuditStatus.PARTIAL_PROGRESS // 'partial-progress'
 AuditStatus.NOT_MET          // 'not-met'
 AuditStatus.WAIVED           // 'waived'
 AuditStatus.SUBSTITUTED      // 'substituted'
@@ -557,6 +621,15 @@ reqit.DegreeType.BA               // 'B.A.'
 reqit.DegreeType.PHD              // 'Ph.D.'
 // ... 25+ types
 ```
+
+---
+
+## Export Utilities
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `reqit.exportPrereqMatrix(catalog, opts?)` | `object` | Prerequisite matrix as spreadsheet data. |
+| `reqit.exportDependencyMatrix(catalog, opts?)` | `object` | Dependency matrix showing which courses depend on which. |
 
 ---
 

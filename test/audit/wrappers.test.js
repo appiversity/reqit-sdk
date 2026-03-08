@@ -1,6 +1,6 @@
 'use strict';
 
-const { audit, MET, IN_PROGRESS, NOT_MET } = require('../../src/audit');
+const { audit, MET, PROVISIONAL_MET, NOT_MET } = require('../../src/audit');
 const minimalCatalog = require('../fixtures/catalogs/minimal.json');
 
 const complete = require('../fixtures/transcripts/minimal/complete.json');
@@ -80,7 +80,7 @@ describe('except', () => {
       ],
     };
     const { status } = audit(ast, minimalCatalog, inProgress);
-    expect(status).toBe(IN_PROGRESS);
+    expect(status).toBe(PROVISIONAL_MET);
   });
 
   test('result shape includes source and exclude results', () => {

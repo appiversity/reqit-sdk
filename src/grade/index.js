@@ -90,6 +90,7 @@ function getScaleIndex(scale) {
  * @returns {boolean} True if the grade is auditable
  */
 function isAuditableGrade(grade, gradeConfig) {
+  grade = grade.toUpperCase();
   const config = gradeConfig || DEFAULT_GRADE_CONFIG;
 
   // Check scale entries
@@ -125,6 +126,8 @@ function isAuditableGrade(grade, gradeConfig) {
  * @throws {Error} If minGrade is not found in the scale
  */
 function meetsMinGrade(grade, minGrade, gradeConfig) {
+  grade = grade.toUpperCase();
+  minGrade = minGrade.toUpperCase();
   const config = gradeConfig || DEFAULT_GRADE_CONFIG;
   const index = getScaleIndex(config.scale);
 
@@ -157,6 +160,7 @@ function meetsMinGrade(grade, minGrade, gradeConfig) {
  * @returns {boolean} True if the grade is passing
  */
 function isPassingGrade(grade, gradeConfig) {
+  grade = grade.toUpperCase();
   const config = gradeConfig || DEFAULT_GRADE_CONFIG;
 
   // Check scale grades — passing if points > 0 and auditable
@@ -198,7 +202,7 @@ function calculateGPA(entries, gradeConfig) {
   let totalCredits = 0;
 
   for (const entry of entries) {
-    const scalePos = index.get(entry.grade);
+    const scalePos = index.get(entry.grade ? entry.grade.toUpperCase() : entry.grade);
     if (scalePos === undefined) continue; // skip non-scale grades
     if (config.scale[scalePos].audit === false) continue; // skip non-auditable
     const points = config.scale[scalePos].points;

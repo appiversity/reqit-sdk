@@ -53,7 +53,7 @@ describe('exportAudit', () => {
     const csv = exportAudit(result, minimalCatalog);
     const lines = csv.trim().split('\r\n');
     expect(lines).toHaveLength(3); // header + 2 courses
-    const ipLine = lines.find(l => l.includes('in-progress'));
+    const ipLine = lines.find(l => l.includes('provisional-met'));
     expect(ipLine).toBeDefined();
     expect(ipLine).toContain('152');
   });

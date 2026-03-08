@@ -8,72 +8,72 @@
  *
  * Status values (ordered by progress):
  *   'met'              — requirement fully satisfied
- *   'in-progress'      — will be met if all in-progress courses complete successfully
- *   'partial-progress' — some progress, but completing in-progress courses alone won't satisfy
+ *   'provisional-met'  — will be met when currently-enrolled courses complete
+ *   'in-progress'      — some progress, but completing enrolled courses alone won't satisfy
  *   'not-met'          — no progress toward this requirement
  */
 
 const MET = 'met';
+const PROVISIONAL_MET = 'provisional-met';
 const IN_PROGRESS = 'in-progress';
-const PARTIAL_PROGRESS = 'partial-progress';
 const NOT_MET = 'not-met';
 const WAIVED = 'waived';
 const SUBSTITUTED = 'substituted';
 
-const STATUSES = Object.freeze([MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET, WAIVED, SUBSTITUTED]);
+const STATUSES = Object.freeze([MET, PROVISIONAL_MET, IN_PROGRESS, NOT_MET, WAIVED, SUBSTITUTED]);
 
 /**
  * Count statuses in an array.
  * @param {string[]} statuses
- * @returns {{ met: number, ip: number, pp: number, nm: number, total: number }}
+ * @returns {{ met: number, pm: number, ip: number, nm: number, total: number }}
  */
 function countStatuses(statuses) {
-  let met = 0, ip = 0, pp = 0, nm = 0;
+  let met = 0, pm = 0, ip = 0, nm = 0;
   for (const s of statuses) {
     switch (s) {
       case MET:
       case WAIVED:
       case SUBSTITUTED:
         met++; break;
+      case PROVISIONAL_MET: pm++; break;
       case IN_PROGRESS: ip++; break;
-      case PARTIAL_PROGRESS: pp++; break;
       default: nm++; break;
     }
   }
-  return { met, ip, pp, nm, total: statuses.length };
+  return { met, pm, ip, nm, total: statuses.length };
 }
 
 /**
  * all-of: every child must be satisfied.
  *
  * - All met → met
- * - All met or in-progress (≥1 ip) → in-progress
- * - ≥1 child has progress but above not satisfied → partial-progress
+ * - All met or provisional-met → provisional-met
+ * - ≥1 child has progress but above not satisfied → in-progress
  * - All not-met → not-met
  */
 function allOf(statuses) {
   if (statuses.length === 0) return MET;
-  const { met, ip, pp, nm, total } = countStatuses(statuses);
+  const { met, pm, ip, nm, total } = countStatuses(statuses);
   if (met === total) return MET;
-  if (met + ip === total) return IN_PROGRESS;
+  if (met + pm === total) return PROVISIONAL_MET;
   if (nm === total) return NOT_MET;
-  return PARTIAL_PROGRESS;
+  return IN_PROGRESS;
 }
 
 /**
  * any-of: at least one child must be satisfied.
  *
  * - ≥1 met → met
- * - No met, ≥1 in-progress → in-progress
- * - No met, no ip, ≥1 partial-progress → partial-progress
+ * - No met, ≥1 provisional-met → provisional-met
+ * - No met, no pm, ≥1 in-progress → in-progress
  * - All not-met → not-met
  */
 function anyOf(statuses) {
   if (statuses.length === 0) return NOT_MET;
-  const { met, ip, pp } = countStatuses(statuses);
+  const { met, pm, ip } = countStatuses(statuses);
   if (met > 0) return MET;
+  if (pm > 0) return PROVISIONAL_MET;
   if (ip > 0) return IN_PROGRESS;
-  if (pp > 0) return PARTIAL_PROGRESS;
   return NOT_MET;
 }
 
@@ -81,16 +81,16 @@ function anyOf(statuses) {
  * n-of with at-least comparison.
  *
  * - met ≥ K → met
- * - met + ip ≥ K → in-progress
- * - some progress (met + ip + pp > 0) → partial-progress
+ * - met + pm ≥ K → provisional-met
+ * - some progress (met + pm + ip > 0) → in-progress
  * - no progress → not-met
  */
 function nOfAtLeast(statuses, k) {
   if (statuses.length === 0) return k <= 0 ? MET : NOT_MET;
-  const { met, ip, pp } = countStatuses(statuses);
+  const { met, pm, ip } = countStatuses(statuses);
   if (met >= k) return MET;
-  if (met + ip >= k) return IN_PROGRESS;
-  if (met + ip + pp > 0) return PARTIAL_PROGRESS;
+  if (met + pm >= k) return PROVISIONAL_MET;
+  if (met + pm + ip > 0) return IN_PROGRESS;
   return NOT_MET;
 }
 
@@ -100,19 +100,17 @@ function nOfAtLeast(statuses, k) {
  * - met ≤ K → met (constraint satisfied)
  * - met > K → not-met (too many matched — can't undo completed courses)
  *
- * In-progress children that might push count over K:
- * - met ≤ K but met + ip > K → in-progress (risk of over-matching)
- *   Actually, for at-most this is reversed: in-progress courses completing
- *   could cause a FAILURE. So if met ≤ K and met + ip > K, status is
- *   in-progress (uncertain — currently ok but could fail).
+ * Provisional-met children that might push count over K:
+ * - met ≤ K but met + pm > K → provisional-met (uncertain — currently ok
+ *   but enrolled courses completing could exceed limit).
  */
 function nOfAtMost(statuses, k) {
   if (statuses.length === 0) return MET;
-  const { met, ip } = countStatuses(statuses);
+  const { met, pm } = countStatuses(statuses);
   if (met > k) return NOT_MET;
-  // If in-progress courses completing could exceed limit, flag as in-progress
-  // (uncertain outcome). Otherwise, met.
-  if (met + ip > k) return IN_PROGRESS;
+  // If provisional-met children completing could exceed limit, flag as
+  // provisional-met (uncertain outcome). Otherwise, met.
+  if (met + pm > k) return PROVISIONAL_MET;
   return MET;
 }
 
@@ -121,17 +119,17 @@ function nOfAtMost(statuses, k) {
  *
  * - met === K → met
  * - met > K → not-met (over-matched)
- * - met < K, met + ip ≥ K → in-progress
- * - met < K, some progress → partial-progress
+ * - met < K, met + pm ≥ K → provisional-met
+ * - met < K, some progress → in-progress
  * - no progress → not-met
  */
 function nOfExactly(statuses, k) {
   if (statuses.length === 0) return k === 0 ? MET : NOT_MET;
-  const { met, ip, pp } = countStatuses(statuses);
+  const { met, pm, ip } = countStatuses(statuses);
   if (met === k) return MET;
   if (met > k) return NOT_MET;
-  if (met + ip >= k) return IN_PROGRESS;
-  if (met + ip + pp > 0) return PARTIAL_PROGRESS;
+  if (met + pm >= k) return PROVISIONAL_MET;
+  if (met + pm + ip > 0) return IN_PROGRESS;
   return NOT_MET;
 }
 
@@ -155,15 +153,15 @@ function nOf(statuses, comparison, k) {
 /**
  * none-of: none of the items may be satisfied (exclusion constraint).
  *
- * - No child met, no child in-progress → met
+ * - No child met, no child provisional-met → met
  * - Any child met → not-met
- * - No child met, ≥1 child in-progress → in-progress (risk if ip completes)
+ * - No child met, ≥1 child provisional-met → provisional-met (risk if enrolled courses complete)
  */
 function noneOf(statuses) {
   if (statuses.length === 0) return MET;
-  const { met, ip } = countStatuses(statuses);
+  const { met, pm } = countStatuses(statuses);
   if (met > 0) return NOT_MET;
-  if (ip > 0) return IN_PROGRESS;
+  if (pm > 0) return PROVISIONAL_MET;
   return MET;
 }
 
@@ -180,18 +178,18 @@ function creditsFrom(earned, inProg, required, comparison) {
   switch (comparison) {
     case 'at-least':
       if (earned >= required) return MET;
-      if (earned + inProg >= required) return IN_PROGRESS;
-      if (earned + inProg > 0) return PARTIAL_PROGRESS;
+      if (earned + inProg >= required) return PROVISIONAL_MET;
+      if (earned + inProg > 0) return IN_PROGRESS;
       return NOT_MET;
     case 'at-most':
       if (earned > required) return NOT_MET;
-      if (earned + inProg > required) return IN_PROGRESS;
+      if (earned + inProg > required) return PROVISIONAL_MET;
       return MET;
     case 'exactly':
       if (earned === required) return MET;
       if (earned > required) return NOT_MET;
-      if (earned + inProg >= required) return IN_PROGRESS;
-      if (earned + inProg > 0) return PARTIAL_PROGRESS;
+      if (earned + inProg >= required) return PROVISIONAL_MET;
+      if (earned + inProg > 0) return IN_PROGRESS;
       return NOT_MET;
     default:
       throw new Error(`Unknown credits-from comparison: "${comparison}"`);
@@ -202,28 +200,28 @@ function creditsFrom(earned, inProg, required, comparison) {
  * Build a summary object from child statuses.
  *
  * @param {string[]} statuses - Child statuses
- * @returns {{ met: number, inProgress: number, partialProgress: number, notMet: number, total: number }}
+ * @returns {{ met: number, provisionalMet: number, inProgress: number, notMet: number, total: number }}
  */
 function buildSummary(statuses) {
-  let met = 0, waived = 0, substituted = 0, ip = 0, pp = 0, nm = 0;
+  let met = 0, waived = 0, substituted = 0, pm = 0, ip = 0, nm = 0;
   for (const s of statuses) {
     switch (s) {
       case MET: met++; break;
       case WAIVED: waived++; break;
       case SUBSTITUTED: substituted++; break;
+      case PROVISIONAL_MET: pm++; break;
       case IN_PROGRESS: ip++; break;
-      case PARTIAL_PROGRESS: pp++; break;
       default: nm++; break;
     }
   }
-  const total = met + waived + substituted + ip + pp + nm;
-  return { met, waived, substituted, inProgress: ip, partialProgress: pp, notMet: nm, total };
+  const total = met + waived + substituted + pm + ip + nm;
+  return { met, waived, substituted, provisionalMet: pm, inProgress: ip, notMet: nm, total };
 }
 
 module.exports = {
   MET,
+  PROVISIONAL_MET,
   IN_PROGRESS,
-  PARTIAL_PROGRESS,
   NOT_MET,
   WAIVED,
   SUBSTITUTED,

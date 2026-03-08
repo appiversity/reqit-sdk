@@ -1,6 +1,6 @@
 'use strict';
 
-const { audit, findUnmet, MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET } = require('../../src/audit');
+const { audit, findUnmet, MET, PROVISIONAL_MET, IN_PROGRESS, NOT_MET } = require('../../src/audit');
 const minimalCatalog = require('../fixtures/catalogs/minimal.json');
 
 const complete = require('../fixtures/transcripts/minimal/complete.json');
@@ -86,9 +86,9 @@ describe('findUnmet', () => {
     };
     const { result } = audit(ast, minimalCatalog, partial);
     const unmet = findUnmet(result);
-    // ART 301 is unmet, at items[1].items[1]
+    // ART 301 is unmet, at items → 1 → items → 1
     expect(unmet).toHaveLength(1);
-    expect(unmet[0].path).toEqual(['items[1]', 'items[1]']);
+    expect(unmet[0].path).toEqual(['items', 1, 'items', 1]);
   });
 
   test('score nodes included in unmet', () => {
@@ -225,7 +225,7 @@ describe('findUnmet', () => {
     const mathUnmet = unmet.filter(u => u.node.subject === 'MATH' && u.node.number === '152');
     expect(mathUnmet).toHaveLength(1);
     // Path should traverse through 'result' (the sub-audit tree)
-    expect(mathUnmet[0].path.some(p => p === 'result' || p.startsWith('result'))).toBe(true);
+    expect(mathUnmet[0].path.includes('result')).toBe(true);
   });
 
   test('program-ref with notDeclared is surfaced as unmet leaf', () => {

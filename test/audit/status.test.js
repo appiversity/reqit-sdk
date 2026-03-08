@@ -1,12 +1,12 @@
 'use strict';
 
 const {
-  MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET,
+  MET, PROVISIONAL_MET, IN_PROGRESS, NOT_MET,
   allOf, anyOf, nOf, noneOf, creditsFrom, buildSummary,
 } = require('../../src/audit/status');
 
 // Shorthand for readability
-const M = MET, IP = IN_PROGRESS, PP = PARTIAL_PROGRESS, NM = NOT_MET;
+const M = MET, IP = PROVISIONAL_MET, PP = IN_PROGRESS, NM = NOT_MET;
 
 // ============================================================
 // allOf
@@ -328,19 +328,19 @@ describe('buildSummary', () => {
   test('counts all 4 statuses', () => {
     const summary = buildSummary([M, IP, PP, NM, M, NM]);
     expect(summary).toEqual({
-      met: 2, waived: 0, substituted: 0, inProgress: 1, partialProgress: 1, notMet: 2, total: 6,
+      met: 2, waived: 0, substituted: 0, provisionalMet: 1, inProgress: 1, notMet: 2, total: 6,
     });
   });
 
   test('empty statuses', () => {
     expect(buildSummary([])).toEqual({
-      met: 0, waived: 0, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 0, total: 0,
+      met: 0, waived: 0, substituted: 0, provisionalMet: 0, inProgress: 0, notMet: 0, total: 0,
     });
   });
 
   test('all same status', () => {
     expect(buildSummary([M, M, M])).toEqual({
-      met: 3, waived: 0, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 0, total: 3,
+      met: 3, waived: 0, substituted: 0, provisionalMet: 0, inProgress: 0, notMet: 0, total: 3,
     });
   });
 });

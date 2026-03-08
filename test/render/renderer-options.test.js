@@ -79,8 +79,8 @@ describe('toOutline — custom icons option', () => {
   const customIcons = {
     'met': '[OK]',
     'not-met': '[NO]',
+    'provisional-met': '[PM]',
     'in-progress': '[IP]',
-    'partial-progress': '[PP]',
     'waived': '[WV]',
     'substituted': '[SB]',
   };

@@ -1,6 +1,6 @@
 'use strict';
 
-const { audit, MET, IN_PROGRESS, NOT_MET } = require('../../src/audit');
+const { audit, MET, PROVISIONAL_MET, NOT_MET } = require('../../src/audit');
 const minimalCatalog = require('../fixtures/catalogs/minimal.json');
 
 const complete = require('../fixtures/transcripts/minimal/complete.json');
@@ -28,7 +28,7 @@ describe('course node', () => {
     // In the in-progress fixture, MATH 151 is completed; MATH 152 is in-progress
     const ipAst = { type: 'course', subject: 'MATH', number: '152' };
     const { status, result } = audit(ipAst, minimalCatalog, inProgress);
-    expect(status).toBe(IN_PROGRESS);
+    expect(status).toBe(PROVISIONAL_MET);
     expect(result.satisfiedBy).toBeDefined();
     expect(result.satisfiedBy.status).toBe('in-progress');
     expect(result.satisfiedBy.grade).toBeNull();
@@ -197,7 +197,7 @@ describe('course-filter node', () => {
     };
     // In-progress transcript has CMPS 310, 320 in-progress, no completed 300+
     const { status, result } = audit(ast, minimalCatalog, inProgress);
-    expect(status).toBe(IN_PROGRESS);
+    expect(status).toBe(PROVISIONAL_MET);
     expect(result.inProgressCourses.length).toBeGreaterThan(0);
     expect(result.matchedCourses).toHaveLength(0);
   });

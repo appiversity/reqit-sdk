@@ -18,10 +18,10 @@ const inProgressTx = require('../fixtures/transcripts/minimal/in-progress.json')
 // ============================================================
 
 describe('public API — structural guards', () => {
-  const expectedFactories = ['parse', 'fromAST', 'course', 'program', 'attribute', 'declaredProgram', 'catalog', 'transcript', 'degree', 'waiver', 'substitution', 'sharedVariable'];
+  const expectedFactories = ['parse', 'fromAST', 'course', 'program', 'attribute', 'declaredProgram', 'catalog', 'transcript', 'degree', 'waiver', 'substitution', 'sharedDefinition'];
   const expectedClasses = [
     'Requirement', 'Course', 'Program', 'Attribute', 'DeclaredProgram',
-    'ReqitVariable',
+    'SharedDefinition',
     'Catalog', 'Degree', 'Transcript', 'TranscriptCourse',
     'ResolutionResult', 'AuditResult', 'MultiAuditResult',
     'Waiver', 'Substitution',
@@ -63,8 +63,8 @@ describe('public API — structural guards', () => {
   test('AuditStatus is exported with all six values', () => {
     expect(api.AuditStatus).toBeDefined();
     expect(api.AuditStatus.MET).toBe('met');
+    expect(api.AuditStatus.PROVISIONAL_MET).toBe('provisional-met');
     expect(api.AuditStatus.IN_PROGRESS).toBe('in-progress');
-    expect(api.AuditStatus.PARTIAL_PROGRESS).toBe('partial-progress');
     expect(api.AuditStatus.NOT_MET).toBe('not-met');
     expect(api.AuditStatus.WAIVED).toBe('waived');
     expect(api.AuditStatus.SUBSTITUTED).toBe('substituted');
@@ -465,19 +465,20 @@ describe('Single-tree audit', () => {
     expect(Object.values(api.AuditStatus)).toContain(result.status);
   });
 
-  test('result.items is the annotated tree', () => {
+  test('result.results is the annotated tree', () => {
     const req = api.parse('MATH 151');
     const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
-    expect(result.items).toBeDefined();
-    expect(result.items.type).toBe('course');
+    expect(result.results).toBeDefined();
+    expect(result.results.type).toBe('course');
   });
 
-  test('result.summary has met, notMet, inProgress', () => {
+  test('result.summary has met, notMet, provisionalMet, inProgress', () => {
     const req = api.parse('all of (MATH 151, CMPS 130)');
     const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     const s = result.summary;
     expect(s).toHaveProperty('met');
     expect(s).toHaveProperty('notMet');
+    expect(s).toHaveProperty('provisionalMet');
     expect(s).toHaveProperty('inProgress');
   });
 
@@ -547,8 +548,8 @@ describe('AuditStatus enum', () => {
     expect(api.AuditStatus.NOT_MET).toBe('not-met');
   });
 
-  test('AuditStatus.IN_PROGRESS === "in-progress"', () => {
-    expect(api.AuditStatus.IN_PROGRESS).toBe('in-progress');
+  test('AuditStatus.PROVISIONAL_MET === "provisional-met"', () => {
+    expect(api.AuditStatus.PROVISIONAL_MET).toBe('provisional-met');
   });
 
   test('AuditStatus is frozen', () => {
@@ -1450,7 +1451,7 @@ describe('AuditResult.summary correctness', () => {
     const req = api.parse('all of (MATH 151, CMPS 130)');
     const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     expect(result.summary).toEqual({
-      met: 2, waived: 0, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 0, total: 2,
+      met: 2, waived: 0, substituted: 0, provisionalMet: 0, inProgress: 0, notMet: 0, total: 2,
     });
   });
 
@@ -1458,7 +1459,7 @@ describe('AuditResult.summary correctness', () => {
     const req = api.parse('all of (MATH 151, CMPS 310)');
     const result = req.audit(minimalCatalog, api.transcript({ courses: partialTx }));
     expect(result.summary).toEqual({
-      met: 1, waived: 0, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 1, total: 2,
+      met: 1, waived: 0, substituted: 0, provisionalMet: 0, inProgress: 0, notMet: 1, total: 2,
     });
   });
 
@@ -1466,7 +1467,7 @@ describe('AuditResult.summary correctness', () => {
     const req = api.parse('all of (CMPS 310, CMPS 320)');
     const result = req.audit(minimalCatalog, api.transcript({ courses: inProgressTx }));
     expect(result.summary).toEqual({
-      met: 0, waived: 0, substituted: 0, inProgress: 2, partialProgress: 0, notMet: 0, total: 2,
+      met: 0, waived: 0, substituted: 0, provisionalMet: 2, inProgress: 0, notMet: 0, total: 2,
     });
   });
 
@@ -1474,7 +1475,7 @@ describe('AuditResult.summary correctness', () => {
     const req = api.parse('at least 6 credits from (MATH 151, CMPS 130)');
     const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     expect(result.summary).toEqual({
-      met: 2, waived: 0, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 0, total: 2,
+      met: 2, waived: 0, substituted: 0, provisionalMet: 0, inProgress: 0, notMet: 0, total: 2,
     });
   });
 
@@ -1482,7 +1483,7 @@ describe('AuditResult.summary correctness', () => {
     const req = api.parse('MATH 151');
     const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     expect(result.summary).toEqual({
-      met: 1, waived: 0, substituted: 0, inProgress: 0, partialProgress: 0, notMet: 0, total: 1,
+      met: 1, waived: 0, substituted: 0, provisionalMet: 0, inProgress: 0, notMet: 0, total: 1,
     });
   });
 });
@@ -1625,8 +1626,8 @@ describe('Catalog query methods', () => {
     expect(course.title).toBe('Calculus I');
   });
 
-  test('findCourse returns undefined for unknown course', () => {
-    expect(cat.findCourse('FAKE', '999')).toBeUndefined();
+  test('findCourse returns null for unknown course', () => {
+    expect(cat.findCourse('FAKE', '999')).toBeNull();
   });
 
   test('findProgram returns matching program', () => {
@@ -1635,8 +1636,8 @@ describe('Catalog query methods', () => {
     expect(prog.name).toBe('Computer Science');
   });
 
-  test('findProgram returns undefined for unknown code', () => {
-    expect(cat.findProgram('FAKE')).toBeUndefined();
+  test('findProgram returns null for unknown code', () => {
+    expect(cat.findProgram('FAKE')).toBeNull();
   });
 
   test('repeated findCourse uses memoized index', () => {
@@ -1791,8 +1792,8 @@ describe('Catalog degree queries', () => {
     expect(d.name).toBe('Bachelor of Science');
   });
 
-  test('findDegree returns undefined for unknown code', () => {
-    expect(cat.findDegree('FAKE')).toBeUndefined();
+  test('findDegree returns null for unknown code', () => {
+    expect(cat.findDegree('FAKE')).toBeNull();
   });
 
   test('findDegree uses memoized index', () => {
@@ -1833,7 +1834,7 @@ describe('Catalog degree queries', () => {
     });
     expect(cat2.degrees).toEqual([]);
     expect(cat2.findDegrees()).toEqual([]);
-    expect(cat2.findDegree('BS')).toBeUndefined();
+    expect(cat2.findDegree('BS')).toBeNull();
   });
 });
 
@@ -2306,7 +2307,7 @@ describe('labels — integration', () => {
     }`);
     const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
     // Labels survive through audit on resolved variable-ref results
-    const tree = result.items;
+    const tree = result.results;
     expect(tree.items[0].resolved.label).toBe('CS Core');
     expect(tree.items[1].resolved.label).toBe('Mathematics');
   });
@@ -2344,7 +2345,7 @@ describe('labels — integration', () => {
   test('labeled none-of preserves label through audit', () => {
     const req = api.parse('"Excluded": none of (MATH 999)');
     const result = req.audit(minimalCatalog, api.transcript({ courses: completeTx }));
-    expect(result.items.label).toBe('Excluded');
+    expect(result.results.label).toBe('Excluded');
   });
 });
 
@@ -2390,7 +2391,7 @@ describe('Transcript duplicatePolicy', () => {
     const result = req.audit(minimalCatalog, tx);
     expect(result.status).toBe('met');
     // The A grade should be selected
-    expect(result.items.satisfiedBy.grade).toBe('A');
+    expect(result.results.satisfiedBy.grade).toBe('A');
   });
 
   test('latest policy uses last entry during audit (default)', () => {
@@ -2403,7 +2404,7 @@ describe('Transcript duplicatePolicy', () => {
     });
     const result = req.audit(minimalCatalog, tx);
     expect(result.status).toBe('met');
-    expect(result.items.satisfiedBy.grade).toBe('C'); // last wins
+    expect(result.results.satisfiedBy.grade).toBe('C'); // last wins
   });
 
   test('first policy uses first entry during audit', () => {
@@ -2417,7 +2418,7 @@ describe('Transcript duplicatePolicy', () => {
     });
     const result = req.audit(minimalCatalog, tx);
     expect(result.status).toBe('met');
-    expect(result.items.satisfiedBy.grade).toBe('B'); // first wins
+    expect(result.results.satisfiedBy.grade).toBe('B'); // first wins
   });
 });
 
@@ -2960,21 +2961,21 @@ describe('Catalog auto-wrapping', () => {
 });
 
 // ============================================================
-// 26. ReqitVariable entity
+// 26. SharedDefinition entity
 // ============================================================
 
-describe('ReqitVariable', () => {
-  test('sharedVariable factory is a function', () => {
-    expect(typeof api.sharedVariable).toBe('function');
+describe('SharedDefinition', () => {
+  test('sharedDefinition factory is a function', () => {
+    expect(typeof api.sharedDefinition).toBe('function');
   });
 
-  test('ReqitVariable class is exported', () => {
-    expect(typeof api.ReqitVariable).toBe('function');
+  test('SharedDefinition class is exported', () => {
+    expect(typeof api.SharedDefinition).toBe('function');
   });
 
   test('constructs from string requirement', () => {
-    const v = api.sharedVariable({ name: 'discrete', requirement: 'any of (MATH 205, MATH 237)' });
-    expect(v).toBeInstanceOf(api.ReqitVariable);
+    const v = api.sharedDefinition({ name: 'discrete', requirement: 'any of (MATH 205, MATH 237)' });
+    expect(v).toBeInstanceOf(api.SharedDefinition);
     expect(v.name).toBe('discrete');
     expect(v.requirement).toBeInstanceOf(api.Requirement);
     expect(v.ast).toBeDefined();
@@ -2983,7 +2984,7 @@ describe('ReqitVariable', () => {
 
   test('constructs from Requirement instance', () => {
     const req = api.parse('all of (CMPS 130, CMPS 230)');
-    const v = api.sharedVariable({ name: 'cs_core', requirement: req });
+    const v = api.sharedDefinition({ name: 'cs_core', requirement: req });
     expect(v.name).toBe('cs_core');
     expect(v.requirement).toBe(req);
     expect(v.ast.type).toBe('all-of');
@@ -2991,27 +2992,27 @@ describe('ReqitVariable', () => {
 
   test('constructs from raw AST', () => {
     const ast = { type: 'course', subject: 'MATH', number: '151' };
-    const v = api.sharedVariable({ name: 'calc', requirement: ast });
+    const v = api.sharedDefinition({ name: 'calc', requirement: ast });
     expect(v.name).toBe('calc');
     expect(v.requirement).toBeInstanceOf(api.Requirement);
     expect(v.ast.type).toBe('course');
   });
 
   test('missing name throws', () => {
-    expect(() => api.sharedVariable({ requirement: 'MATH 151' })).toThrow('name');
+    expect(() => api.sharedDefinition({ requirement: 'MATH 151' })).toThrow('name');
   });
 
   test('missing requirement throws', () => {
-    expect(() => api.sharedVariable({ name: 'x' })).toThrow('requirement');
+    expect(() => api.sharedDefinition({ name: 'x' })).toThrow('requirement');
   });
 
   test('data accessor returns frozen object', () => {
-    const v = api.sharedVariable({ name: 'x', requirement: 'MATH 151' });
+    const v = api.sharedDefinition({ name: 'x', requirement: 'MATH 151' });
     expect(Object.isFrozen(v.data)).toBe(true);
   });
 
   test('toJSON returns name and ast', () => {
-    const v = api.sharedVariable({ name: 'discrete', requirement: 'any of (MATH 205, MATH 237)' });
+    const v = api.sharedDefinition({ name: 'discrete', requirement: 'any of (MATH 205, MATH 237)' });
     const json = v.toJSON();
     expect(json.name).toBe('discrete');
     expect(json.ast).toBeDefined();
@@ -3020,15 +3021,15 @@ describe('ReqitVariable', () => {
 });
 
 // ============================================================
-// 27. sharedDefs support
+// 27. sharedDefinitions support
 // ============================================================
 
-describe('sharedDefs', () => {
+describe('sharedDefinitions', () => {
   const cat = api.catalog(minimalCatalog);
 
   test('single-tree audit: shared variable resolves in requirement', () => {
     // Define $electives as a shared variable
-    const shared = [api.sharedVariable({ name: 'electives', requirement: 'any of (CMPS 130, CMPS 230)' })];
+    const shared = [api.sharedDefinition({ name: 'electives', requirement: 'any of (CMPS 130, CMPS 230)' })];
     const req = api.parse('all of (MATH 151, $electives)');
     const tx = api.transcript({
       courses: [
@@ -3036,7 +3037,7 @@ describe('sharedDefs', () => {
         { subject: 'CMPS', number: '130', grade: 'B', credits: 3 },
       ],
     });
-    const result = req.audit(cat, tx, { sharedDefs: shared });
+    const result = req.audit(cat, tx, { sharedDefinitions: shared });
     expect(result.status).toBe(api.AuditStatus.MET);
   });
 
@@ -3047,23 +3048,23 @@ describe('sharedDefs', () => {
     });
     const result = req.audit(cat, tx);
     // MATH 151 is met but $missing is unresolved → partial-progress, not a crash
-    expect(result.status).toBe(api.AuditStatus.PARTIAL_PROGRESS);
+    expect(result.status).toBe(api.AuditStatus.IN_PROGRESS);
   });
 
   test('local variable definition wins over shared', () => {
     // Shared: $x = CMPS 130; Local in req: $x = MATH 151
-    const shared = [api.sharedVariable({ name: 'x', requirement: 'CMPS 130' })];
+    const shared = [api.sharedDefinition({ name: 'x', requirement: 'CMPS 130' })];
     const req = api.parse('all of ($x = MATH 151, $x)');
     const tx = api.transcript({
       courses: [{ subject: 'MATH', number: '151', grade: 'A', credits: 4 }],
     });
-    const result = req.audit(cat, tx, { sharedDefs: shared });
+    const result = req.audit(cat, tx, { sharedDefinitions: shared });
     // Local $x = MATH 151 wins, so completing MATH 151 should satisfy it
     expect(result.status).toBe(api.AuditStatus.MET);
   });
 
-  test('multi-tree audit: sharedDefs available to all trees', () => {
-    const shared = [api.sharedVariable({ name: 'calc', requirement: 'MATH 151' })];
+  test('multi-tree audit: sharedDefinitions available to all trees', () => {
+    const shared = [api.sharedDefinition({ name: 'calc', requirement: 'MATH 151' })];
     const tree1 = api.parse('all of ($calc, CMPS 130)');
     const tree2 = api.parse('$calc');
     const tx = api.transcript({
@@ -3074,16 +3075,16 @@ describe('sharedDefs', () => {
     });
     const multi = api.auditMulti(cat, tx, {
       trees: { PROG1: tree1, PROG2: tree2 },
-      sharedDefs: shared,
+      sharedDefinitions: shared,
     });
     expect(multi.trees.PROG1.status).toBe(api.AuditStatus.MET);
     expect(multi.trees.PROG2.status).toBe(api.AuditStatus.MET);
   });
 
-  test('resolve: shared variable refs expand with sharedDefs', () => {
-    const shared = [api.sharedVariable({ name: 'electives', requirement: 'any of (CMPS 130, CMPS 230)' })];
+  test('resolve: shared variable refs expand with sharedDefinitions', () => {
+    const shared = [api.sharedDefinition({ name: 'electives', requirement: 'any of (CMPS 130, CMPS 230)' })];
     const req = api.parse('all of (MATH 151, $electives)');
-    const resolved = req.resolve(cat, { sharedDefs: shared });
+    const resolved = req.resolve(cat, { sharedDefinitions: shared });
     const allCourses = resolved.allCourses();
     const keys = allCourses.map(c => `${c.subject}:${c.number}`);
     expect(keys).toContain('MATH:151');
@@ -3091,7 +3092,7 @@ describe('sharedDefs', () => {
     expect(keys).toContain('CMPS:230');
   });
 
-  test('sharedDefs accepts plain Map<string, AST>', () => {
+  test('sharedDefinitions accepts plain Map<string, AST>', () => {
     const shared = new Map([
       ['electives', { type: 'course', subject: 'CMPS', number: '130' }],
     ]);
@@ -3102,11 +3103,11 @@ describe('sharedDefs', () => {
         { subject: 'CMPS', number: '130', grade: 'B', credits: 3 },
       ],
     });
-    const result = req.audit(cat, tx, { sharedDefs: shared });
+    const result = req.audit(cat, tx, { sharedDefinitions: shared });
     expect(result.status).toBe(api.AuditStatus.MET);
   });
 
-  test('sharedDefs accepts plain object { name: AST }', () => {
+  test('sharedDefinitions accepts plain object { name: AST }', () => {
     const shared = {
       electives: { type: 'course', subject: 'CMPS', number: '130' },
     };
@@ -3117,7 +3118,7 @@ describe('sharedDefs', () => {
         { subject: 'CMPS', number: '130', grade: 'B', credits: 3 },
       ],
     });
-    const result = req.audit(cat, tx, { sharedDefs: shared });
+    const result = req.audit(cat, tx, { sharedDefinitions: shared });
     expect(result.status).toBe(api.AuditStatus.MET);
   });
 });

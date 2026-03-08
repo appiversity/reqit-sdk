@@ -32,25 +32,25 @@ describe('toHTML audit overlay', () => {
     expect(html).not.toContain('reqit-term');
   });
 
-  test('in-progress course → reqit-status-in-progress class', () => {
+  test('provisional-met course → reqit-status-provisional-met class', () => {
     const ast = { type: 'course', subject: 'MATH', number: '152' };
     const auditNode = {
       type: 'course', subject: 'MATH', number: '152',
+      status: 'provisional-met',
+    };
+    const html = toHTML(ast, null, auditNode);
+    expect(html).toContain('reqit-status-provisional-met');
+    expect(html).toContain('&#9685;'); // provisional-met indicator
+  });
+
+  test('in-progress course → reqit-status-in-progress class + half-circle', () => {
+    const ast = { type: 'course', subject: 'MATH', number: '101' };
+    const auditNode = {
+      type: 'course', subject: 'MATH', number: '101',
       status: 'in-progress',
     };
     const html = toHTML(ast, null, auditNode);
     expect(html).toContain('reqit-status-in-progress');
-    expect(html).toContain('&#9685;'); // in-progress indicator
-  });
-
-  test('partial-progress course → reqit-status-partial-progress class + half-circle', () => {
-    const ast = { type: 'course', subject: 'MATH', number: '101' };
-    const auditNode = {
-      type: 'course', subject: 'MATH', number: '101',
-      status: 'partial-progress',
-    };
-    const html = toHTML(ast, null, auditNode);
-    expect(html).toContain('reqit-status-partial-progress');
     expect(html).toContain('&#9681;'); // half-circle
   });
 

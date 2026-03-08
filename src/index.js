@@ -21,7 +21,7 @@ const {
   Program,
   Attribute,
   DeclaredProgram,
-  ReqitVariable,
+  SharedDefinition,
   Catalog,
   Degree,
   TranscriptCourse,
@@ -33,7 +33,7 @@ const {
   unwrapTranscript,
   extractTranscriptOptions,
   deriveProgramContext,
-  normalizeSharedDefs,
+  normalizeSharedDefinitions,
 } = require('./entities');
 const { auditMulti: internalAuditMulti } = require('./audit/multi-tree');
 const { isPassingGrade, meetsMinGrade, calculateGPA: internalCalculateGPA, isValidGrade } = require('./grade');
@@ -92,9 +92,9 @@ function degree(data) {
   return new Degree(data);
 }
 
-/** Create a ReqitVariable instance for shared variable injection. */
-function sharedVariable(data) {
-  return new ReqitVariable(data);
+/** Create a SharedDefinition instance for shared variable injection. */
+function sharedDefinition(data) {
+  return new SharedDefinition(data);
 }
 
 // ============================================================
@@ -137,7 +137,7 @@ function publicAuditMulti(cat, tx, options) {
   });
   // Extract transcript options (attainments, declaredPrograms, exceptions)
   const txOpts = extractTranscriptOptions(tx);
-  if (rest.sharedDefs) rest.sharedDefs = normalizeSharedDefs(rest.sharedDefs);
+  if (rest.sharedDefinitions) rest.sharedDefinitions = normalizeSharedDefinitions(rest.sharedDefinitions);
   const raw = internalAuditMulti(
     treeArray,
     unwrapCatalog(cat),
@@ -175,8 +175,8 @@ module.exports = {
   waiver: waiverFactory,
   /** Create a Substitution exception for audit. */
   substitution: substitutionFactory,
-  /** Create a ReqitVariable for shared variable injection. */
-  sharedVariable,
+  /** Create a SharedDefinition for shared variable injection. */
+  sharedDefinition,
 
   // -- Entity classes --
   /** Parsed requirement with rendering, auditing, and analysis methods. */
@@ -190,7 +190,7 @@ module.exports = {
   /** A declared program on a transcript (major, minor, etc.). */
   DeclaredProgram,
   /** A shared variable definition for cross-program reuse. */
-  ReqitVariable,
+  SharedDefinition,
   /** Course catalog with lookup and query methods. */
   Catalog,
   /** Degree credential (B.S., M.A., etc.) with metadata. */
@@ -211,7 +211,7 @@ module.exports = {
   Substitution,
 
   // -- Enumerations --
-  /** Audit status values: MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET, WAIVED, SUBSTITUTED. */
+  /** Audit status values: MET, PROVISIONAL_MET, IN_PROGRESS, NOT_MET, WAIVED, SUBSTITUTED. */
   AuditStatus,
   /** Program type values: MAJOR, MINOR, CERTIFICATE, CONCENTRATION, TRACK, CLUSTER. */
   ProgramType,

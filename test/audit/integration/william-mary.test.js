@@ -6,7 +6,7 @@
  * distribution, proficiency attainments, except clauses.
  */
 
-const { audit, findUnmet, MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET } = require('../../../src/audit');
+const { audit, findUnmet, MET, PROVISIONAL_MET, IN_PROGRESS, NOT_MET } = require('../../../src/audit');
 const wmCatalog = require('../../fixtures/catalogs/william-mary.json');
 const csComplete = require('../../fixtures/transcripts/william-mary/cs-complete.json');
 const csLowGpa = require('../../fixtures/transcripts/william-mary/cs-low-gpa.json');
@@ -232,7 +232,7 @@ describe('W&M CS Major — GPA constraints', () => {
       { subject: 'CSCI', number: '455', grade: null,  credits: 3, term: 'Spring 2024', status: 'in-progress' },
     ];
     const { status } = audit(csMajorWithGpaAst, wmCatalog, transcript);
-    expect(status).toBe(IN_PROGRESS);
+    expect(status).toBe(PROVISIONAL_MET);
   });
 
   test('constraintResult contains actual and minGpa', () => {
@@ -290,7 +290,7 @@ describe('W&M CS Major — Concentration/Track selection', () => {
       { subject: 'CSCI', number: '421', grade: 'A',  credits: 3, term: 'Fall 2024', status: 'completed' },
     ];
     const { status } = audit(trackSelectionAst, wmCatalog, transcript);
-    expect(status).toBe(PARTIAL_PROGRESS);
+    expect(status).toBe(IN_PROGRESS);
   });
 });
 
@@ -310,10 +310,10 @@ describe('W&M COLL gen-ed — attribute distribution', () => {
       { subject: 'CSCI', number: '400', grade: 'A',  credits: 3, term: 'Spring 2025', status: 'completed' },
     ];
     const { status, result } = audit(collGenEdAst, wmCatalog, transcript);
-    expect(status).toBe(PARTIAL_PROGRESS);
+    expect(status).toBe(IN_PROGRESS);
     // Knowledge domains should be partial (ALV and CSI met, NQR not met)
     const domains = result.items[4]; // one-from-each
-    expect(domains.status).toBe(PARTIAL_PROGRESS);
+    expect(domains.status).toBe(IN_PROGRESS);
   });
 
   test('COLL 100 with grade below C- → constraint fails', () => {
@@ -324,7 +324,7 @@ describe('W&M COLL gen-ed — attribute distribution', () => {
     ];
     const { status, result } = audit(collWithGradeAst, wmCatalog, transcript);
     // all-of(NOT_MET, MET) → partial-progress (COLL150 met, COLL100 constraint failed)
-    expect(status).toBe(PARTIAL_PROGRESS);
+    expect(status).toBe(IN_PROGRESS);
     expect(result.items[0].status).toBe(NOT_MET);
     expect(result.items[0].constraintResult.met).toBe(false);
   });
@@ -342,7 +342,7 @@ describe('W&M COLL gen-ed — attribute distribution', () => {
     const { status } = audit(collGenEdAst, wmCatalog, transcript);
     // COLL100(met), COLL150(met), COLL350(ip), COLL400(ip), domains(partial) → partial or ip
     // all-of with mix of met/ip/partial → partial-progress (since not all met+ip)
-    expect([IN_PROGRESS, PARTIAL_PROGRESS]).toContain(status);
+    expect([PROVISIONAL_MET, IN_PROGRESS]).toContain(status);
   });
 });
 
@@ -367,7 +367,7 @@ describe('W&M proficiency attainments', () => {
       },
     };
     const { status, result } = audit(proficiencyAst, wmCatalog, [], opts);
-    expect(status).toBe(PARTIAL_PROGRESS);
+    expect(status).toBe(IN_PROGRESS);
     // First item (FOREIGN-LANG) should be not-met
     expect(result.items[0].status).toBe(NOT_MET);
   });

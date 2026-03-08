@@ -28,6 +28,28 @@ This matters because students don't all follow the same catalog. A student who e
 
 The SDK supports this naturally — `reqit.catalog()` accepts an `ay` field, and all queries and audits operate against whichever catalog you pass in. Your database schema just needs to store multiple years side by side, and your application logic needs to know which year to load for each student. We'll revisit this in the [Catalog Year and Rollover](#catalog-year-and-rollover) section below.
 
+### SIS-Owned Tables
+
+The schema references `students` and `institutions` tables, but the SDK doesn't define or manage these — they belong to your Student Information System (SIS). Your schema will vary, but at minimum:
+
+```sql
+CREATE TABLE institutions (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  slug VARCHAR(50) UNIQUE NOT NULL
+);
+
+CREATE TABLE students (
+  id SERIAL PRIMARY KEY,
+  institution_id INTEGER NOT NULL REFERENCES institutions(id),
+  student_number VARCHAR(50) NOT NULL,
+  catalog_ay VARCHAR(20),           -- the catalog year the student follows
+  UNIQUE(institution_id, student_number)
+);
+```
+
+Student data is protected under FERPA. Your actual schema will include additional fields (name, email, enrollment status, etc.) per your institution's needs. The SDK only requires the `id` for joining to transcript tables and `catalog_ay` for loading the correct catalog version.
+
 ### Catalog Tables
 
 #### Courses
@@ -386,7 +408,7 @@ async function loadTranscript(db, studentId) {
 
   // Build waivers — the target_type determines which waiver factory parameter to use
   const waivers = waiverRows.map(row => {
-    const target = JSON.parse(row.target_value);
+    const target = row.target_value;
     const opts = { id: String(row.id), reason: row.reason };
     if (row.metadata) opts.metadata = row.metadata;
 
@@ -484,14 +506,14 @@ CREATE TABLE audit_snapshots (
   student_id INTEGER NOT NULL,
   program_code VARCHAR(50) NOT NULL,
   ay VARCHAR(20) NOT NULL,
-  status VARCHAR(20) NOT NULL,        -- met, in-progress, partial-progress, not-met
-  summary JSONB NOT NULL,             -- { met: N, inProgress: N, ... }
+  status VARCHAR(20) NOT NULL,        -- met, provisional-met, in-progress, not-met
+  summary JSONB NOT NULL,             -- { met: N, provisionalMet: N, inProgress: N, notMet: N, waived: N, substituted: N, total: N }
   computed_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE(student_id, program_code, ay)
 );
 ```
 
-The `summary` column stores the same structure returned by `result.summary` — counts of met, in-progress, partial-progress, and not-met nodes. This is enough for most reporting queries ("how many seniors are on track to graduate?") without needing to store the full audit tree.
+The `summary` column stores the same structure returned by `result.summary` — counts of met, provisional-met, in-progress, and not-met nodes, plus waived and substituted counts. This is enough for most reporting queries ("how many seniors are on track to graduate?") without needing to store the full audit tree.
 
 ```javascript
 async function batchAudit(db, institutionId, ay) {
@@ -651,7 +673,7 @@ app.get('/students/:id/audit/:program', async (req, res) => {
       program,
       status: result.status,
       summary: result.summary,
-      auditHtml: result.toHTML(catalog, { classPrefix: 'audit-', wrapperTag: 'div' }),
+      auditHtml: result.toHTML(catalog, { wrapperTag: 'div' }),
       unmet: result.findUnmet(),
       eligible: result.findNextEligible(catalog, transcript),
       gpa: reqit.calculateGPA(transcript, catalog),

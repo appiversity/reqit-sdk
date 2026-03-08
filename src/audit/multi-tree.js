@@ -17,7 +17,7 @@
 const {
   prepareCatalog,
   collectDefs,
-  mergeSharedDefs,
+  mergeSharedDefinitions,
 } = require('../resolve');
 const { normalizeTranscript } = require('./transcript');
 const { auditNode, collectMatchedEntries } = require('./single-tree');
@@ -188,7 +188,7 @@ function auditMulti(trees, catalog, transcript, options) {
   // --- Pass 1: Audit each tree independently ---
   for (const tree of trees) {
     const defs = collectDefs(tree.ast, '', new Map());
-    if (opts.sharedDefs) mergeSharedDefs(defs, opts.sharedDefs);
+    if (opts.sharedDefinitions) mergeSharedDefinitions(defs, opts.sharedDefinitions);
     const ctx = {
       catalog: norm,
       courses: norm.courses,
@@ -205,7 +205,7 @@ function auditMulti(trees, catalog, transcript, options) {
       waivers: exCtx ? exCtx.waivers : null,
       substitutions: exCtx ? exCtx.substitutions : null,
       // Shared defs for sub-program audits (program-ref)
-      sharedDefs: opts.sharedDefs || null,
+      sharedDefinitions: opts.sharedDefinitions || null,
       // Program reference context
       programIndex,
       declaredPrograms: opts.declaredPrograms || [],

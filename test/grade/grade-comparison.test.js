@@ -91,7 +91,7 @@ describe('meetsMinGrade', () => {
 
   test('throws if minGrade is unknown string', () => {
     expect(() => meetsMinGrade('A', 'Excellent', DEFAULT_GRADE_CONFIG))
-      .toThrow('Grade "Excellent" not found in grade scale');
+      .toThrow('Grade "EXCELLENT" not found in grade scale');
   });
 
   // --- Uses default config when not provided ---

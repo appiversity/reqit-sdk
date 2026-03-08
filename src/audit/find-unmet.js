@@ -8,13 +8,13 @@
  */
 
 const { forEachChild } = require('../ast/children');
-const { MET, IN_PROGRESS, WAIVED, SUBSTITUTED } = require('./status');
+const { MET, PROVISIONAL_MET, WAIVED, SUBSTITUTED } = require('./status');
 
 /**
  * Walk an audit result tree and collect all nodes whose status is not 'met'.
  *
  * Only recurses into children of composites that are NOT_MET or
- * PARTIAL_PROGRESS. MET and IN_PROGRESS composites are skipped — their
+ * IN_PROGRESS. MET and PROVISIONAL_MET composites are skipped — their
  * children don't need student action.
  *
  * Returns a flat array of nodes that need attention, each annotated with
@@ -30,7 +30,7 @@ function findUnmet(result) {
     if (!node || typeof node !== 'object') return;
 
     // Skip satisfied composites — their children don't need action
-    if (node.status === MET || node.status === IN_PROGRESS ||
+    if (node.status === MET || node.status === PROVISIONAL_MET ||
         node.status === WAIVED || node.status === SUBSTITUTED) return;
 
     if (node.status) {
@@ -47,7 +47,7 @@ function findUnmet(result) {
       const prop = node[key];
       if (Array.isArray(prop)) {
         const idx = prop.indexOf(child);
-        walkResult(child, [...path, `${key}[${idx}]`]);
+        walkResult(child, [...path, key, idx]);
       } else {
         walkResult(child, [...path, key]);
       }

@@ -15,7 +15,7 @@ const { forEachChild } = require('../ast/children');
  * for each node.
  *
  * @param {object} root - The root audit result node
- * @param {(node: object, path: string[], parent: object|null, depth: number) => void} callback
+ * @param {(node: object, path: Array<string|number>, parent: object|null, depth: number) => void} callback
  */
 function walkResult(root, callback) {
   function visit(node, path, parent, depth) {
@@ -24,7 +24,7 @@ function walkResult(root, callback) {
     forEachChild(node, (child, key) => {
       const prop = node[key];
       if (Array.isArray(prop)) {
-        visit(child, [...path, `${key}[${prop.indexOf(child)}]`], node, depth + 1);
+        visit(child, [...path, key, prop.indexOf(child)], node, depth + 1);
       } else {
         visit(child, [...path, key], node, depth + 1);
       }

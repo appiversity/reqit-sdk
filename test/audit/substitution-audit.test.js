@@ -9,7 +9,7 @@
 
 const { audit } = require('../../src/audit');
 const { substitution, waiver } = require('../../src/audit/exceptions');
-const { SUBSTITUTED, MET, NOT_MET, IN_PROGRESS, WAIVED } = require('../../src/audit/status');
+const { SUBSTITUTED, MET, NOT_MET, PROVISIONAL_MET, WAIVED } = require('../../src/audit/status');
 const minimalCatalog = require('../fixtures/catalogs/minimal.json');
 const { findUnmet } = require('../../src/audit/find-unmet');
 
@@ -257,7 +257,7 @@ describe('in-progress substitution', () => {
     ];
     const result = audit(ast, minimalCatalog, tx, { exceptions: [sub] });
 
-    expect(result.status).toBe(IN_PROGRESS);
+    expect(result.status).toBe(PROVISIONAL_MET);
   });
 });
 

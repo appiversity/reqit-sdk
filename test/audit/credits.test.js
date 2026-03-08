@@ -1,6 +1,6 @@
 'use strict';
 
-const { audit, MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET } = require('../../src/audit');
+const { audit, MET, PROVISIONAL_MET, IN_PROGRESS, NOT_MET } = require('../../src/audit');
 const minimalCatalog = require('../fixtures/catalogs/minimal.json');
 
 const complete = require('../fixtures/transcripts/minimal/complete.json');
@@ -41,7 +41,7 @@ describe('credits-from at-least', () => {
       },
     };
     const { status, result } = audit(ast, minimalCatalog, inProgress);
-    expect(status).toBe(IN_PROGRESS);
+    expect(status).toBe(PROVISIONAL_MET);
     expect(result.creditsEarned).toBe(9);
     expect(result.creditsInProgress).toBe(6);
   });
@@ -56,7 +56,7 @@ describe('credits-from at-least', () => {
       },
     };
     const { status } = audit(ast, minimalCatalog, inProgress);
-    expect(status).toBe(PARTIAL_PROGRESS);
+    expect(status).toBe(IN_PROGRESS);
   });
 
   test('0 earned, 0 ip → not-met', () => {
@@ -145,7 +145,7 @@ describe('credits-from at-most', () => {
       },
     };
     const { status } = audit(ast, minimalCatalog, inProgress);
-    expect(status).toBe(IN_PROGRESS);
+    expect(status).toBe(PROVISIONAL_MET);
   });
 });
 
@@ -189,7 +189,7 @@ describe('credits-from exactly', () => {
       },
     };
     const { status } = audit(ast, minimalCatalog, inProgress);
-    expect(status).toBe(IN_PROGRESS);
+    expect(status).toBe(PROVISIONAL_MET);
   });
 
   test('no progress → not-met', () => {

@@ -1,7 +1,7 @@
 'use strict';
 
 const { auditNode } = require('../../src/audit/single-tree');
-const { MET, NOT_MET, IN_PROGRESS } = require('../../src/audit/status');
+const { MET, NOT_MET, PROVISIONAL_MET } = require('../../src/audit/status');
 
 /**
  * Helper: build a minimal audit context for program-ref tests.

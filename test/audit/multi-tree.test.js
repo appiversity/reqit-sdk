@@ -6,7 +6,7 @@
  * Phase 8.2-8.4: overlap rules, outside-program, program-context-ref
  */
 
-const { auditMulti, CourseAssignmentMap, MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET } = require('../../src/audit');
+const { auditMulti, CourseAssignmentMap, MET, PROVISIONAL_MET, IN_PROGRESS, NOT_MET } = require('../../src/audit');
 const minimalCatalog = require('../fixtures/catalogs/minimal.json');
 
 // ============================================================

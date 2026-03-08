@@ -5,7 +5,7 @@
  * Focus: cross-listing, variable references, realistic CSE major structure.
  */
 
-const { audit, findUnmet, MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET } = require('../../../src/audit');
+const { audit, findUnmet, MET, PROVISIONAL_MET, IN_PROGRESS, NOT_MET } = require('../../../src/audit');
 const lehighCatalog = require('../../fixtures/catalogs/lehigh.json');
 
 // Simplified CSE major AST using Lehigh's catalog
@@ -127,7 +127,7 @@ describe('Lehigh CSE Major — end-to-end', () => {
 
   test('missing capstone → partial-progress', () => {
     const { status, result } = audit(cseMajorAst, lehighCatalog, missingCapstone);
-    expect(status).toBe(PARTIAL_PROGRESS);
+    expect(status).toBe(IN_PROGRESS);
     // CSE 280 and 281 should be unmet
     const unmet = findUnmet(result);
     const capstoneUnmet = unmet.filter(
@@ -152,7 +152,7 @@ describe('Lehigh CSE Major — end-to-end', () => {
       { subject: 'MATH', number: '021', grade: 'B+', credits: 4, term: 'Fall 2022', status: 'completed' },
     ];
     const { status } = audit(cseMajorAst, lehighCatalog, transcript);
-    expect(status).toBe(PARTIAL_PROGRESS);
+    expect(status).toBe(IN_PROGRESS);
   });
 
   test('in-progress capstone → in-progress', () => {
@@ -168,6 +168,6 @@ describe('Lehigh CSE Major — end-to-end', () => {
       { subject: 'CSE', number: '281', grade: null,  credits: 4, term: 'Spring 2025', status: 'in-progress' },
     ];
     const { status } = audit(cseMajorAst, lehighCatalog, transcript);
-    expect(status).toBe(IN_PROGRESS);
+    expect(status).toBe(PROVISIONAL_MET);
   });
 });

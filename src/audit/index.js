@@ -7,11 +7,11 @@
 const {
   prepareCatalog,
   collectDefs,
-  mergeSharedDefs,
+  mergeSharedDefinitions,
 } = require('../resolve');
 const { normalizeTranscript } = require('./transcript');
 const { auditNode } = require('./single-tree');
-const { MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET, buildSummary } = require('./status');
+const { MET, PROVISIONAL_MET, IN_PROGRESS, NOT_MET, buildSummary } = require('./status');
 const { findUnmet } = require('./find-unmet');
 const { buildExceptionContext, applySubstitutions, partitionExceptions } = require('./exceptions');
 
@@ -67,7 +67,7 @@ function prepareAudit(ast, catalog) {
       }
 
       // Merge shared defs (local defs from AST win over shared)
-      const mergedDefs = opts.sharedDefs ? mergeSharedDefs(new Map(defs), opts.sharedDefs) : defs;
+      const mergedDefs = opts.sharedDefinitions ? mergeSharedDefinitions(new Map(defs), opts.sharedDefinitions) : defs;
 
       const ctx = {
         catalog: norm,
@@ -85,7 +85,7 @@ function prepareAudit(ast, catalog) {
         waivers: exCtx ? exCtx.waivers : null,
         substitutions: exCtx ? exCtx.substitutions : null,
         // Shared defs for sub-program audits (program-ref)
-        sharedDefs: opts.sharedDefs || null,
+        sharedDefinitions: opts.sharedDefinitions || null,
         // Program reference context
         programIndex,
         declaredPrograms: opts.declaredPrograms || [],
@@ -144,7 +144,7 @@ module.exports = {
   auditMulti,
   CourseAssignmentMap,
   MET,
+  PROVISIONAL_MET,
   IN_PROGRESS,
-  PARTIAL_PROGRESS,
   NOT_MET,
 };

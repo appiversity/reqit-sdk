@@ -6,7 +6,7 @@
  * keystones + distribution gen-ed, CS minor.
  */
 
-const { audit, findUnmet, MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET } = require('../../../src/audit');
+const { audit, findUnmet, MET, PROVISIONAL_MET, IN_PROGRESS, NOT_MET } = require('../../../src/audit');
 const rcnjCatalog = require('../../fixtures/catalogs/rcnj.json');
 const csComplete = require('../../fixtures/transcripts/rcnj/cs-complete.json');
 const csScoreAlt = require('../../fixtures/transcripts/rcnj/cs-score-alternative.json');
@@ -214,7 +214,7 @@ describe('RCNJ CS Major — pervasive grade constraints', () => {
       { subject: 'CMPS', number: '450', grade: null,  credits: 4, term: 'Spring 2025', status: 'in-progress' },
     ];
     const { status } = audit(csCoreAst, rcnjCatalog, transcript);
-    expect(status).toBe(IN_PROGRESS);
+    expect(status).toBe(PROVISIONAL_MET);
   });
 });
 
@@ -240,7 +240,7 @@ describe('RCNJ Gen-ed — keystones + distribution', () => {
       { subject: 'SUST', number: '201', grade: 'B+', credits: 3, term: 'Spring 2025', status: 'completed' },
     ];
     const { status, result } = audit(genEdAst, rcnjCatalog, transcript);
-    expect(status).toBe(PARTIAL_PROGRESS);
+    expect(status).toBe(IN_PROGRESS);
     // Keystones missing GA
     const keystones = result.items[0];
     const gaFilter = keystones.items[5]; // GA is 6th keystone (index 5)
@@ -253,7 +253,7 @@ describe('RCNJ Gen-ed — keystones + distribution', () => {
       { subject: 'MUSC', number: '201', grade: 'B', credits: 3, term: 'Spring 2024', status: 'completed' },
     ];
     const { status } = audit(genEdDistributionAst, rcnjCatalog, transcript);
-    expect(status).toBe(PARTIAL_PROGRESS);
+    expect(status).toBe(IN_PROGRESS);
   });
 
   test('distribution: exactly 2 of 3 categories met → met', () => {
@@ -285,7 +285,7 @@ describe('RCNJ CS Major — complete program audit', () => {
       { subject: 'MATH', number: '121', grade: 'B+', credits: 4, term: 'Fall 2022', status: 'completed' },
     ];
     const { status, result } = audit(csMajorAst, rcnjCatalog, transcript);
-    expect(status).toBe(PARTIAL_PROGRESS);
+    expect(status).toBe(IN_PROGRESS);
     const unmet = findUnmet(result);
     expect(unmet.length).toBeGreaterThan(0);
     // Should include missing core courses
@@ -308,7 +308,7 @@ describe('RCNJ CS Minor', () => {
       { subject: 'CMPS', number: '231', grade: 'A-', credits: 4, term: 'Fall 2023', status: 'completed' },
     ];
     const { status, result } = audit(csMinorAst, rcnjCatalog, transcript);
-    expect(status).toBe(PARTIAL_PROGRESS);
+    expect(status).toBe(IN_PROGRESS);
     // Electives n-of should be not-met
     expect(result.items[3].status).toBe(NOT_MET);
   });

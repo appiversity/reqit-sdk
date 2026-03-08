@@ -1,6 +1,6 @@
 'use strict';
 
-const { audit, MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET } = require('../../src/audit');
+const { audit, MET, PROVISIONAL_MET, IN_PROGRESS, NOT_MET } = require('../../src/audit');
 const minimalCatalog = require('../fixtures/catalogs/minimal.json');
 
 const complete = require('../fixtures/transcripts/minimal/complete.json');
@@ -38,9 +38,9 @@ describe('all-of', () => {
       ],
     };
     const { status, result } = audit(ast, minimalCatalog, inProgress);
-    expect(status).toBe(IN_PROGRESS);
+    expect(status).toBe(PROVISIONAL_MET);
     expect(result.summary.met).toBe(2);
-    expect(result.summary.inProgress).toBe(1);
+    expect(result.summary.provisionalMet).toBe(1);
   });
 
   test('some met, some not-met → partial-progress', () => {
@@ -53,7 +53,7 @@ describe('all-of', () => {
       ],
     };
     const { status, result } = audit(ast, minimalCatalog, partial);
-    expect(status).toBe(PARTIAL_PROGRESS);
+    expect(status).toBe(IN_PROGRESS);
     expect(result.summary.met).toBe(1);
     expect(result.summary.notMet).toBe(2);
   });
@@ -131,7 +131,7 @@ describe('any-of', () => {
       ],
     };
     const { status } = audit(ast, minimalCatalog, inProgress);
-    expect(status).toBe(IN_PROGRESS);
+    expect(status).toBe(PROVISIONAL_MET);
   });
 
   test('all not-met → not-met', () => {
@@ -193,7 +193,7 @@ describe('n-of at-least', () => {
       ],
     };
     const { status } = audit(ast, minimalCatalog, inProgress);
-    expect(status).toBe(IN_PROGRESS);
+    expect(status).toBe(PROVISIONAL_MET);
   });
 
   test('some progress but not enough → partial-progress', () => {
@@ -206,7 +206,7 @@ describe('n-of at-least', () => {
       ],
     };
     const { status } = audit(ast, minimalCatalog, partial);
-    expect(status).toBe(PARTIAL_PROGRESS);
+    expect(status).toBe(IN_PROGRESS);
   });
 
   test('no progress → not-met', () => {
@@ -274,7 +274,7 @@ describe('n-of at-most', () => {
       ],
     };
     const { status } = audit(ast, minimalCatalog, inProgress);
-    expect(status).toBe(IN_PROGRESS);
+    expect(status).toBe(PROVISIONAL_MET);
   });
 });
 
@@ -318,7 +318,7 @@ describe('n-of exactly', () => {
       ],
     };
     const { status } = audit(ast, minimalCatalog, inProgress);
-    expect(status).toBe(IN_PROGRESS);
+    expect(status).toBe(PROVISIONAL_MET);
   });
 });
 
@@ -361,7 +361,7 @@ describe('none-of', () => {
       ],
     };
     const { status } = audit(ast, minimalCatalog, inProgress);
-    expect(status).toBe(IN_PROGRESS);
+    expect(status).toBe(PROVISIONAL_MET);
   });
 
   test('empty → met', () => {
@@ -411,7 +411,7 @@ describe('one-from-each', () => {
       ],
     };
     const { status } = audit(ast, minimalCatalog, partial);
-    expect(status).toBe(PARTIAL_PROGRESS);
+    expect(status).toBe(IN_PROGRESS);
   });
 
   test('one group has in-progress → in-progress', () => {
@@ -427,7 +427,7 @@ describe('one-from-each', () => {
       ],
     };
     const { status } = audit(ast, minimalCatalog, inProgress);
-    expect(status).toBe(IN_PROGRESS);
+    expect(status).toBe(PROVISIONAL_MET);
   });
 
   test('no groups satisfied → not-met', () => {
@@ -502,7 +502,7 @@ describe('from-n-groups', () => {
       ],
     };
     const { status } = audit(ast, minimalCatalog, inProgress);
-    expect(status).toBe(IN_PROGRESS);
+    expect(status).toBe(PROVISIONAL_MET);
   });
 
   test('some group progress but not enough → partial-progress', () => {
@@ -521,7 +521,7 @@ describe('from-n-groups', () => {
       ],
     };
     const { status } = audit(ast, minimalCatalog, partial);
-    expect(status).toBe(PARTIAL_PROGRESS);
+    expect(status).toBe(IN_PROGRESS);
   });
 
   test('no groups met → not-met', () => {
@@ -612,9 +612,9 @@ describe('nested composites', () => {
       ],
     };
     const { status, result } = audit(ast, minimalCatalog, partial);
-    expect(status).toBe(PARTIAL_PROGRESS);
+    expect(status).toBe(IN_PROGRESS);
     expect(result.items[0].status).toBe(MET);
-    expect(result.items[1].status).toBe(PARTIAL_PROGRESS);
+    expect(result.items[1].status).toBe(IN_PROGRESS);
   });
 
   test('three levels deep — all met → met', () => {

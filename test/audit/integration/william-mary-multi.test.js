@@ -5,7 +5,7 @@
  * Tests auditMulti() with 3 trees: CS major, COLL gen-ed, graduation requirements.
  */
 
-const { auditMulti, MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET } = require('../../../src/audit');
+const { auditMulti, MET, PROVISIONAL_MET, IN_PROGRESS, NOT_MET } = require('../../../src/audit');
 const wmCatalog = require('../../fixtures/catalogs/william-mary.json');
 const csComplete = require('../../fixtures/transcripts/william-mary/cs-complete.json');
 const csPartial = require('../../fixtures/transcripts/william-mary/cs-partial.json');
@@ -211,12 +211,12 @@ describe('W&M multi-tree integration', () => {
     );
 
     // CS major has in-progress courses → in-progress
-    expect(results.get('BS-CSCI').status).toBe(IN_PROGRESS);
+    expect(results.get('BS-CSCI').status).toBe(PROVISIONAL_MET);
 
     // COLL gen-ed has some courses but not all → partial progress
-    expect(results.get('COLL').status).toBe(PARTIAL_PROGRESS);
+    expect(results.get('COLL').status).toBe(IN_PROGRESS);
 
     // GRAD-REQ: attainments met + program-context-ref resolves to in-progress BS-CSCI
-    expect(results.get('GRAD-REQ').status).toBe(IN_PROGRESS);
+    expect(results.get('GRAD-REQ').status).toBe(PROVISIONAL_MET);
   });
 });

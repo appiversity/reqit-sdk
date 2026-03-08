@@ -9,7 +9,7 @@
 
 const { audit } = require('../../src/audit');
 const { waiver } = require('../../src/audit/exceptions');
-const { WAIVED, MET, NOT_MET, IN_PROGRESS } = require('../../src/audit/status');
+const { WAIVED, MET, NOT_MET, PROVISIONAL_MET } = require('../../src/audit/status');
 const minimalCatalog = require('../fixtures/catalogs/minimal.json');
 const { findUnmet } = require('../../src/audit/find-unmet');
 

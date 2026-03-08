@@ -276,9 +276,11 @@ function statusIndicator(status, pfx) {
   if (!status) return '';
   switch (status) {
     case 'met': return `<span class="${pfx}status-indicator">&#10003;</span> `;
-    case 'in-progress': return `<span class="${pfx}status-indicator">&#9685;</span> `;
-    case 'partial-progress': return `<span class="${pfx}status-indicator">&#9681;</span> `;
+    case 'provisional-met': return `<span class="${pfx}status-indicator">&#9685;</span> `;
+    case 'in-progress': return `<span class="${pfx}status-indicator">&#9681;</span> `;
     case 'not-met': return `<span class="${pfx}status-indicator">&#9675;</span> `;
+    case 'waived': return `<span class="${pfx}status-indicator">&#8856;</span> `;
+    case 'substituted': return `<span class="${pfx}status-indicator">&#8644;</span> `;
     default: return '';
   }
 }
@@ -340,8 +342,18 @@ function renderNodeWithAudit(node, catalog, auditNode, pfx, opts) {
       return html;
     }
 
-    case 'course-filter':
-      return `<span class="${pfx}course-filter${sc}">${si}Any course where ${node.filters.map(f => renderFilter(f, catalog)).join(' and ')}</span>`;
+    case 'course-filter': {
+      let html = `<span class="${pfx}course-filter${sc}">${si}Any course where ${node.filters.map(f => renderFilter(f, catalog)).join(' and ')}`;
+      if (auditNode && auditNode.matchedCourses && auditNode.matchedCourses.length > 0) {
+        html += `<ul class="${pfx}filter-matches">`;
+        for (const mc of auditNode.matchedCourses) {
+          html += `<li>${esc(mc.subject)} ${esc(mc.number)}</li>`;
+        }
+        html += '</ul>';
+      }
+      html += '</span>';
+      return html;
+    }
 
     case 'score':
       return `<span class="${pfx}score${sc}">${si}Score ${esc(node.name)} ${OP_SYMBOLS[node.op]} ${node.value}</span>`;

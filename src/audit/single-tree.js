@@ -20,12 +20,12 @@ const { isPassingGrade, meetsMinGrade, calculateGPA } = require('../grade');
 const {
   evaluateFilters,
   collectDefs,
-  mergeSharedDefs,
+  mergeSharedDefinitions,
 } = require('../resolve');
 const { forEachChild } = require('../ast/children');
 const { lookupTranscriptEntry } = require('./transcript');
 const {
-  MET, IN_PROGRESS, PARTIAL_PROGRESS, NOT_MET, WAIVED, SUBSTITUTED,
+  MET, PROVISIONAL_MET, IN_PROGRESS, NOT_MET, WAIVED, SUBSTITUTED,
   allOf, anyOf, nOf, noneOf, creditsFrom, buildSummary,
 } = require('./status');
 const { evaluatePostConstraints } = require('./post-constraints');
@@ -163,11 +163,11 @@ function auditCourse(node, ctx) {
   if (entry.status === 'in-progress') {
     const result = {
       type: 'course', subject: node.subject, number: node.number,
-      status: IN_PROGRESS,
+      status: PROVISIONAL_MET,
       satisfiedBy: { ...entry },
     };
     if (entry._substitution) {
-      result.status = IN_PROGRESS; // substitution in-progress — keep as IP
+      result.status = PROVISIONAL_MET; // substitution in-progress — keep as IP
       result.substitution = entry._substitution.toJSON();
     }
     return result;
@@ -229,7 +229,7 @@ function auditCourseFilter(node, ctx) {
   if (found.length > 0) {
     result.status = MET;
   } else if (inProg.length > 0) {
-    result.status = IN_PROGRESS;
+    result.status = PROVISIONAL_MET;
   } else {
     result.status = NOT_MET;
   }
@@ -498,8 +498,8 @@ function auditWithConstraint(node, ctx) {
     result.constraintResult = constraintResult;
     if (!constraintResult.met) {
       // If inner is in-progress, GPA may change — status is in-progress
-      if (innerResult.status === IN_PROGRESS) {
-        result.status = IN_PROGRESS;
+      if (innerResult.status === PROVISIONAL_MET) {
+        result.status = PROVISIONAL_MET;
       } else {
         result.status = NOT_MET;
       }
@@ -539,7 +539,7 @@ function auditExcept(node, ctx) {
   if (hasCompleted) {
     status = MET;
   } else if (hasInProgress) {
-    status = IN_PROGRESS;
+    status = PROVISIONAL_MET;
   } else {
     status = NOT_MET;
   }
@@ -776,7 +776,7 @@ function auditProgramRef(node, ctx) {
   // Run sub-audit
   visitedPrograms.add(code);
   const subDefs = collectDefs(program.requirements, '', new Map());
-  if (ctx.sharedDefs) mergeSharedDefs(subDefs, ctx.sharedDefs);
+  if (ctx.sharedDefinitions) mergeSharedDefinitions(subDefs, ctx.sharedDefinitions);
   const subCtx = {
     ...ctx,
     defs: subDefs,
