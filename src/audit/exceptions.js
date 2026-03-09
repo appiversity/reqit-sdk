@@ -18,36 +18,26 @@ const { forEachChild } = require('../ast/children');
 const WAIVER_TARGET_KEYS = ['course', 'score', 'attainment', 'quantity', 'label'];
 
 class Waiver {
-  #id;
-  #target;
-  #reason;
-  #metadata;
+  #data;
 
-  constructor(target, reason, metadata, id) {
-    this.#id = id || null;
-    this.#target = Object.freeze(target);
-    this.#reason = reason;
-    this.#metadata = metadata ? Object.freeze(metadata) : null;
+  constructor(data) {
+    this.#data = Object.freeze({ ...data });
     Object.freeze(this);
   }
 
-  get id() { return this.#id; }
+  get id() { return this.#data.id || null; }
   get kind() { return 'waiver'; }
-  get target() { return this.#target; }
-  get reason() { return this.#reason; }
-  get metadata() { return this.#metadata; }
-
-  toJSON() {
-    const obj = { kind: 'waiver', reason: this.#reason };
-    if (this.#id) obj.id = this.#id;
+  get target() {
+    const t = {};
     for (const key of WAIVER_TARGET_KEYS) {
-      if (this.#target[key] !== undefined) {
-        obj[key] = this.#target[key];
-      }
+      if (this.#data[key] !== undefined) t[key] = this.#data[key];
     }
-    if (this.#metadata) obj.metadata = this.#metadata;
-    return obj;
+    return Object.freeze(t);
   }
+  get reason() { return this.#data.reason; }
+  get metadata() { return this.#data.metadata || null; }
+
+  toJSON() { return { kind: 'waiver', ...this.#data }; }
 }
 
 // ============================================================
@@ -55,38 +45,31 @@ class Waiver {
 // ============================================================
 
 class Substitution {
-  #id;
-  #original;
-  #replacement;
-  #reason;
-  #metadata;
+  #data;
 
-  constructor(original, replacement, reason, metadata, id) {
-    this.#id = id || null;
-    this.#original = Object.freeze({ ...original });
-    this.#replacement = Object.freeze({ ...replacement });
-    this.#reason = reason;
-    this.#metadata = metadata ? Object.freeze(metadata) : null;
+  constructor(data) {
+    this.#data = Object.freeze({
+      ...data,
+      original: Object.freeze({ ...data.original }),
+      replacement: Object.freeze({ ...data.replacement }),
+    });
     Object.freeze(this);
   }
 
-  get id() { return this.#id; }
+  get id() { return this.#data.id || null; }
   get kind() { return 'substitution'; }
-  get original() { return this.#original; }
-  get replacement() { return this.#replacement; }
-  get reason() { return this.#reason; }
-  get metadata() { return this.#metadata; }
+  get original() { return this.#data.original; }
+  get replacement() { return this.#data.replacement; }
+  get reason() { return this.#data.reason; }
+  get metadata() { return this.#data.metadata || null; }
 
   toJSON() {
-    const obj = {
+    return {
       kind: 'substitution',
-      reason: this.#reason,
-      original: { ...this.#original },
-      replacement: { ...this.#replacement },
+      ...this.#data,
+      original: { ...this.#data.original },
+      replacement: { ...this.#data.replacement },
     };
-    if (this.#id) obj.id = this.#id;
-    if (this.#metadata) obj.metadata = this.#metadata;
-    return obj;
   }
 }
 
@@ -146,12 +129,12 @@ function waiver(opts) {
     }
   }
 
-  const target = {};
-  target[targetKey] = targetKey === 'course'
-    ? { subject: targetValue.subject, number: targetValue.number }
-    : targetValue;
+  const normalized = { ...opts, reason: reason.trim() };
+  if (targetKey === 'course') {
+    normalized.course = { subject: targetValue.subject, number: targetValue.number };
+  }
 
-  return new Waiver(target, reason.trim(), metadata || null, id || null);
+  return new Waiver(normalized);
 }
 
 /**
@@ -183,13 +166,12 @@ function substitution(opts) {
     throw new Error('substitution() requires replacement with { subject, number }');
   }
 
-  return new Substitution(
-    { subject: original.subject, number: original.number },
-    { subject: replacement.subject, number: replacement.number },
-    reason.trim(),
-    metadata || null,
-    id || null,
-  );
+  return new Substitution({
+    ...opts,
+    original: { subject: original.subject, number: original.number },
+    replacement: { subject: replacement.subject, number: replacement.number },
+    reason: reason.trim(),
+  });
 }
 
 // ============================================================

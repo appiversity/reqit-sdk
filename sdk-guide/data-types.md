@@ -2,7 +2,7 @@
 
 This document covers every data structure you pass into or receive from the reqit SDK. These are your integration boundaries — get these right and everything else falls into place. For database schema patterns and loading data into these types, see the [Database Integration Guide](database-guide.md).
 
-> **A note on `id` fields:** Every entity type accepts an optional `id` field. The SDK never generates, validates, or interprets these values — they exist so you can round-trip your own database primary keys or application identifiers through SDK objects. Set them when loading from a database; omit them when you don't need them.
+> **A note on extra fields:** Every entity type preserves any extra fields you include — `id`, `created_at`, `approved_by`, or any application-specific data. The SDK never generates, validates, or interprets these values — they exist so you can round-trip your own database keys and application metadata through SDK objects. Extra fields survive construction, `toJSON()`, and (for Transcript) immutable mutations like `addCourse()` and `addWaiver()`. Set them when loading from a database; omit them when you don't need them.
 
 ## Catalog
 
@@ -245,6 +245,7 @@ const tx = reqit.transcript({
 | `substitutions` | `Substitution[]` | No | Substitution exception instances (must use `reqit.substitution()` to create). |
 | `level` | `string` | No | Student's academic level. Should use `ProgramLevel` values (`'undergraduate'`, `'graduate'`, etc.). |
 | `duplicatePolicy` | `string` | No | When a course appears multiple times: `'last'` (default) uses the most recent; `'first'` uses the earliest. |
+| *any extra fields* | `any` | No | Application-specific fields (e.g. `student_id`, `advisor`). Preserved through `toJSON()` and immutable mutations. |
 
 ### Transcript Getters
 
@@ -274,7 +275,7 @@ All mutation methods return a **new** Transcript — the original is never modif
 | `removeWaiver(target)` | `Transcript` | Remove by course `{ subject, number }`, by string target name, or by ID string. |
 | `addSubstitution(sub)` | `Transcript` | Add a Substitution instance. |
 | `removeSubstitution(target)` | `Transcript` | Remove by original course `{ subject, number }` or by ID string. |
-| `tx.toJSON()` | `object` | Serializable copy. |
+| `tx.toJSON()` | `object` | Serializable copy. Includes extra fields and calls `toJSON()` on nested entities (courses, declaredPrograms, waivers, substitutions). |
 
 ---
 
@@ -404,7 +405,9 @@ reqit.waiver({ label: 'Math Core', reason: 'Placed out by exam' });
 | `w.target` | `object` | The target: `{ course }`, `{ score }`, `{ attainment }`, `{ quantity }`, or `{ label }`. |
 | `w.reason` | `string` | Required reason string. |
 | `w.metadata` | `object\|null` | Optional pass-through data. |
-| `w.toJSON()` | `object` | Serializable copy (includes `id` when present). |
+| `w.toJSON()` | `object` | Serializable copy including extra fields (e.g. `id`, `created_at`, `approved_by`). |
+
+Any extra fields passed to `reqit.waiver()` beyond the standard fields (`id`, `course`/`score`/`attainment`/`quantity`/`label`, `reason`, `metadata`) are preserved and returned by `toJSON()`.
 
 ---
 
@@ -429,7 +432,9 @@ const s = reqit.substitution({
 | `s.replacement` | `{ subject, number }` | The actual course taken. |
 | `s.reason` | `string` | Required reason string. |
 | `s.metadata` | `object\|null` | Optional pass-through data. |
-| `s.toJSON()` | `object` | Serializable copy (includes `id` when present). |
+| `s.toJSON()` | `object` | Serializable copy including extra fields (e.g. `id`, `created_at`, `approved_by`). |
+
+Any extra fields passed to `reqit.substitution()` beyond the standard fields (`id`, `original`, `replacement`, `reason`, `metadata`) are preserved and returned by `toJSON()`.
 
 ---
 

@@ -3122,3 +3122,170 @@ describe('sharedDefinitions', () => {
     expect(result.status).toBe(api.AuditStatus.MET);
   });
 });
+
+// ============================================================
+// Extra fields preservation (round-trip)
+// ============================================================
+
+describe('Extra fields preservation', () => {
+  // -- Waiver extras --
+
+  test('Waiver preserves extra fields through toJSON()', () => {
+    const w = api.waiver({
+      course: { subject: 'MATH', number: '151' },
+      reason: 'AP credit',
+      approved_by: 'Dean Smith',
+      created_at: '2026-01-15',
+    });
+    const json = w.toJSON();
+    expect(json.approved_by).toBe('Dean Smith');
+    expect(json.created_at).toBe('2026-01-15');
+    expect(json.reason).toBe('AP credit');
+    expect(json.course).toEqual({ subject: 'MATH', number: '151' });
+  });
+
+  test('Waiver extras survive Transcript auto-wrap', () => {
+    const tx = api.transcript({
+      courses: [],
+      waivers: [{
+        course: { subject: 'MATH', number: '151' },
+        reason: 'AP credit',
+        approved_by: 'Dean Smith',
+      }],
+    });
+    const json = tx.toJSON();
+    expect(json.waivers[0].approved_by).toBe('Dean Smith');
+  });
+
+  // -- Substitution extras --
+
+  test('Substitution preserves extra fields through toJSON()', () => {
+    const s = api.substitution({
+      original: { subject: 'MATH', number: '151' },
+      replacement: { subject: 'PHYS', number: '201' },
+      reason: 'Department approval',
+      student_id: 'stu-42',
+    });
+    const json = s.toJSON();
+    expect(json.student_id).toBe('stu-42');
+    expect(json.reason).toBe('Department approval');
+  });
+
+  test('Substitution extras survive Transcript auto-wrap', () => {
+    const tx = api.transcript({
+      courses: [],
+      substitutions: [{
+        original: { subject: 'MATH', number: '151' },
+        replacement: { subject: 'PHYS', number: '201' },
+        reason: 'approved',
+        student_id: 'stu-42',
+      }],
+    });
+    const json = tx.toJSON();
+    expect(json.substitutions[0].student_id).toBe('stu-42');
+  });
+
+  // -- Transcript extras --
+
+  test('Transcript preserves extra fields through toJSON()', () => {
+    const tx = api.transcript({
+      courses: [{ subject: 'MATH', number: '151', grade: 'A', credits: 4 }],
+      student_id: 'stu-99',
+      advisor: 'Dr. Jones',
+    });
+    const json = tx.toJSON();
+    expect(json.student_id).toBe('stu-99');
+    expect(json.advisor).toBe('Dr. Jones');
+    expect(json.courses).toHaveLength(1);
+  });
+
+  test('Transcript extras survive immutable mutations', () => {
+    const tx = api.transcript({
+      courses: [],
+      student_id: 'stu-99',
+    });
+    const tx2 = tx.addCourse({ subject: 'MATH', number: '151', grade: 'A', credits: 4 });
+    expect(tx2.toJSON().student_id).toBe('stu-99');
+    expect(tx2.courses).toHaveLength(1);
+
+    const tx3 = tx2.addAttainment('JUNIOR_STANDING', true);
+    expect(tx3.toJSON().student_id).toBe('stu-99');
+
+    const w = api.waiver({ course: { subject: 'ENGL', number: '101' }, reason: 'Transfer' });
+    const tx4 = tx3.addWaiver(w);
+    expect(tx4.toJSON().student_id).toBe('stu-99');
+
+    const s = api.substitution({
+      original: { subject: 'PHYS', number: '101' },
+      replacement: { subject: 'PHYS', number: '201' },
+      reason: 'approved',
+    });
+    const tx5 = tx4.addSubstitution(s);
+    expect(tx5.toJSON().student_id).toBe('stu-99');
+
+    const tx6 = tx5.declareProgram({ code: 'CS-BS', type: 'major' });
+    expect(tx6.toJSON().student_id).toBe('stu-99');
+  });
+
+  test('Transcript.toJSON deep-serializes nested entities', () => {
+    const w = api.waiver({
+      course: { subject: 'MATH', number: '151' },
+      reason: 'AP credit',
+      approved_by: 'Dean',
+    });
+    const s = api.substitution({
+      original: { subject: 'ENGL', number: '101' },
+      replacement: { subject: 'ENGL', number: '201' },
+      reason: 'approved',
+      student_id: 'stu-1',
+    });
+    const tx = api.transcript({
+      courses: [{ subject: 'MATH', number: '151', grade: 'A', credits: 4, custom: 'val' }],
+      declaredPrograms: [{ code: 'CS-BS', type: 'major', dept: 'CS' }],
+      waivers: [w],
+      substitutions: [s],
+      student_id: 'stu-1',
+    });
+    const json = tx.toJSON();
+
+    // Transcript extras
+    expect(json.student_id).toBe('stu-1');
+    // Course extras
+    expect(json.courses[0].custom).toBe('val');
+    // DeclaredProgram extras
+    expect(json.declaredPrograms[0].dept).toBe('CS');
+    // Waiver extras
+    expect(json.waivers[0].approved_by).toBe('Dean');
+    // Substitution extras
+    expect(json.substitutions[0].student_id).toBe('stu-1');
+  });
+
+  test('JSON.stringify round-trip preserves all extras', () => {
+    const tx = api.transcript({
+      courses: [{ subject: 'MATH', number: '151', grade: 'A', credits: 4, enrollment_id: 'e1' }],
+      waivers: [{
+        course: { subject: 'ENGL', number: '101' },
+        reason: 'Transfer',
+        waiver_id: 'w1',
+      }],
+      substitutions: [{
+        original: { subject: 'PHYS', number: '101' },
+        replacement: { subject: 'PHYS', number: '201' },
+        reason: 'approved',
+        sub_id: 's1',
+      }],
+      student_id: 'stu-42',
+    });
+
+    const roundTripped = JSON.parse(JSON.stringify(tx));
+    expect(roundTripped.student_id).toBe('stu-42');
+    expect(roundTripped.courses[0].enrollment_id).toBe('e1');
+    expect(roundTripped.waivers[0].waiver_id).toBe('w1');
+    expect(roundTripped.substitutions[0].sub_id).toBe('s1');
+
+    // Re-hydrate and verify
+    const tx2 = api.transcript(roundTripped);
+    expect(tx2.toJSON().student_id).toBe('stu-42');
+    expect(tx2.courses[0].toJSON().enrollment_id).toBe('e1');
+  });
+});

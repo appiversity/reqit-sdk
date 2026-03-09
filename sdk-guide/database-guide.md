@@ -406,10 +406,15 @@ async function loadTranscript(db, studentId) {
     attainments[row.code] = isNaN(row.value) ? (row.value === 'true') : Number(row.value);
   }
 
-  // Build waivers — the target_type determines which waiver factory parameter to use
+  // Build waivers — the target_type determines which waiver factory parameter to use.
+  // Extra fields (created_at, etc.) are preserved through the SDK and returned by toJSON().
   const waivers = waiverRows.map(row => {
     const target = row.target_value;
-    const opts = { id: String(row.id), reason: row.reason };
+    const opts = {
+      id: String(row.id),
+      reason: row.reason,
+      created_at: row.created_at,   // extra field — preserved by SDK
+    };
     if (row.metadata) opts.metadata = row.metadata;
 
     switch (row.target_type) {
@@ -421,16 +426,21 @@ async function loadTranscript(db, studentId) {
     }
   }).filter(Boolean);
 
-  // Build substitutions
+  // Build substitutions — extra fields are preserved the same way
   const substitutions = subRows.map(row => reqit.substitution({
     id: String(row.id),
     original: { subject: row.original_subject, number: row.original_number },
     replacement: { subject: row.replacement_subject, number: row.replacement_number },
     reason: row.reason,
     metadata: row.metadata || undefined,
+    created_at: row.created_at,     // extra field — preserved by SDK
   }));
 
+  // Extra fields on any entity — transcript, courses, waivers, substitutions —
+  // are preserved through toJSON() and immutable mutations (addCourse, addWaiver, etc.).
+  // This lets you round-trip application-specific data without the SDK stripping it.
   return reqit.transcript({
+    student_id: studentId,      // extra field — preserved by SDK
     courses: courseRows.map(r => ({
       id: r.id,
       subject: r.subject,
@@ -455,12 +465,12 @@ async function loadTranscript(db, studentId) {
 
 All five queries run in parallel — there are no dependencies between them. The resulting `Transcript` object contains everything the SDK needs to run an audit: completed courses, attainments, declared programs, and any per-student exceptions.
 
-### Managing `id` Fields
+### Preserving Application Data Through the SDK
 
-SDK entities accept an `id` field that is passed through unchanged. Use this to round-trip your database primary keys so you can link audit results back to your data:
+SDK entities preserve all fields you pass in — not just the ones the SDK uses. This means `id`, `created_at`, `approved_by`, or any other application-specific field survives construction, `toJSON()`, immutable mutations, and JSON serialization:
 
 ```javascript
-// When loading: set id from your database PK
+// When loading: include any fields you need on the other side
 const course = { id: row.id, subject: row.subject, number: row.number, ... };
 
 // After audit: the id is preserved on entity instances
@@ -474,6 +484,29 @@ result.walk((node) => {
     saveAuditCourseMatch(node, node.satisfiedBy.id);
   }
 });
+```
+
+This applies to every entity type: Transcript, TranscriptCourse, Waiver, Substitution, DeclaredProgram, Course, Program, Attribute, and Degree. Extra fields on a Transcript also survive immutable mutations — calling `addCourse()`, `addWaiver()`, or any other mutation method carries your extra fields forward to the new Transcript instance.
+
+```javascript
+// Extra fields survive the full round-trip
+const tx = reqit.transcript({
+  student_id: 42,
+  courses: [{ id: 100, subject: 'MATH', number: '151', grade: 'A', credits: 4 }],
+  waivers: [reqit.waiver({
+    id: 'w-1', course: { subject: 'ENGL', number: '101' },
+    reason: 'Transfer', approved_by: 'Dean Smith',
+  })],
+});
+
+const json = JSON.parse(JSON.stringify(tx));
+console.log(json.student_id);               // → 42
+console.log(json.courses[0].id);             // → 100
+console.log(json.waivers[0].approved_by);    // → 'Dean Smith'
+
+// Re-hydrate from JSON — extras are preserved
+const tx2 = reqit.transcript(json);
+console.log(tx2.toJSON().student_id);        // → 42
 ```
 
 ---

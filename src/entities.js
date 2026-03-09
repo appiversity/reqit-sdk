@@ -851,6 +851,7 @@ class Transcript {
   #substitutions;
   #level;
   #duplicatePolicy;
+  #extras;
 
   constructor(data) {
     if (Array.isArray(data)) {
@@ -859,27 +860,30 @@ class Transcript {
     if (!data || !Array.isArray(data.courses)) {
       throw new Error('Transcript requires a data object with a courses array');
     }
+    const { courses, attainments, declaredPrograms, waivers, substitutions,
+            level, duplicatePolicy, ...extras } = data;
     this.#courses = Object.freeze(
-      data.courses.map(e => e instanceof TranscriptCourse ? e : new TranscriptCourse(e))
+      courses.map(e => e instanceof TranscriptCourse ? e : new TranscriptCourse(e))
     );
-    this.#attainments = Object.freeze(data.attainments || {});
+    this.#attainments = Object.freeze(attainments || {});
     this.#declaredPrograms = Object.freeze(
-      (data.declaredPrograms || []).map(dp => dp instanceof DeclaredProgram ? dp : new DeclaredProgram(dp))
+      (declaredPrograms || []).map(dp => dp instanceof DeclaredProgram ? dp : new DeclaredProgram(dp))
     );
     this.#waivers = Object.freeze(
-      (data.waivers || []).map(w => {
+      (waivers || []).map(w => {
         if (w instanceof Waiver) return w;
         return new Waiver(w);
       })
     );
     this.#substitutions = Object.freeze(
-      (data.substitutions || []).map(s => {
+      (substitutions || []).map(s => {
         if (s instanceof Substitution) return s;
         return new Substitution(s);
       })
     );
-    this.#level = data.level || null;
-    this.#duplicatePolicy = data.duplicatePolicy || null;
+    this.#level = level || null;
+    this.#duplicatePolicy = duplicatePolicy || null;
+    this.#extras = Object.freeze(extras);
   }
 
   get courses() { return this.#courses; }
@@ -964,12 +968,24 @@ class Transcript {
     }));
   }
 
-  toJSON() { return this.#toData({}); }
+  toJSON() {
+    return {
+      ...this.#extras,
+      courses: this.#courses.map(c => c.toJSON()),
+      attainments: { ...this.#attainments },
+      declaredPrograms: this.#declaredPrograms.map(d => d.toJSON()),
+      waivers: this.#waivers.map(w => w.toJSON()),
+      substitutions: this.#substitutions.map(s => s.toJSON()),
+      level: this.#level,
+      duplicatePolicy: this.#duplicatePolicy,
+    };
+  }
 
   // -- Internal helper to build data object for new Transcript --
 
   #toData(overrides) {
     return {
+      ...this.#extras,
       courses: overrides.courses || [...this.#courses],
       attainments: overrides.attainments || { ...this.#attainments },
       declaredPrograms: overrides.declaredPrograms || [...this.#declaredPrograms],

@@ -6,7 +6,7 @@ The tutorial builds progressively — each section introduces concepts used by l
 
 **Prerequisites:** You should be comfortable with Node.js. Some familiarity with academic degree requirements (courses, credits, prerequisites, majors/minors) will help, but isn't strictly required — the tutorial explains the domain concepts as they come up.
 
-> **A note on `id` fields:** Every entity type (Course, Program, TranscriptCourse, etc.) accepts an optional `id` field. The SDK never generates or interprets these — they exist so you can round-trip your own database keys through the system. You can omit them entirely when working without a database.
+> **A note on extra fields:** Every entity type (Course, Program, TranscriptCourse, Transcript, Waiver, Substitution, etc.) preserves any extra fields you include. The SDK never generates or interprets these — they exist so you can round-trip your own database keys, timestamps, application metadata, and any other fields through the system. Pass `id`, `created_at`, `approved_by`, or any other field you need — it will survive construction, `toJSON()`, and JSON serialization. You can omit extra fields entirely when working without a database.
 
 ## Installation
 
@@ -318,6 +318,19 @@ The `status` field on a course entry defaults to `'completed'`. Setting it to `'
 
 The `role: 'primary'` on the declared program identifies which major/minor is the student's primary one. This matters for multi-program audits where overlap policies reference "primary major" or "primary minor."
 
+Like all SDK entities, transcripts preserve extra fields you include. If you pass `student_id`, `advisor`, or any application-specific fields alongside the standard fields, they survive through `toJSON()` and immutable mutations (`addCourse()`, `addWaiver()`, etc.):
+
+```javascript
+const tx = reqit.transcript({
+  courses: [{ subject: 'MATH', number: '151', grade: 'A', credits: 4 }],
+  student_id: 'stu-42',       // preserved — not used by SDK
+  advisor: 'Dr. Jones',       // preserved — not used by SDK
+});
+
+const tx2 = tx.addCourse({ subject: 'CMPS', number: '130', grade: 'B', credits: 3 });
+console.log(tx2.toJSON().student_id); // → 'stu-42' (still there)
+```
+
 ### Modifying Transcripts
 
 Transcripts are **immutable** — every mutation returns a new Transcript instance, leaving the original unchanged. This is critical for what-if analysis (Section 5), where you want to explore hypothetical scenarios without corrupting the student's actual record:
@@ -598,6 +611,8 @@ const waiver = reqit.waiver({
   id: 'w-001',
   course: { subject: 'CMPS', number: '310' },
   reason: 'Transfer credit from partner institution',
+  approved_by: 'Dean Smith',    // extra field — preserved through toJSON()
+  created_at: '2026-01-15',     // extra field — preserved through toJSON()
 });
 
 // Add the waiver to the transcript
@@ -606,6 +621,8 @@ const txWithWaiver = transcript.addWaiver(waiver);
 // Now audit — CMPS 310 shows as 'waived', the student doesn't need it
 const result = csMajor.audit(catalog, txWithWaiver);
 ```
+
+Like all entities, waivers and substitutions preserve any extra fields you include — `approved_by`, `created_at`, database IDs, or any application-specific data. These fields survive through `toJSON()` and Transcript serialization.
 
 Waivers target specific things. You can waive a course, a test score, an attainment, or an entire labeled group:
 
@@ -643,6 +660,7 @@ const sub = reqit.substitution({
   original: { subject: 'MATH', number: '250' },
   replacement: { subject: 'MATH', number: '241' },
   reason: 'Department approved equivalent',
+  approved_by: 'Dr. Chen',      // extra field — preserved through toJSON()
 });
 
 const txWithSub = transcript.addSubstitution(sub);
